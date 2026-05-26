@@ -30,3 +30,55 @@
 .android-scroll::-webkit-scrollbar-thumb {
   @apply bg-slate-600/40 rounded-full;
 }
+
+/* Markdown styling for chat */
+.markdown-body {
+  @apply text-[#E3E3E8] leading-relaxed font-sans w-full max-w-full;
+  font-size: 15px;
+}
+.markdown-body p {
+  @apply mb-4 last:mb-0;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+  @apply font-medium mt-6 mb-3 text-white;
+}
+.markdown-body h2 {
+  @apply text-xl border-b border-[#2A2B32] pb-2;
+}
+.markdown-body h3 {
+  @apply text-lg;
+}
+.markdown-body ul {
+  @apply list-disc pl-5 mb-4 space-y-1.5;
+}
+.markdown-body ol {
+  @apply list-decimal pl-5 mb-4 space-y-1.5;
+}
+.markdown-body li > p {
+  @apply mb-0 inline;
+}
+.markdown-body code {
+  @apply bg-[#2A2B32] px-1.5 py-0.5 rounded-md font-mono text-[13px] text-cyan-300;
+}
+.markdown-body pre {
+  @apply bg-[#131416] border border-[#2A2B32] rounded-xl p-4 mb-4 overflow-x-auto;
+}
+.markdown-body pre code {
+  @apply bg-transparent p-0 text-[#E3E3E8] text-[13px] border-none font-mono;
+}
+.markdown-body blockquote {
+  @apply border-l-4 border-indigo-500 pl-4 py-1 italic text-[#A1A1A8] bg-[#1E1F22] rounded-r-lg my-4;
+}
+.markdown-body table {
+  @apply w-full text-left border-collapse mb-4 block overflow-x-auto whitespace-nowrap;
+}
+.markdown-body th {
+  @apply py-2 px-3 border-b border-[#3B3C44] bg-[#2A2B32] font-medium text-white;
+}
+.markdown-body td {
+  @apply py-2 px-3 border-b border-[#2A2B32] text-[#E3E3E8];
+}
+.markdown-body a {
+  @apply text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors;
+}
+

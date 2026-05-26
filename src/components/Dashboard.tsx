@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Play, Activity, Terminal } from 'lucide-react';
 
 const initialData = [
-  { id: 1, name: 'Gemini 3.1 Pro Base', progress: 80, status: 'Active Focus' },
+  { id: 1, name: 'WidgeTDC 3.1 Pro Base', progress: 80, status: 'Active Focus' },
   { id: 2, name: 'NotebookLM Connector', progress: 40, status: 'Integrating' },
   { id: 3, name: 'Live API Audio/Video', progress: 0, status: 'Skipped' },
   { id: 4, name: 'Agentic Tool Run (MCP)', progress: 90, status: 'Testing' },
@@ -29,7 +29,7 @@ const agenticPatterns = [
 
 export function Dashboard() {
   const data = [
-    { name: 'Gemini 3.1 Pro Base', progress: 100, status: 'Completed' },
+    { name: 'WidgeTDC 3.1 Pro Base', progress: 100, status: 'Completed' },
     { name: 'NotebookLM Connector', progress: 100, status: 'Completed' },
     { name: 'Live API Audio/Video', progress: 0, status: 'Skipped' },
     { name: 'Agentic Tool Run (MCP)', progress: 100, status: 'Completed' },
@@ -45,7 +45,7 @@ export function Dashboard() {
     <div className="flex-1 p-8 overflow-y-auto w-full max-w-[1000px] mx-auto android-scroll">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <h2 className="text-3xl font-medium text-[#E3E3E8] tracking-tight mb-2">Gemini 3.1 (May 2026) Plan</h2>
+          <h2 className="text-3xl font-medium text-[#E3E3E8] tracking-tight mb-2">WidgeTDC 3.1 (May 2026) Plan</h2>
           <p className="text-[#A1A1A8] font-light">10-Point Integration Plan for WidgeTDC & NotebookLM</p>
         </div>
       </div>
