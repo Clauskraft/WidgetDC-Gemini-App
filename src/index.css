@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-primary: #7dd3fc; /* M3 Sky Blue */
+  --color-brand-secondary: #c084fc; /* M3 Purple */
+  
+  /* Material 3 Dark Palette */
+  --color-surface-900: #1a1c1e; /* Surface */
+  --color-surface-800: #2d3033; /* Surface Container */
+  --color-surface-700: #42474e; /* Surface Variant */
+  --color-on-surface: #e2e2e6;
+  --color-primary-container: #004a77;
+  --color-on-primary-container: #c2e8ff;
+}
+
+@layer base {
+  body {
+    @apply bg-surface-900 text-on-surface font-sans selection:bg-brand-primary/30 antialiased;
+  }
+}
+
+/* Android style scrollbars */
+.android-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.android-scroll::-webkit-scrollbar-thumb {
+  @apply bg-slate-600/40 rounded-full;
+}
