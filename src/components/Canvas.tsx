@@ -23,6 +23,7 @@ import "prismjs/components/prism-bash";
 import "prismjs/themes/prism-twilight.css"; // Dark theme
 import { cn } from "@/src/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { Mermaid } from "@/src/components/Mermaid";
 
 interface CanvasProps {
   isOpen: boolean;
@@ -197,6 +198,7 @@ export function Canvas({
           {(activeTab === "edit" ||
             (language !== "markdown" &&
               language !== "html" &&
+              language !== "mermaid" &&
               activeTab === "preview")) && (
             <div className="px-3 pb-3">
               <div className="relative">
@@ -258,6 +260,7 @@ export function Canvas({
           ) : activeTab === "edit" ||
             (language !== "markdown" &&
               language !== "html" &&
+              language !== "mermaid" &&
               activeTab === "preview") ? (
             <div className="min-h-full font-mono text-[13px] leading-relaxed">
               <Editor
@@ -267,7 +270,6 @@ export function Canvas({
                 padding={24}
                 style={{
                   fontFamily: '"Fira Code", "JetBrains Mono", monospace',
-                  theme: "vs-dark",
                   outline: "none",
                   minHeight: "100%",
                 }}
@@ -275,13 +277,31 @@ export function Canvas({
                 textareaClassName="focus:outline-none"
               />
             </div>
+          ) : language === "mermaid" && activeTab === "preview" ? (
+            <div className="w-full h-full bg-[#1E1F22] overflow-auto p-8 relative">
+               <div className="min-w-full min-h-full bg-[#131416] border border-[#2A2B32] rounded-xl flex items-center justify-center p-6 shadow-inner max-w-[100%]">
+                  <Mermaid chart={content} />
+               </div>
+            </div>
           ) : language === "html" && activeTab === "preview" ? (
-            <div className="w-full h-full bg-white">
+            <div className="w-full h-full bg-white relative flex flex-col">
               <iframe
-                srcDoc={content}
+                srcDoc={`
+                  <html>
+                    <head>
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <style>
+                        body { margin: 0; padding: 0; min-height: 100vh; overflow: auto; width: 100%; display: flex; flex-direction: column; }
+                      </style>
+                    </head>
+                    <body>
+                      ${content}
+                    </body>
+                  </html>
+                `}
                 title="HTML Preview"
-                className="w-full h-full border-none"
-                sandbox="allow-scripts allow-forms allow-popups allow-modals"
+                className="w-full flex-grow border-none"
+                sandbox="allow-same-origin allow-scripts"
               />
             </div>
           ) : (

@@ -46,7 +46,7 @@ export function Dashboard() {
       <div className="flex justify-between items-end mb-8">
         <div>
           <h2 className="text-3xl font-medium text-[#E3E3E8] tracking-tight mb-2">WidgeTDC 3.1 (May 2026) Plan</h2>
-          <p className="text-[#A1A1A8] font-light">10-Point Integration Plan for WidgeTDC & NotebookLM</p>
+          <p className="text-[#A1A1A8] font-light">10-Point Integration Plan for WidgeTDC & NotebookLM <span className="ml-2 text-yellow-500 font-medium border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 rounded-full text-xs">Static Preview</span></p>
         </div>
       </div>
       

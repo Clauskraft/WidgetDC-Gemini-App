@@ -17,15 +17,16 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/src/lib/utils";
-import { GoogleGenAI } from "@google/genai";
 import { Dashboard } from "@/src/components/Dashboard";
 import { Settings as SettingsView } from "@/src/components/Settings";
 import { Canvas } from "@/src/components/Canvas";
 
+import { Mermaid } from "@/src/components/Mermaid";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
-  groundingSources?: any[];
+  groundingSources?: Array<Record<string, unknown>>;
   intentConfidence?: number;
   targetTool?: string;
 }
@@ -244,7 +245,7 @@ export default function App() {
         } else if (data.result?.candidates) {
           const candidates = data.result.candidates;
           let md = `**Orchestrator Routing Analysis**\n\nQuery: *"${data.result.query}"*\n\nIdentified MCP Paths:\n\n`;
-          candidates.slice(0, 5).forEach((c: any, i: number) => {
+          candidates.slice(0, 5).forEach((c: { tool: string; score: number }, i: number) => {
             md += `${i + 1}. **\`${c.tool}\`** (Confidence: ${c.score.toFixed(2)})\n`;
           });
           assistantText = md;
@@ -292,7 +293,8 @@ export default function App() {
         saveThreadToBackend(updatedThread);
         return updated;
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as Error;
       setThreads((prev) => {
         const activeThread = prev.find((t) => t.id === activeId);
         if (!activeThread) return prev;
@@ -300,7 +302,7 @@ export default function App() {
           ...activeThread,
           messages: [
             ...activeThread.messages,
-            { role: "assistant", content: `Error: ${e.message}` } as Message,
+            { role: "assistant", content: `Error: ${err.message}` } as Message,
           ],
           updatedAt: Date.now(),
         };
@@ -510,7 +512,30 @@ export default function App() {
                                         ? match[1]
                                         : "text";
                                       if (!inline && match) {
-                                        return (
+                                        return language === "mermaid" ? (
+                                          <div className="relative group/codeblock rounded-xl overflow-hidden mb-4 border border-[#2A2B32] bg-[#131314]">
+                                            <div className="flex items-center justify-end px-4 py-2 text-[#A1A1A8] text-xs font-mono font-medium border-b border-[#2A2B32] z-10 relative">
+                                              <button
+                                                onClick={() =>
+                                                  handleOpenInCanvas(
+                                                    String(children).replace(
+                                                      /\n$/,
+                                                      "",
+                                                    ),
+                                                    language,
+                                                  )
+                                                }
+                                                className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-md hover:bg-[#2A2B32] opacity-0 group-hover/codeblock:opacity-100"
+                                              >
+                                                <PanelRight className="w-3.5 h-3.5" />
+                                                <span>Open in Canvas</span>
+                                              </button>
+                                            </div>
+                                            <div className="p-4 bg-white/5 mx-4 mb-4 mt-2 rounded-xl border border-[#2A2B32]/50 shadow-inner">
+                                               <Mermaid chart={String(children).replace(/\n$/, "")} />
+                                            </div>
+                                          </div>
+                                        ) : (
                                           <div className="relative group/codeblock rounded-xl overflow-hidden mb-4 border border-[#2A2B32]">
                                             <div className="flex items-center justify-between px-4 py-2 bg-[#131314] text-[#A1A1A8] text-xs font-mono font-medium border-b border-[#2A2B32]">
                                               <span>{language}</span>
@@ -585,7 +610,7 @@ export default function App() {
                                       </h4>
                                       <div className="flex flex-row gap-3 overflow-x-auto pb-2 android-scroll">
                                         {m.groundingSources.map(
-                                          (source: any, idx: number) => (
+                                          (source: { title?: string; source?: string; snippet?: string }, idx: number) => (
                                             <div
                                               key={idx}
                                               className="bg-[#1E1F22] border border-[#2A2B32] p-3 rounded-xl min-w-[240px] max-w-[300px] shrink-0 hover:border-[#3B3C44] transition-all cursor-pointer shadow-sm group"

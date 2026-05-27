@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# WidgeTDC Gemini App
 
-# Run and deploy your AI Studio app
+This is a full-stack React + Express + Vite application utilizing the Gemini SDK and WidgeTDC MCP extensions for agentic behaviors.
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/28e91af9-d428-4cc6-8fe8-d5459296803f
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+## How to run the application
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm install
+```
+
+2. Start the development server (runs React + Express locally):
+```bash
+npm run dev
+```
+
+3. Build the application for production:
+```bash
+npm run build
+```
+
+4. Lint the codebase:
+```bash
+npm run lint
+```
+
+## Required Environment Variables
+
+The application requires several environment variables to function properly. See `.env.example` for all variables.
+- `GEMINI_API_KEY`: Must be kept secret. This app uses Gemini Server-Side only to protect the key from exposure in the browser.
+- `PORT`: Automatically configured during build/deploy (default 3000).
+- `ALLOW_DEV_AUTH_BYPASS`: Set to `true` to disable simple auth requirements on the local `/api/chat` endpoint.
+- `DEBUG_PROXY`: Set to `true` to log verbose data proxy paths in backend testing.
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY`: If not provided, thread history will use in-memory volatile storage.
+
+## Important Notes
+- **Gemini Key**: The `GEMINI_API_KEY` is ONLY used on the server in `server.ts`. It is strictly not bundled with the frontend via Vite build configurations.
+- **Dashboard Data**: The internal Dashboard visualizations showcase static preview data representing the May 2026 milestones unless customized entirely with a live analytics integration backend.
+- **Proposals & Tests**: The `src/modules/proposals` and `scripts/smoke` folders contain reference implementations and manual scripts that are NOT actively evaluated by the application TS runtime.
