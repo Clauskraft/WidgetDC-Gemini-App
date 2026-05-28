@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAuthStatus, routeWidgetTool, sendChat, defaultGovernanceContext } from './api/widgetdcClient';
+import { activateBackendToken, getAuthStatus, routeWidgetTool, sendChat, defaultGovernanceContext } from './api/widgetdcClient';
 import { canvasModes, claims, events, phantomRun, platformMetrics, services, tools } from './data/mockData';
 import type { CanvasMode, ChatMessage, ToolDefinition } from './types/widgetdc';
 import { buildRejection, canExecuteFromBrowser } from './utils/governance';
@@ -33,13 +33,17 @@ const initialMessages: ChatMessage[] = [
 export default function App() {
   const [activeMode, setActiveMode] = useState<CanvasMode['id']>('mission');
   const [authenticated, setAuthenticated] = useState(false);
+  const [serverReachable, setServerReachable] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [busy, setBusy] = useState(false);
   const [selectedTool, setSelectedTool] = useState<ToolDefinition>(tools[0]);
   const [toolOutput, setToolOutput] = useState<string>();
 
   useEffect(() => {
-    void getAuthStatus().then((status) => setAuthenticated(status.authenticated));
+    void getAuthStatus().then((status) => {
+      setAuthenticated(status.authenticated);
+      setServerReachable(status.serverReachable);
+    });
   }, []);
 
   const activeDescription = useMemo(() => canvasModes.find((mode) => mode.id === activeMode)?.description ?? '', [activeMode]);
@@ -53,6 +57,21 @@ export default function App() {
       timestamp: Date.now(),
       metadata: { correlation_id: correlationId }
     };
+
+    if (!serverReachable) {
+      setMessages((current) => [
+        ...current,
+        userMessage,
+        {
+          id: createCorrelationId('msg'),
+          role: 'assistant',
+          content: 'This is a static preview. Token activation and chat routing require the Express BFF deployment; use this preview for visual review only.',
+          timestamp: Date.now(),
+          metadata: { correlation_id: correlationId }
+        }
+      ]);
+      return;
+    }
 
     setMessages((current) => [...current, userMessage]);
     setBusy(true);
@@ -90,6 +109,16 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleActivateToken(token: string) {
+    const result = await activateBackendToken(token);
+    if (!result.success) {
+      throw new Error('Token activation failed.');
+    }
+    const status = await getAuthStatus();
+    setAuthenticated(status.authenticated);
+    setServerReachable(status.serverReachable);
   }
 
   async function handleRunTool(tool: ToolDefinition) {
@@ -135,7 +164,14 @@ export default function App() {
       case 'chat':
         return (
           <div className="workspace-grid split">
-            <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
+            <ChatPanel
+              messages={messages}
+              busy={busy}
+              onSend={handleSend}
+              authenticated={authenticated}
+              serverReachable={serverReachable}
+              onActivateToken={handleActivateToken}
+            />
             <CanvasView run={phantomRun} claims={claims} events={events} />
           </div>
         );
@@ -174,7 +210,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TopBar activeMode={activeMode} onModeChange={setActiveMode} modes={canvasModes} authenticated={authenticated} />
+      <TopBar activeMode={activeMode} onModeChange={setActiveMode} modes={canvasModes} authenticated={authenticated} serverReachable={serverReachable} />
       <div className="app-body">
         <LeftRail modes={canvasModes} activeMode={activeMode} onModeChange={setActiveMode} services={services} />
         <main className="workbench" id={activeMode}>

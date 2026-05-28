@@ -7,6 +7,11 @@ type FetchJsonOptions = {
   signal?: AbortSignal;
 };
 
+export interface AuthStatus {
+  authenticated: boolean;
+  serverReachable: boolean;
+}
+
 async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T> {
   const response = await fetch(url, {
     method: options.method ?? 'GET',
@@ -29,12 +34,20 @@ async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promis
   return payload as T;
 }
 
-export async function getAuthStatus(): Promise<{ authenticated: boolean }> {
+export async function getAuthStatus(): Promise<AuthStatus> {
   try {
-    return await fetchJson<{ authenticated: boolean }>('/auth/status');
+    const status = await fetchJson<{ authenticated: boolean }>('/auth/status');
+    return { authenticated: status.authenticated, serverReachable: true };
   } catch {
-    return { authenticated: false };
+    return { authenticated: false, serverReachable: false };
   }
+}
+
+export async function activateBackendToken(bearerToken: string): Promise<{ success: boolean }> {
+  return fetchJson<{ success: boolean }>('/auth/simple', {
+    method: 'POST',
+    body: { bearer_token: bearerToken }
+  });
 }
 
 export async function sendChat(contents: string, model = 'gemini-2.0-flash'): Promise<WidgeToolResponse> {

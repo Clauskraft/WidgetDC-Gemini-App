@@ -5,9 +5,13 @@ interface TopBarProps {
   onModeChange: (mode: CanvasMode['id']) => void;
   modes: CanvasMode[];
   authenticated: boolean;
+  serverReachable: boolean;
 }
 
-export function TopBar({ activeMode, onModeChange, modes, authenticated }: TopBarProps) {
+export function TopBar({ activeMode, onModeChange, modes, authenticated, serverReachable }: TopBarProps) {
+  const authLabel = !serverReachable ? 'Static preview' : authenticated ? 'Authenticated' : 'Server token pending';
+  const authState = !serverReachable ? 'static' : authenticated ? 'good' : 'warn';
+
   return (
     <header className="topbar glass-panel">
       <div className="brand-lockup">
@@ -31,9 +35,9 @@ export function TopBar({ activeMode, onModeChange, modes, authenticated }: TopBa
         ))}
       </nav>
 
-      <div className="auth-pill" data-state={authenticated ? 'good' : 'warn'}>
+      <div className="auth-pill" data-state={authState}>
         <span className="pulse-dot" />
-        {authenticated ? 'Authenticated' : 'Server token pending'}
+        {authLabel}
       </div>
     </header>
   );
