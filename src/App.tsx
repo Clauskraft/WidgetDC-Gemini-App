@@ -124,6 +124,15 @@ export default function App() {
   async function handleRunTool(tool: ToolDefinition) {
     const context = defaultGovernanceContext({ evidence_ref: 'frontend:widgetdc-aurora-ui' });
 
+    if (!serverReachable) {
+      setToolOutput([
+        'Static preview: server-side governed proxy is not reachable from GitHub Pages.',
+        `tool: ${tool.name}`,
+        'result: deploy the Express BFF to execute read-only checks or staged HyperAgent paths.'
+      ].join('\n'));
+      return;
+    }
+
     if (!canExecuteFromBrowser(tool)) {
       setToolOutput(buildRejection(tool, context.correlation_id));
       return;
