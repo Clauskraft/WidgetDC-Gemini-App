@@ -323,6 +323,53 @@ async function startServer() {
     payload: z.record(z.string(), z.any()).default({}),
   });
 
+  function uiCorrelationId(payload: Record<string, any>): string {
+    return payload?.ui_context?.correlation_id || payload?.correlation_id || `aurora-ui-${Date.now()}`;
+  }
+
+  function mapReadOnlyUiTool(tool: string, payload: Record<string, any>) {
+    const correlationId = uiCorrelationId(payload);
+    if (tool === "graph.integrity_check") {
+      return {
+        tool: "graph.read_cypher",
+        payload: {
+          query: "MATCH (n) RETURN count(n) AS node_count LIMIT 1",
+          correlation_id: correlationId,
+        },
+      };
+    }
+    if (tool === "graph.get_lineage") {
+      return {
+        tool: "graph.read_cypher",
+        payload: {
+          query: "MATCH (wa:WorkArtifact) RETURN wa.id AS workartifact_id LIMIT 5",
+          correlation_id: correlationId,
+        },
+      };
+    }
+    if (tool === "eventspine.replay") {
+      return {
+        tool: "eventspine.replay",
+        payload: {
+          correlation_id: correlationId,
+        },
+      };
+    }
+    if (tool === "workflow_cost_trace") {
+      return {
+        local: true,
+        result: {
+          success: true,
+          workflow_id: payload?.ui_context?.workflow_id || "widgetdc-aurora-frontend",
+          correlation_id: correlationId,
+          cost_trace_status: "read_only_summary",
+          note: "No workflow cost mutation is performed from the browser.",
+        },
+      };
+    }
+    return null;
+  }
+
   // -- WidgeTDC MCP Route Proxy --
   app.post("/api/widgetdc/route", async (req, res) => {
     const validationResult = widgetRouteSchema.safeParse(req.body);
@@ -346,6 +393,36 @@ async function startServer() {
 
       let executionLogs: string[] = [];
       let finalResult: any = null;
+      const readOnlyRoute = mapReadOnlyUiTool(tool, payload);
+
+      if (readOnlyRoute) {
+        if ("local" in readOnlyRoute) {
+          return res.json({
+            success: true,
+            tool,
+            routed_to: "local_read_only_bff",
+            governance: {
+              risk_level: "read_only",
+              mutation_allowed: false,
+              requested_from: "widgetdc-aurora-frontend",
+            },
+            result: readOnlyRoute.result,
+          });
+        }
+
+        const toolResponse = await longHttp.post(url, readOnlyRoute, { headers });
+        return res.json({
+          success: true,
+          tool,
+          routed_to: readOnlyRoute.tool,
+          governance: {
+            risk_level: "read_only",
+            mutation_allowed: false,
+            requested_from: "widgetdc-aurora-frontend",
+          },
+          result: toolResponse.data?.result ?? toolResponse.data,
+        });
+      }
 
       // If user enabled tools (like NotebookLM), execute the full agentic chain
       if (payload.enabled_tools && payload.enabled_tools.length > 0) {
