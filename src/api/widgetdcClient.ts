@@ -34,7 +34,17 @@ async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promis
   return payload as T;
 }
 
+function isStaticPreviewHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.endsWith('github.io') || window.location.protocol === 'file:';
+}
+
 export async function getAuthStatus(): Promise<AuthStatus> {
+  if (isStaticPreviewHost()) {
+    return { authenticated: false, serverReachable: false };
+  }
+
   try {
     const status = await fetchJson<{ authenticated: boolean }>('/auth/status');
     return { authenticated: status.authenticated, serverReachable: true };
