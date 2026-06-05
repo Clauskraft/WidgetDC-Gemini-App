@@ -4,8 +4,8 @@
 
 | Source element | Frontend translation |
 |---|---|
-| `WidgetDC-Gemini-App` React + Express + Vite structure | Vite React app using `/api/chat`, `/api/widgetdc/route`, `/api/mcp/proxy` and `/auth/status` |
-| Server-side Gemini key posture | No browser Gemini key; chat goes through Express route |
+| Runtime app React + Express + Vite structure | Vite React app using `/api/chat`, `/api/widgetdc/route`, `/api/mcp/proxy` and `/auth/status` |
+| Server-side model-provider key posture | No browser model-provider key; chat goes through Express route |
 | Server-side MCP proxy posture | No browser MCP secret; tool calls go through BFF |
 | Stitch / Lumina design system | Dark glassmorphism, Aurora gradient, sidebar + chat/canvas layout, Mission Control panels |
 | WidgeTDC governance docs | Risk badges, plan/approval requirements, EventSpine preview and claim holds |
@@ -43,7 +43,7 @@ The UI is intentionally conservative. Actual enforcement must remain server-side
 ## Browser safety checklist
 
 ```text
-[ ] No GEMINI_API_KEY in frontend bundle.
+[ ] No model-provider API key in frontend bundle.
 [ ] No MCP_AGENT_API_KEY in frontend bundle.
 [ ] No VITE_API_KEY for backend MCP.
 [ ] No raw graph.write_cypher action.

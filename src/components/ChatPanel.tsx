@@ -45,7 +45,7 @@ export function ChatPanel({ messages, busy, onSend, authenticated, serverReachab
       <div className="panel-header">
         <div>
           <div className="section-kicker">Captain chat</div>
-          <h2>Gemini + WidgeTDC routed assistant</h2>
+          <h2>Runtime model + WidgeTDC routed assistant</h2>
         </div>
         <span className="pill">no browser key</span>
       </div>

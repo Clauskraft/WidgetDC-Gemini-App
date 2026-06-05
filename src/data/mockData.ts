@@ -2,7 +2,7 @@ import type { BomRun, CanvasMode, ClaimState, EventSpineEvent, PlatformMetric, P
 
 export const canvasModes: CanvasMode[] = [
   { id: 'mission', label: 'Mission Control', description: 'Runtime truth, gates, health, and operator view.' },
-  { id: 'chat', label: 'Captain Chat', description: 'Gemini/WidgeTDC conversational control surface.' },
+  { id: 'chat', label: 'Captain Chat', description: 'Runtime/WidgeTDC conversational control surface.' },
   { id: 'phantom', label: 'Phantom BOM', description: 'Decision BOM, BOMItems, WorkArtifacts and lineage.' },
   { id: 'events', label: 'EventSpine', description: 'Replayable audit and correlation trail.' },
   { id: 'claims', label: 'Claims', description: 'Evidence-gated claim maturity and holds.' },
@@ -165,7 +165,7 @@ export const phantomRun: BomRun = {
       method_selected: 'LLM',
       policy_requirement: 'human_review',
       validation_status: 'review_required',
-      evidence_refs: ['stitch:lumina_mission_control_interface', 'repo:WidgetDC-Gemini-App']
+      evidence_refs: ['stitch:lumina_mission_control_interface', 'repo:WidgetDC-Runtime-App']
     },
     {
       bom_item_id: 'bomitem-002',

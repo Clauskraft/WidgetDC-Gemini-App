@@ -11,7 +11,7 @@ export function MissionControl({ metrics, services, tools }: { metrics: Platform
         <div className="section-kicker">WidgeTDC governed frontend</div>
         <h1>One UI for runtime truth, EventSpine evidence and Phantom BOM work.</h1>
         <p>
-          This shell combines the Gemini app surface, Lumina Aurora visual language, and WidgeTDC control-plane rules.
+          This shell combines the runtime app surface, Lumina Aurora visual language, and WidgeTDC control-plane rules.
           It keeps writes behind server-side governed paths and treats UI as an operating surface, not a source of truth.
         </p>
         <div className="hero-actions">

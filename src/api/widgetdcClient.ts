@@ -60,11 +60,11 @@ export async function activateBackendToken(bearerToken: string): Promise<{ succe
   });
 }
 
-export async function sendChat(contents: string, model = 'gemini-2.0-flash'): Promise<WidgeToolResponse> {
+export async function sendChat(contents: string, model?: string): Promise<WidgeToolResponse> {
   return fetchJson<WidgeToolResponse>('/api/chat', {
     method: 'POST',
     body: {
-      model,
+      ...(model ? { model } : {}),
       contents,
       config: {
         systemInstruction: 'You are WidgeTDC Captain UI. Respond with claim-safe, governed language. Do not request direct raw graph writes.'

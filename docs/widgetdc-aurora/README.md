@@ -1,6 +1,6 @@
 # WidgeTDC Aurora Frontend
 
-A governed React/Vite frontend package that combines the existing `WidgetDC-Gemini-App` shape with the uploaded Stitch/Lumina design system and WidgeTDC control-plane rules.
+A governed React/Vite frontend package that combines the existing runtime-app shape with the uploaded Stitch/Lumina design system and WidgeTDC control-plane rules.
 
 ## What this contains
 
@@ -30,7 +30,7 @@ Safe reads can be started from the UI. Staged and production writes are blocked 
 
 ## Expected existing backend routes
 
-The package expects the same route family used by the Gemini app:
+The package expects the same route family used by the runtime app:
 
 ```text
 GET  /auth/status
@@ -41,7 +41,7 @@ POST /api/mcp/proxy
 
 If the app is run as a standalone static Vite preview, the UI will show fallback guidance instead of failing hard.
 
-## Install in `WidgetDC-Gemini-App`
+## Install in the runtime app
 
 Copy this package into the existing repo or replace the current frontend source while preserving `server.ts`.
 
@@ -62,11 +62,11 @@ npm start
 Server-side only:
 
 ```bash
-GEMINI_API_KEY=...
+GENERATIVE_API_KEY=...
 MCP_AGENT_API_KEY=...
 ```
 
-Do not expose those as `VITE_*` browser variables. The browser must not ship real MCP or Gemini credentials.
+Do not expose those as `VITE_*` browser variables. The browser must not ship real MCP or model-provider credentials.
 
 ## Governance behavior
 

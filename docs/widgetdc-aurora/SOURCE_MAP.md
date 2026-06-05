@@ -2,12 +2,12 @@
 
 ## GitHub application base
 
-The frontend is intended to sit on top of the existing `WidgetDC-Gemini-App` full-stack shape:
+The frontend is intended to sit on top of the existing runtime-app full-stack shape:
 
 ```text
 React + Vite frontend
 Express server/BFF
-Gemini chat route
+Runtime chat route
 WidgeTDC MCP route/proxy
 ```
 
