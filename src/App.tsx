@@ -41,7 +41,6 @@ import { cn } from "@/src/lib/utils";
 import { Dashboard } from "@/src/components/Dashboard";
 import { Settings as SettingsView } from "@/src/components/Settings";
 import { Canvas } from "@/src/components/Canvas";
-import { Mermaid } from "@/src/components/Mermaid";
 
 interface Message {
   role: "user" | "assistant";
@@ -1253,6 +1252,9 @@ export default function App() {
                                 <div className="markdown-body w-full">
                                   <ReactMarkdown
                                     components={{
+                                      pre({ children }: any) {
+                                        return <>{children}</>;
+                                      },
                                       code({
                                         node,
                                         inline,
@@ -1267,33 +1269,26 @@ export default function App() {
                                           ? match[1]
                                           : "text";
                                         if (!inline && match) {
+                                          const codeText = String(children).replace(/\n$/, "");
                                           return language === "mermaid" ? (
-                                            <div className="relative group/codeblock rounded-xl overflow-hidden mb-4 border border-[#2A2B32] bg-[#131314]">
-                                              <div className="flex items-center justify-end px-4 py-2 text-[#A1A1A8] text-xs font-mono font-medium border-b border-[#2A2B32] z-10 relative">
-                                                <button
-                                                  onClick={() =>
-                                                    handleOpenInCanvas(
-                                                      String(children).replace(
-                                                        /\n$/,
-                                                        ""
-                                                      ),
-                                                      language
-                                                    )
-                                                  }
-                                                  className="flex items-center gap-1.5 hover:text-white transition-colors py-1 px-2 rounded-md hover:bg-[#2A2B32] opacity-0 group-hover/codeblock:opacity-100"
-                                                >
-                                                  <PanelRight className="w-3.5 h-3.5" />
-                                                  <span>Open in Canvas</span>
-                                                </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenInCanvas(codeText, language)}
+                                              className="not-prose mb-4 flex w-full items-center justify-between gap-4 border-l-2 border-[#4da1fe] bg-[#161719] px-4 py-3 text-left transition-colors hover:bg-[#1d1f23] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4da1fe]/70"
+                                            >
+                                              <div className="min-w-0">
+                                                <div className="text-sm font-medium text-[#E8EAED]">
+                                                  Mermaid diagram
+                                                </div>
+                                                <div className="mt-1 truncate text-xs text-[#A1A1A8]">
+                                                  Interactive view is available in Canvas
+                                                </div>
                                               </div>
-                                              <div className="p-4 bg-white/5 mx-4 mb-4 mt-2 rounded-xl border border-[#2A2B32]/50 shadow-inner">
-                                                 <Mermaid 
-                                                   chart={String(children).replace(/\n$/, "")} 
-                                                   onNodeClick={setHighlightedNode}
-                                                   highlightedNode={highlightedNode}
-                                                 />
+                                              <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-[#4da1fe]">
+                                                <span>Open</span>
+                                                <PanelRight className="h-3.5 w-3.5" />
                                               </div>
-                                            </div>
+                                            </button>
                                           ) : (
                                             <div className="relative group/codeblock rounded-xl overflow-hidden mb-4 border border-[#2A2B32]">
                                               <div className="flex items-center justify-between px-4 py-2 bg-[#131314] text-[#A1A1A8] text-xs font-mono font-medium border-b border-[#2A2B32]">
