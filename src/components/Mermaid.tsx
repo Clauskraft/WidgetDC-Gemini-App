@@ -453,8 +453,9 @@ export const Mermaid = ({
             });
             setDiagramNodes(extracted);
             requestAnimationFrame(() => {
-              handleFitToView();
+              requestAnimationFrame(handleFitToView);
             });
+            window.setTimeout(handleFitToView, 180);
          }
       }).catch(e => {
          console.error(e);
@@ -465,6 +466,17 @@ export const Mermaid = ({
     }
     return () => { isMounted = false; };
   }, [chart, theme]);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(handleFitToView);
+    });
+
+    observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
+  }, [chart, theme, isFullscreen]);
 
   // Synchronize internal select state with parent highlightedNode prop
   useEffect(() => {

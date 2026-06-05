@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { cn } from "@/src/lib/utils";
 import { Dashboard } from "@/src/components/Dashboard";
 import { Settings as SettingsView } from "@/src/components/Settings";
@@ -117,11 +118,26 @@ export default function App() {
   const [canvasContent, setCanvasContent] = useState("");
   const [canvasLanguage, setCanvasLanguage] = useState("markdown");
   const [canvasSize, setCanvasSize] = useState<"default" | "wide" | "focus">("default");
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth >= 1024,
+  );
   const [outputForgeType, setOutputForgeType] = useState<OutputForgeType>("Plan");
   const [outputForgeStatus, setOutputForgeStatus] = useState<OutputForgeStatus>("Draft");
   const isCanvasFocusMode = isCanvasOpen && canvasSize === "focus";
   const shouldPrioritizeCanvas =
     isCanvasOpen && canvasContent.trim().length > 0 && outputForgeStatus !== "Draft";
+  const useResizableWorkspace = isCanvasOpen && !isCanvasFocusMode && isDesktopLayout;
+  const showChatWorkspace =
+    !isCanvasFocusMode && (!isCanvasOpen || !shouldPrioritizeCanvas || isDesktopLayout);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktopLayout(window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Mermaid dynamic highlighting context state
   const [highlightedNode, setHighlightedNode] = useState<{ id: string; label: string } | null>(null);
@@ -528,7 +544,7 @@ export default function App() {
     setInput(forgeType?.prompt || `Generate Output Forge ${type}`);
     setCanvasLanguage("markdown");
     setCanvasContent(`## Output Forge: ${type}\n\n**Status:** Draft\n\nRefine the prompt, then send to generate the canvas output.`);
-    setIsCanvasOpen(true);
+    setIsCanvasOpen(isDesktopLayout);
     textareaRef.current?.focus();
   };
 
@@ -1018,15 +1034,26 @@ export default function App() {
             </div>
           ) : (
             /* Home / Chat View */
-            <div className="flex h-full w-full">
-              <div
-                className={cn(
-                  "flex-col h-full relative z-10 select-text border-r border-[#262629]/30 bg-[#121316]",
-                  isCanvasOpen ? "w-full lg:w-[400px] shrink-0" : "flex-1",
-                  (isCanvasFocusMode || shouldPrioritizeCanvas) ? "hidden lg:flex" : "flex",
-                  isCanvasFocusMode && "lg:hidden",
-                )}
-              >
+            <Group
+              id="widgetdc-output-workspace"
+              orientation="horizontal"
+              className="h-full w-full"
+            >
+              {showChatWorkspace && (
+                <Panel
+                  id="chat-workspace"
+                  defaultSize={useResizableWorkspace ? "36%" : "100%"}
+                  minSize={useResizableWorkspace ? "320px" : "0px"}
+                  maxSize={useResizableWorkspace ? "70%" : "100%"}
+                  collapsible={isCanvasOpen}
+                  className="min-w-0"
+                >
+                <div
+                  className={cn(
+                    "flex flex-col h-full w-full relative z-10 select-text bg-[#121316]",
+                    isCanvasOpen && "border-r border-[#262629]/30",
+                  )}
+                >
                 {/* Chat Stream / App Input Block Area */}
                 <div
                   className="flex-1 overflow-y-auto px-4 md:px-0 w-full android-scroll relative"
@@ -1523,21 +1550,39 @@ export default function App() {
                     </div>
                   </div>
                 )}
-              </div>
+                </div>
+                </Panel>
+              )}
 
               {/* Side Canvas Area */}
-              <Canvas
-                isOpen={isCanvasOpen}
-                onClose={() => setIsCanvasOpen(false)}
-                content={canvasContent}
-                onChange={setCanvasContent}
-                language={canvasLanguage}
-                onNodeClick={setHighlightedNode}
-                highlightedNode={highlightedNode}
-                size={canvasSize}
-                onSizeChange={setCanvasSize}
-              />
-            </div>
+              {isCanvasOpen && (
+                <>
+                  {useResizableWorkspace && (
+                    <Separator className="group/resize flex w-2 shrink-0 items-center justify-center bg-[#131314] outline-none transition-colors hover:bg-[#202126] focus-visible:bg-[#202126]">
+                      <div className="h-12 w-[3px] rounded-full bg-[#34363d] transition-colors group-hover/resize:bg-[#4da1fe]" />
+                    </Separator>
+                  )}
+                  <Panel
+                    id="canvas-workspace"
+                    defaultSize={useResizableWorkspace ? "64%" : "100%"}
+                    minSize={useResizableWorkspace ? "420px" : "100%"}
+                    className="min-w-0"
+                  >
+                    <Canvas
+                      isOpen={isCanvasOpen}
+                      onClose={() => setIsCanvasOpen(false)}
+                      content={canvasContent}
+                      onChange={setCanvasContent}
+                      language={canvasLanguage}
+                      onNodeClick={setHighlightedNode}
+                      highlightedNode={highlightedNode}
+                      size={canvasSize}
+                      onSizeChange={setCanvasSize}
+                    />
+                  </Panel>
+                </>
+              )}
+            </Group>
           )}
         </div>
       </div>
