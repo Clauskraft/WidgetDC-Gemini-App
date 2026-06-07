@@ -39,3 +39,7 @@ dist-ssr
 # Local env (secrets) — never commit
 .env
 .env.*.local
+
+# Local runtime
+.claude/scheduled_tasks.lock
+.claude/
