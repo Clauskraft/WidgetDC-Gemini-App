@@ -1,6 +1,11 @@
+# Railway deploy config — WidgeTDC Aurora (TanStack Start SSR, node-server preset).
+# Build emits .output/server/index.mjs; `npm start` runs it.
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm run build"
+# NODE_ENV=production is required so the SSR bundle picks React's production
+# jsx-runtime (the dev runtime throws `jsxDEV is not a function` at runtime).
+# Nixpacks sets it by default; we pin it explicitly to be safe.
+buildCommand = "NODE_ENV=production npm run build"
 
 [deploy]
 startCommand = "npm start"

@@ -1,22 +1,40 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
+// or the app will break with duplicate plugins:
+//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro (build-only using cloudflare as a default target),
+//     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
+//     error logger plugins, and sandbox detection (port/host/strictPort).
+// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
-  return {
-    base: env.VITE_BASE_PATH || '/',
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+export default defineConfig({
+  tanstackStart: {
+    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+    // nitro/vite builds from this
+    server: { entry: "server" },
+  },
+  // Self-hosted (Railway) deploy target. Outside a Lovable sandbox this pins the
+  // nitro preset to a standalone Node server (.output/server/index.mjs) instead
+  // of the Cloudflare default. Inside a Lovable sandbox these overrides are
+  // ignored and the Cloudflare layout is forced (see config docs).
+  nitro: {
+    preset: "node-server",
+  },
+  vite: {
+    // Keep the graph/figure rendering stack pre-optimized in dev. If Vite discovers
+    // these only after the first SSR pass, it re-optimizes and can temporarily make
+    // the virtual TanStack client entry unavailable, which Lovable reports as a
+    // blank-screen SSR failure.
+    optimizeDeps: {
+      include: [
+        "@ai-sdk/react",
+        "@supabase/supabase-js",
+        "ai",
+        "dompurify",
+        "lucide-react",
+        "mermaid",
+        "react-markdown",
+        "recharts",
+      ],
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-    },
-  };
+  },
 });
