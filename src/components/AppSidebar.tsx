@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { MessageSquarePlus, Trash2, Sparkles, LayoutDashboard, Settings as SettingsIcon, Gem } from "lucide-react";
+import { MessageSquarePlus, Trash2, Sparkles, LayoutDashboard, Settings as SettingsIcon, Gem, Network } from "lucide-react";
 import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +52,14 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         >
           <Gem className="h-4 w-4" />
           {!collapsed && <span>Gem-bots</span>}
+        </Link>
+        <Link
+          to="/graph"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
+        >
+          <Network className="h-4 w-4" />
+          {!collapsed && <span>Graph</span>}
         </Link>
       </nav>
 

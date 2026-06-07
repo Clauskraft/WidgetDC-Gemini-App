@@ -71,19 +71,19 @@ inferred from the UI model id).
 **Tools:** `llm_chat`, `rag_route` (done); `model_route`, `model_policy_check`,
 `model_budget_preflight_status`, `adaptive_rag_query`, `knowledge_query` (follow-up).
 
-### AUR-2 — Live Neo4j knowledge graph behind GraphBlock / visual.graph
-**Why:** `GraphBlock` / `KnowledgeGraphBlock` render static figure specs only.
-**Build:** A read-only `api/graph.query.ts` server route that runs vetted,
-parameterized read Cypher via the platform and maps results to `GraphSpec` /
-`KnowledgeGraphSpec`. Drive a real "Explore the graph" view from `query_graph`
-(node/rel counts, lineage, communities). **Read-only only** — no write Cypher
-from the browser (governance invariant).
-**⚠ Intelligence-stack note (MoA, conf 0.85):** Do **not** SSR-cache or
-pre-render graph responses — graph results are user/session-scoped and may carry
-node-level ACLs; a cached SSR page can leak data the user shouldn't see. Enforce
-ACLs at the orchestrator, fetch per-request, never behind a shared cache.
-**Tools:** `query_graph`, `data_graph_read`, `data_graph_stats`,
-`build_communities`, `decision_lineage`.
+### AUR-2 — Live Neo4j knowledge graph ✅ DONE (2026-06-07)
+**Done:** `api/graph.query.ts` server route — **whitelisted named queries only**
+(`label-overview`, `sample-subgraph`, `neighbors`; `neighbors` seed label is
+allow-listed), no raw Cypher from the browser (governance invariant held). Runs
+via the platform **`data_graph_read`** tool (NOTE: `query_graph` is NOT exposed
+on the backend MCP route — only `data_graph_read` is). `queryGraph()` in
+`widgetdc.server.ts` normalizes Neo4j `{low,high}` ints. New `/graph` route
+(sidebar nav) renders results through the existing `GraphBlock` /
+`KnowledgeGraphBlock`; fetched per-request, never SSR-cached (MoA ACL finding).
+**Verified live:** all 3 views return real Neo4j data (ReasonStep 209K,
+AgentMemory 204K, :Agent neighbors, typed-edge subgraph).
+**Tool used:** `data_graph_read`. **Follow-up:** `build_communities`,
+`decision_lineage` as richer views.
 
 ### AUR-3 — Wire the canvas resolver to the platform `canvas_builder`
 **Why:** `api/mrp.canvas.resolve.ts` resolves intent + signs a token locally but

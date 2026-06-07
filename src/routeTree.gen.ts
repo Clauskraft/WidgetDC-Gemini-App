@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,6 +21,7 @@ import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
+import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -30,6 +32,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GemsRoute = GemsRouteImport.update({
@@ -77,6 +84,11 @@ const EmbedCanvasCanvasIdRoute = EmbedCanvasCanvasIdRouteImport.update({
   path: '/embed/canvas/$canvasId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
+  id: '/api/graph/query',
+  path: '/api/graph/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
   id: '/api/mrp/canvas/resolve',
   path: '/api/mrp/canvas/resolve',
@@ -87,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
+  '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -94,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -101,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
+  '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -108,6 +123,7 @@ export interface FileRoutesByTo {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -116,6 +132,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
+  '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
@@ -123,6 +140,7 @@ export interface FileRoutesById {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -132,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/gems'
+    | '/graph'
     | '/health'
     | '/settings'
     | '/api/chat'
@@ -139,6 +158,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
@@ -146,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/gems'
+    | '/graph'
     | '/health'
     | '/settings'
     | '/api/chat'
@@ -153,6 +174,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   id:
@@ -160,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/gems'
+    | '/graph'
     | '/health'
     | '/settings'
     | '/api/chat'
@@ -167,6 +190,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   fileRoutesById: FileRoutesById
@@ -175,12 +199,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   GemsRoute: typeof GemsRouteWithChildren
+  GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
   VisualGraphRoute: typeof VisualGraphRoute
+  ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
 }
@@ -199,6 +225,13 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gems': {
@@ -264,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmbedCanvasCanvasIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/graph/query': {
+      id: '/api/graph/query'
+      path: '/api/graph/query'
+      fullPath: '/api/graph/query'
+      preLoaderRoute: typeof ApiGraphQueryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mrp/canvas/resolve': {
       id: '/api/mrp/canvas/resolve'
       path: '/api/mrp/canvas/resolve'
@@ -288,12 +328,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   GemsRoute: GemsRouteWithChildren,
+  GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
   VisualGraphRoute: VisualGraphRoute,
+  ApiGraphQueryRoute: ApiGraphQueryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
 }

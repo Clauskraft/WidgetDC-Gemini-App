@@ -1,0 +1,3 @@
+* text=auto eol=lf
+docs/mcp-bridge-error-payloads.generated.md text eol=lf
+package-lock.json text eol=lf

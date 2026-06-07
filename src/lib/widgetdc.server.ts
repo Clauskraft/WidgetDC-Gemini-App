@@ -148,3 +148,43 @@ export async function fetchRagGrounding(
     return null;
   }
 }
+
+/** Normalize Neo4j integer objects ({low,high}) to plain numbers, recursively. */
+function normalizeNeo(value: unknown): unknown {
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (typeof o.low === "number" && typeof o.high === "number" && Object.keys(o).length === 2) {
+      return o.high * 0x100000000 + o.low;
+    }
+    if (Array.isArray(value)) return value.map(normalizeNeo);
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(o)) out[k] = normalizeNeo(o[k]);
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Run a read-only Cypher query via the platform `data_graph_read` tool (AUR-2).
+ * Callers MUST pass a vetted, parameterized read query — never raw client input
+ * (governance: read-only from the browser). Returns normalized rows, or null.
+ */
+export async function queryGraph(
+  cypher: string,
+  correlationId?: string,
+): Promise<Array<Record<string, unknown>> | null> {
+  const result = await callMcpTool<unknown>(
+    "data_graph_read",
+    { query: cypher },
+    { correlationId, timeoutMs: 15000 },
+  );
+  if (result == null) return null;
+  // data_graph_read shape: { success, results: [...], count } (sometimes nested
+  // under result). Unwrap, then normalize Neo4j ints.
+  const r = (result as Record<string, unknown>) ?? {};
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  let rows: unknown = inner.results ?? inner.rows ?? inner.records ?? inner.data;
+  if (!Array.isArray(rows) && Array.isArray(result)) rows = result;
+  if (!Array.isArray(rows)) return null;
+  return (normalizeNeo(rows) as Array<Record<string, unknown>>) ?? null;
+}
