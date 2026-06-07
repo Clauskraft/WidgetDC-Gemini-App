@@ -36,6 +36,25 @@ orchestrator MCP wire-contract is `POST .../api/mcp/route` with body
 
 ---
 
+## ▶ NEXT BATCH (chosen 2026-06-07 via intelligence stack)
+
+**AUR-2 (live read-only Neo4j graph) → then AUR-5 (deep-reasoning/verify mode).**
+
+Chosen by `reason_deeply` + a counter-argument pass (MoA was non-responsive this
+round). Rationale: both deliver immediate, user-visible value at low risk and
+deepen platform utilization. **AUR-4 (governance plan/approve HITL) is explicitly
+deferred** — the frontend is read/reason-only today, so there are no write
+operations to govern; pulling AUR-4 forward would be premature write-enforcement
+overhead. Revisit AUR-4 the moment a real write feature lands.
+
+1. **AUR-2** — `api/graph.query.ts` (read-only `query_graph` → `GraphSpec`),
+   drive an "Explore the graph" view. Immediate visible value, lowest risk.
+2. **AUR-5** — "Reason deeply" chat toggle → `reason_deeply` then
+   `verify_output` / `judge_response`; render the reasoning chain as pinnable
+   Canvas notes.
+
+---
+
 ## P0 — Connect chat & graph to the live platform
 
 ### AUR-1 — Route chat through the WidgetDC orchestrator ✅ DONE (2026-06-07)
@@ -107,14 +126,16 @@ start, `memory_search` / `memory_retrieve` to hydrate context. Surface a
 **Tools:** `memory_store`, `memory_search`, `memory_retrieve`,
 `memory_consolidate`.
 
-### AUR-7 — Deploy target decision (Cloudflare vs Railway) + CI
-**Why:** Old Railway/Nixpacks config was removed; nitro currently defaults to a
-Cloudflare target. Need one deterministic prod path + health check.
-**Build:** Decide Cloudflare Workers (matches nitro default, per-request env) vs
-Railway node-server preset. Add a `/health` route returning `commit_sha`. Wire
-`.github/workflows/e2e.yml` to run vitest + build on PR. Optionally use
-`railway_deploy` / `railway_env` platform tools for env sync.
-**Tools (optional):** `railway_deploy`, `railway_env`, `get_platform_health`.
+### AUR-7 — Deploy target (Railway) + auto-deploy ✅ DONE (2026-06-07)
+**Done:** Target is **Railway** (nitro `node-server` preset, `railway.toml` +
+`nixpacks.toml` Node 22, `npm install` install phase). `/health` route added.
+**Auto-deploy is live:** the service has a GitHub repoTrigger on `main`
+(`Clauskraft/WidgetDC-Gemini-App`) — verified by the PR #9 merge auto-firing
+deploy `3e33836a` (SUCCESS). Future merges to `main` deploy automatically; no
+manual `railway up`.
+**Follow-up (P2):** wire `.github/workflows/e2e.yml` to run vitest + build on PR
+as a pre-merge gate; `commit_sha` in `/health` is "unknown" on CLI deploys but
+populated on GitHub-trigger deploys (`RAILWAY_GIT_COMMIT_SHA`).
 
 ### AUR-8 — Platform health & live dashboard data
 **Why:** `dashboard.tsx` is local-only (threads/gems). The old app's "live vs
