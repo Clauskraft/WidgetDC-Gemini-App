@@ -85,13 +85,20 @@ export async function orchestratorChat(
     })
     .join("\n\n");
 
-  const result = await callMcpTool<unknown>(
-    "reason_deeply",
-    { task, mode: "reason" },
-    { correlationId: opts.correlationId, timeoutMs: 90000 },
-  );
-  if (result == null) return null;
-  return extractChatText(result);
+  // The platform RLM occasionally returns a transient 5xx; retry once before
+  // giving up so a single flaky moment doesn't surface as a hard error.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await callMcpTool<unknown>(
+      "reason_deeply",
+      { task, mode: "reason" },
+      { correlationId: opts.correlationId, timeoutMs: 90000 },
+    );
+    if (result != null) {
+      const text = extractChatText(result);
+      if (text) return text;
+    }
+  }
+  return null;
 }
 
 /** Extract assistant text from the reason_deeply / RLM response envelope. */
