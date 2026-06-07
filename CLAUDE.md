@@ -54,9 +54,12 @@ This file guides Claude Code when working in this repository.
 - `embed.canvas.$canvasId.tsx` — signed-token canvas embed (the postMessage
   bridge consumer; see contracts below).
 - `settings.tsx`, `debug.logs.tsx`.
-- `api/chat.ts` — chat proxy. **Currently streams via the Lovable AI Gateway**
-  (`LOVABLE_API_KEY`). Backlog AUR-1 routes this through the WidgetDC
-  orchestrator for model-policy / budget / RAG.
+- `api/chat.ts` — chat handler. Routes through the **WidgeTDC orchestrator**
+  (`llm_chat` for completion + `rag_route` for grounding) via
+  `src/lib/widgetdc.server.ts`. Non-streaming: the orchestrator answer is wrapped
+  in an AI-SDK UI message stream so the `useChat` client renders it unchanged.
+  Requires `WIDGETDC_API_KEY` (or `MCP_AGENT_API_KEY`) + `WIDGETDC_BACKEND_URL`.
+  **No Lovable AI Gateway** — that dependency was removed.
 - `api/mrp.canvas.resolve.ts` — `POST /api/mrp/canvas/resolve`: resolves a brief
   to a visualization family + signed embed URL (canvas_builder bridge, CFDS §9).
 

@@ -10,7 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportClientError } from "../lib/error-reporting";
 import { AppSidebar } from "../components/AppSidebar";
 
 function NotFoundComponent() {
@@ -33,7 +33,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportClientError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -63,7 +63,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "WidgeTDC Aurora — Gemini-style workspace" },
-      { name: "description", content: "AI workspace med chat, canvas og governance — drevet af Gemini via Lovable AI." },
+      { name: "description", content: "AI workspace med chat, canvas og governance — drevet af WidgeTDC-platformen." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

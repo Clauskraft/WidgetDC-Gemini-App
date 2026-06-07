@@ -6,8 +6,8 @@
  *
  * `.server.ts` keeps this out of the client bundle. Every helper degrades
  * gracefully: if the key/URL is missing or the platform is unreachable, it
- * returns null so callers can fall back (Lovable Gateway) — the app never
- * hard-fails because the platform is down (MoA resilience finding).
+ * returns null so callers can surface a clean error — the app never crashes
+ * just because the platform is momentarily unreachable (MoA resilience finding).
  */
 import process from "node:process";
 
@@ -60,6 +60,65 @@ export async function callMcpTool<T = unknown>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+/**
+ * Run a chat turn through the WidgeTDC backend `reason_deeply` (RLM) tool —
+ * the LLM surface this backend MCP route (`/api/mcp/route`) actually exposes.
+ * Provider/model is platform-routed (RLM picks gemini/deepseek/claude per
+ * domain). Returns the assistant text, or null on any failure.
+ *
+ * The full prior conversation is flattened into the `task` string so the RLM
+ * has context (this tool is single-shot, not message-array based).
+ */
+export async function orchestratorChat(
+  messages: ChatMessage[],
+  opts: { correlationId?: string } = {},
+): Promise<string | null> {
+  const task = messages
+    .map((m) => {
+      const who =
+        m.role === "system" ? "INSTRUCTIONS" : m.role === "assistant" ? "ASSISTANT" : "USER";
+      return `${who}:\n${m.content}`;
+    })
+    .join("\n\n");
+
+  const result = await callMcpTool<unknown>(
+    "reason_deeply",
+    { task, mode: "reason" },
+    { correlationId: opts.correlationId, timeoutMs: 90000 },
+  );
+  if (result == null) return null;
+  return extractChatText(result);
+}
+
+/** Extract assistant text from the reason_deeply / RLM response envelope. */
+function extractChatText(result: unknown): string | null {
+  if (typeof result === "string") return result.trim() || null;
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+
+  // reason_deeply shape: { success, result: { recommendation, reasoning, ... } }
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const pick =
+    (typeof inner.recommendation === "string" && inner.recommendation) ||
+    (typeof inner.answer === "string" && inner.answer) ||
+    (typeof inner.text === "string" && inner.text) ||
+    (typeof inner.response === "string" && inner.response) ||
+    (typeof r.recommendation === "string" && r.recommendation) ||
+    (typeof r.text === "string" && r.text);
+  if (pick) {
+    let out = (pick as string).trim();
+    // Append the reasoning if it adds material beyond the recommendation.
+    const reasoning = inner.reasoning ?? r.reasoning;
+    if (typeof reasoning === "string" && reasoning.trim() && !out.includes(reasoning.trim())) {
+      out += `\n\n${reasoning.trim()}`;
+    }
+    return out || null;
+  }
+  return null;
 }
 
 /**

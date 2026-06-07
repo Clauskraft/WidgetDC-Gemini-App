@@ -1,31 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
-import { fetchRagGrounding, isPlatformConfigured } from "@/lib/widgetdc.server";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  type UIMessage,
+} from "ai";
+import {
+  isPlatformConfigured,
+  orchestratorChat,
+  type ChatMessage,
+} from "@/lib/widgetdc.server";
 
-const SYSTEM_PROMPT = `You are WidgeTDC Aurora — a precise, consultant-grade assistant inspired by Google Gemini. You help users reason about complex artifacts, governance, runtime models, and architecture.
+const SYSTEM_PROMPT = `You are WidgeTDC Aurora — a precise, consultant-grade assistant. You help users reason about complex artifacts, governance, runtime models, and architecture.
 
 Style:
 - Be concise, structured, and use Markdown (headings, lists, code blocks).
 - When useful, surface "Canvas notes" — short bullet summaries the user can pin.
 - Default to Danish if the user writes Danish, otherwise English.`;
 
-/** Pull the latest user text out of the UI message list for RAG grounding. */
-function latestUserText(messages: UIMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m.role !== "user") continue;
-    const parts = (m as { parts?: Array<{ type: string; text?: string }> }).parts;
-    if (Array.isArray(parts)) {
-      const text = parts
-        .filter((p) => p.type === "text" && typeof p.text === "string")
-        .map((p) => p.text)
-        .join(" ")
-        .trim();
-      if (text) return text;
+/** Flatten AI-SDK model messages to plain {role,content} for the orchestrator. */
+function toChatMessages(modelMessages: Array<{ role: string; content: unknown }>): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const m of modelMessages) {
+    const role = m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user";
+    let content = "";
+    if (typeof m.content === "string") {
+      content = m.content;
+    } else if (Array.isArray(m.content)) {
+      content = (m.content as Array<{ type?: string; text?: string }>)
+        .filter((p) => p && (p.type === "text" || typeof p.text === "string"))
+        .map((p) => p.text ?? "")
+        .join("");
     }
+    if (content.trim()) out.push({ role, content });
   }
-  return "";
+  return out;
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -40,42 +49,58 @@ export const Route = createFileRoute("/api/chat")({
         if (!Array.isArray(body.messages)) {
           return new Response("Messages are required", { status: 400 });
         }
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        if (!isPlatformConfigured()) {
+          return new Response(
+            "WidgeTDC platform not configured — set WIDGETDC_API_KEY (or MCP_AGENT_API_KEY) and WIDGETDC_BACKEND_URL.",
+            { status: 503 },
+          );
+        }
 
         const messages = body.messages as UIMessage[];
         const correlationId =
           request.headers.get("x-correlation-id") ?? crypto.randomUUID();
 
-        // AUR-1: ground the turn via the WidgeTDC orchestrator RAG cascade when
-        // the platform is configured. Degrades silently to plain chat (Lovable
-        // Gateway) if the platform is unreachable — the stream itself stays
-        // client-side over the AI SDK protocol (MoA finding).
-        let system =
+        // reason_deeply (RLM) performs its own retrieval/RAG internally, so no
+        // separate grounding call is needed here.
+        const system =
           typeof body.system === "string" && body.system.trim().length > 0
             ? body.system
             : SYSTEM_PROMPT;
 
-        if (isPlatformConfigured()) {
-          const query = latestUserText(messages);
-          if (query) {
-            const grounding = await fetchRagGrounding(query, correlationId);
-            if (grounding) {
-              system += `\n\n## WidgeTDC knowledge grounding (retrieved)\nUse the following retrieved context when relevant; cite it as "Canvas notes" if helpful. Do not fabricate beyond it:\n${grounding}`;
-            }
-          }
+        const modelMessages = (await convertToModelMessages(messages)) as Array<{
+          role: string;
+          content: unknown;
+        }>;
+        const chatMessages: ChatMessage[] = [
+          { role: "system", content: system },
+          ...toChatMessages(modelMessages),
+        ];
+
+        // Provider/model selection is owned by the platform RLM (reason_deeply
+        // routes per domain). correlation_id threads through for audit.
+        const answer = await orchestratorChat(chatMessages, { correlationId });
+
+        if (answer == null) {
+          return new Response(
+            "WidgeTDC platform did not return a response (reason_deeply unavailable or timed out).",
+            { status: 502, headers: { "x-correlation-id": correlationId } },
+          );
         }
 
-        const gateway = createLovableAiGatewayProvider(key);
-        const modelId = body.model ?? "google/gemini-3-flash-preview";
-        const result = streamText({
-          model: gateway(modelId),
-          system,
-          messages: await convertToModelMessages(messages),
+        // Emit the platform answer as an AI-SDK UI message stream so the client
+        // useChat() transport renders it unchanged. Single text part — the RLM
+        // reason_deeply call is non-streaming.
+        const stream = createUIMessageStream({
+          execute: ({ writer }) => {
+            const id = crypto.randomUUID();
+            writer.write({ type: "text-start", id });
+            writer.write({ type: "text-delta", id, delta: answer });
+            writer.write({ type: "text-end", id });
+          },
         });
 
-        return result.toUIMessageStreamResponse({
-          originalMessages: messages,
+        return createUIMessageStreamResponse({
+          stream,
           headers: { "x-correlation-id": correlationId },
         });
       },

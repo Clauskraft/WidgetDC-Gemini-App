@@ -331,7 +331,7 @@ export function ChatWindow({
                 Gem · {gem.name}
               </div>
             ) : null}
-            <span className="text-sm text-muted-foreground">via Lovable AI</span>
+            <span className="text-sm text-muted-foreground">via WidgeTDC</span>
           </div>
           <div className="flex items-center gap-2">
             <ModelPicker />
@@ -366,7 +366,7 @@ export function ChatWindow({
                 {gem ? gem.name : "Hej. Hvad arbejder vi på i dag?"}
               </h1>
               <p className="mt-3 text-muted-foreground">
-                {gem?.tagline ?? "WidgeTDC Aurora — drevet af Gemini via Lovable AI."}
+                {gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen."}
               </p>
               <div className="mt-10 grid w-full grid-cols-1 gap-3 md:grid-cols-2">
                 {(gem?.starters ?? SUGGESTIONS).map((s) => (

@@ -11,7 +11,7 @@ const DEFAULT_TTL_SECONDS = 60 * 60;
 function getSecret(): string {
   return (
     process.env.CANVAS_SIGNING_SECRET ??
-    process.env.LOVABLE_API_KEY ??
+    process.env.WIDGETDC_API_KEY ??
     "widgetdc-dev-secret-do-not-use-in-prod"
   );
 }

@@ -38,25 +38,19 @@ orchestrator MCP wire-contract is `POST .../api/mcp/route` with body
 
 ## P0 — Connect chat & graph to the live platform
 
-### AUR-1 — Route chat through the WidgetDC orchestrator (WidgetDC-first LLM)
-**Why:** `src/routes/api/chat.ts` streams via the Lovable AI Gateway, bypassing
-the platform's model policy, budget preflight, and RAG cascade.
-**Build:** A server-side `chat.server.ts` that, per request:
-1. `model_policy_check` + `model_budget_preflight_status` → gate/cost guard.
-2. `model_route` (or `llm_chat`) → provider/model selection by the configured
-   ConfiguratorEngine instead of a hardcoded `google/gemini-3-flash-preview`.
-3. For knowledge-grounded turns, `rag_route` → `adaptive_rag_query` /
-   `knowledge_query` (Hybrid RAG cascade) and append grounding sources.
-4. Fall back to the Lovable Gateway only if the platform is unreachable.
-Preserve streaming (`toUIMessageStreamResponse`) and thread a `correlation_id`
-through every call (`src/lib/` helper).
-**⚠ Intelligence-stack note (MoA, conf 0.85):** Keep the chat stream
-**client-side** (the existing `@ai-sdk/react` hook over `fetch`), with the server
-route a thin proxy that opens the upstream stream and pipes it through. Do **not**
-push token streaming through SSR `requestMiddleware` — that path risks hydration
-mismatches and stream-state loss. SSR stays scoped to the page shell.
-**Tools:** `model_route`, `model_policy_check`, `model_budget_preflight_status`,
-`llm_chat`, `rag_route`, `adaptive_rag_query`, `knowledge_query`.
+### AUR-1 — Route chat through the WidgetDC orchestrator ✅ DONE (2026-06-07)
+**Done:** Lovable AI Gateway fully removed (`@ai-sdk/openai-compatible` dropped,
+`ai-gateway.server.ts` deleted). `src/routes/api/chat.ts` now calls the WidgeTDC
+orchestrator: `rag_route` for grounding + `llm_chat` for completion, via
+`src/lib/widgetdc.server.ts` (MCP `{tool,payload}` + Bearer). The non-streaming
+orchestrator answer is wrapped in an AI-SDK UI message stream
+(`createUIMessageStream`) so the `useChat` client renders it unchanged.
+`correlation_id` threaded through. Requires `WIDGETDC_API_KEY`/`MCP_AGENT_API_KEY`.
+**Follow-ups (P1):** add `model_policy_check` + `model_budget_preflight_status`
+preflight and `model_route`-driven provider selection (currently provider is
+inferred from the UI model id).
+**Tools:** `llm_chat`, `rag_route` (done); `model_route`, `model_policy_check`,
+`model_budget_preflight_status`, `adaptive_rag_query`, `knowledge_query` (follow-up).
 
 ### AUR-2 — Live Neo4j knowledge graph behind GraphBlock / visual.graph
 **Why:** `GraphBlock` / `KnowledgeGraphBlock` render static figure specs only.
@@ -145,7 +139,7 @@ the source `.env`). **Rotate the Supabase anon key**, confirm RLS on the
 embed origin allow-list from env and keep `docs/mcp-bridge-origins.md` accurate.
 
 ### AUR-11 — `CANVAS_SIGNING_SECRET` must be set in prod
-The token signer falls back to `LOVABLE_API_KEY` then a dev default. Make a real
+The token signer falls back to `WIDGETDC_API_KEY` then a dev default. Make a real
 `CANVAS_SIGNING_SECRET` required in production (fail-fast if missing).
 
 ### AUR-12 — Observability: ship structured logs to the platform

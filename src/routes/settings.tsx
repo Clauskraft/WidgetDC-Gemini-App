@@ -122,7 +122,7 @@ function SettingsRoute() {
         </Section>
 
         <Section title="Om" icon={<Sparkles className="h-4 w-4" />}>
-          <Row label="WidgeTDC Aurora" description="Gemini-drevet workspace via Lovable AI." >
+          <Row label="WidgeTDC Aurora" description="Workspace drevet af WidgeTDC-platformen." >
             <span className="text-xs text-muted-foreground">v0.1</span>
           </Row>
         </Section>

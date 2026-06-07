@@ -61,8 +61,8 @@ describe("widgetdcContracts", () => {
     const id2 = deriveCanvasId("brief x", "bpmn");
     expect(id1).toBe(id2);
     expect(id1).toHaveLength(16);
-    const url = buildEmbedUrl("https://app.lovable.dev/", id1, "tok.sig");
-    expect(url).toBe(`https://app.lovable.dev/embed/canvas/${id1}?t=tok.sig`);
+    const url = buildEmbedUrl("https://aurora.widgetdc.app/", id1, "tok.sig");
+    expect(url).toBe(`https://aurora.widgetdc.app/embed/canvas/${id1}?t=tok.sig`);
   });
 
   it("BridgeMessage kræver v=1 + contract-versionering", () => {

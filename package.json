@@ -19,7 +19,6 @@
     "docs:bridge-errors:check": "bun run scripts/generate-bridge-error-docs.ts --check"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^2.0.48",
     "@ai-sdk/react": "^3.0.198",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
