@@ -1,0 +1,109 @@
+import { createFileRoute } from "@tanstack/react-router";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  type UIMessage,
+} from "ai";
+import {
+  isPlatformConfigured,
+  orchestratorChat,
+  type ChatMessage,
+} from "@/lib/widgetdc.server";
+
+const SYSTEM_PROMPT = `You are WidgeTDC Aurora — a precise, consultant-grade assistant. You help users reason about complex artifacts, governance, runtime models, and architecture.
+
+Style:
+- Be concise, structured, and use Markdown (headings, lists, code blocks).
+- When useful, surface "Canvas notes" — short bullet summaries the user can pin.
+- Default to Danish if the user writes Danish, otherwise English.`;
+
+/** Flatten AI-SDK model messages to plain {role,content} for the orchestrator. */
+function toChatMessages(modelMessages: Array<{ role: string; content: unknown }>): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const m of modelMessages) {
+    const role = m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user";
+    let content = "";
+    if (typeof m.content === "string") {
+      content = m.content;
+    } else if (Array.isArray(m.content)) {
+      content = (m.content as Array<{ type?: string; text?: string }>)
+        .filter((p) => p && (p.type === "text" || typeof p.text === "string"))
+        .map((p) => p.text ?? "")
+        .join("");
+    }
+    if (content.trim()) out.push({ role, content });
+  }
+  return out;
+}
+
+export const Route = createFileRoute("/api/chat")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const body = (await request.json()) as {
+          messages?: unknown;
+          model?: string;
+          system?: string;
+        };
+        if (!Array.isArray(body.messages)) {
+          return new Response("Messages are required", { status: 400 });
+        }
+        if (!isPlatformConfigured()) {
+          return new Response(
+            "WidgeTDC platform not configured — set WIDGETDC_API_KEY (or MCP_AGENT_API_KEY) and WIDGETDC_BACKEND_URL.",
+            { status: 503 },
+          );
+        }
+
+        const messages = body.messages as UIMessage[];
+        const correlationId =
+          request.headers.get("x-correlation-id") ?? crypto.randomUUID();
+
+        // reason_deeply (RLM) performs its own retrieval/RAG internally, so no
+        // separate grounding call is needed here.
+        const system =
+          typeof body.system === "string" && body.system.trim().length > 0
+            ? body.system
+            : SYSTEM_PROMPT;
+
+        const modelMessages = (await convertToModelMessages(messages)) as Array<{
+          role: string;
+          content: unknown;
+        }>;
+        const chatMessages: ChatMessage[] = [
+          { role: "system", content: system },
+          ...toChatMessages(modelMessages),
+        ];
+
+        // Provider/model selection is owned by the platform RLM (reason_deeply
+        // routes per domain). correlation_id threads through for audit.
+        const answer = await orchestratorChat(chatMessages, { correlationId });
+
+        if (answer == null) {
+          return new Response(
+            "WidgeTDC platform did not return a response (reason_deeply unavailable or timed out).",
+            { status: 502, headers: { "x-correlation-id": correlationId } },
+          );
+        }
+
+        // Emit the platform answer as an AI-SDK UI message stream so the client
+        // useChat() transport renders it unchanged. Single text part — the RLM
+        // reason_deeply call is non-streaming.
+        const stream = createUIMessageStream({
+          execute: ({ writer }) => {
+            const id = crypto.randomUUID();
+            writer.write({ type: "text-start", id });
+            writer.write({ type: "text-delta", id, delta: answer });
+            writer.write({ type: "text-end", id });
+          },
+        });
+
+        return createUIMessageStreamResponse({
+          stream,
+          headers: { "x-correlation-id": correlationId },
+        });
+      },
+    },
+  },
+});
