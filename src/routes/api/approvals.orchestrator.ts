@@ -82,7 +82,14 @@ export const Route = createFileRoute("/api/approvals/orchestrator")({
         }
         const result = await approveOrchestratorPlan(v.data.planId, v.data.approver);
         if (!result.ok) {
-          return json({ error: result.error, upstream_status: result.status }, { status: 502 });
+          return json(
+            {
+              error: result.error,
+              upstream_status: result.status,
+              upstream_body: result.upstream_body,
+            },
+            { status: 502 },
+          );
         }
         return json({ ok: true, record: result.record });
       },

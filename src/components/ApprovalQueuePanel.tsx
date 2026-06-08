@@ -303,9 +303,14 @@ function OrchestratorTab({ approverIdentity }: { approverIdentity: string }) {
         ok?: boolean;
         record?: OrchestratorRecord;
         error?: string;
+        upstream_status?: number;
+        upstream_body?: string;
       };
       if (!res.ok || !body.ok) {
-        setErr(body.error ?? `HTTP ${res.status}`);
+        const upstream = body.upstream_status
+          ? ` (upstream ${body.upstream_status}${body.upstream_body ? `: ${body.upstream_body}` : ""})`
+          : "";
+        setErr(`${body.error ?? `HTTP ${res.status}`}${upstream}`);
         return;
       }
       setRecord(body.record ?? null);
