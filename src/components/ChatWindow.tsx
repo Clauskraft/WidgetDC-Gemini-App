@@ -135,18 +135,18 @@ export function ChatWindow({
       return next;
     });
   }, []);
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: {
-          model,
-          deep: deepMode,
-          ...(gem ? { system: gem.systemPrompt } : {}),
-        },
-      }),
-    [gem?.systemPrompt, model, deepMode],
-  );
+  // Per-request body (model / deep / persona) is read at SEND time via a ref so
+  // the latest model-picker selection always reaches the request. The transport
+  // is stable on purpose: useChat binds it once at init, so recreating it when
+  // `model` changes does NOT take effect — that was the bug where the picker
+  // selection was ignored and the server always received the initial model.
+  const requestMetaRef = useRef({ model, deep: deepMode, system: gem?.systemPrompt });
+  requestMetaRef.current = { model, deep: deepMode, system: gem?.systemPrompt };
+  const buildRequestBody = useCallback(() => {
+    const { model: m, deep, system } = requestMetaRef.current;
+    return { model: m, deep, ...(system ? { system } : {}) };
+  }, []);
+  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
 
 
 
@@ -262,8 +262,11 @@ export function ChatWindow({
     });
     healAttemptsRef.current.set(last.id, healChainRef.current);
     setHealingMessageId(last.id);
-    void sendMessage({ text: buildHealPrompt(result, healChainRef.current) });
-  }, [status, messages, gem, sendMessage]);
+    void sendMessage(
+      { text: buildHealPrompt(result, healChainRef.current) },
+      { body: buildRequestBody() },
+    );
+  }, [status, messages, gem, sendMessage, buildRequestBody]);
 
 
 
@@ -285,12 +288,15 @@ export function ChatWindow({
       url: a.dataUrl,
     }));
     if (fileParts.length > 0) {
-      await sendMessage({
-        role: "user",
-        parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
-      });
+      await sendMessage(
+        {
+          role: "user",
+          parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
+        },
+        { body: buildRequestBody() },
+      );
     } else {
-      await sendMessage({ text: content });
+      await sendMessage({ text: content }, { body: buildRequestBody() });
     }
   };
 
