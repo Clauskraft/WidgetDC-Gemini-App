@@ -205,21 +205,29 @@ export function extractCouncilResult(result: unknown): ChatResult | null {
  * the reasoning chain, confidence, and routing are surfaced separately so
  * the UI can render them as deep-reasoning Canvas notes (AUR-5).
  */
-function extractChatResult(result: unknown): ChatResult | null {
+export function extractChatResult(result: unknown): ChatResult | null {
   if (typeof result === "string") {
     const t = result.trim();
     return t ? { text: t, meta: {} } : null;
   }
   if (!result || typeof result !== "object") return null;
   const r = result as Record<string, unknown>;
-  // reason_deeply shape: { success, result: { recommendation, reasoning, confidence, reasoning_chain, quality, routing } }
+  // Two distinct envelopes flow through here:
+  //  - llm_chat:      { provider, model, content, usage }      → answer in `content`
+  //  - reason_deeply: { result: { recommendation, reasoning, … } } → answer in `recommendation`
+  // `content` MUST be checked (previously it wasn't, so every llm_chat reply
+  // extracted to null and silently fell back to reason_deeply's short summary —
+  // the root cause of 5-line answers + the double provider call).
   const inner = (r.result as Record<string, unknown>) ?? r;
 
   const text =
+    (typeof inner.content === "string" && inner.content) ||
     (typeof inner.recommendation === "string" && inner.recommendation) ||
     (typeof inner.answer === "string" && inner.answer) ||
     (typeof inner.text === "string" && inner.text) ||
     (typeof inner.response === "string" && inner.response) ||
+    (typeof inner.message === "string" && inner.message) ||
+    (typeof r.content === "string" && r.content) ||
     (typeof r.recommendation === "string" && r.recommendation) ||
     (typeof r.text === "string" && r.text) ||
     "";
@@ -350,22 +358,56 @@ function packGrounding(sources: RagSource[]): RagGrounding {
 }
 
 /**
- * AUR-1 follow-up: streaming-friendly completion via the platform `llm_chat`
- * tool — the correct chat primitive (vs. `reason_deeply`, a reasoning tool).
- * `llm_chat` accepts a message array and honors model routing. Returns the
- * assistant text + light meta, or null on failure.
+ * Map a UI model id (`vendor/model`) to an `llm_chat` provider + bare model.
+ * `llm_chat` REQUIRES a `provider` (deepseek|qwen|openai|gemini|claude); unknown
+ * or platform models route to gemini (the platform's healthy default).
+ */
+export function llmChatProvider(model?: string): { provider: string; model?: string } {
+  if (!model) return { provider: "gemini" };
+  const slash = model.indexOf("/");
+  const vendor = slash >= 0 ? model.slice(0, slash) : model;
+  const bare = slash >= 0 ? model.slice(slash + 1) : undefined;
+  switch (vendor) {
+    case "openai":
+      return { provider: "openai", model: bare };
+    case "google":
+      return { provider: "gemini", model: bare };
+    case "anthropic":
+      return { provider: "claude", model: bare };
+    default:
+      return { provider: "gemini" };
+  }
+}
+
+/**
+ * Completion via the platform `llm_chat` tool — the correct chat primitive (vs.
+ * `reason_deeply`, a reasoning tool). Passes the required `provider` (derived
+ * from the model id) and a generous `max_tokens` so answers are full-length.
+ * Returns the assistant text + light meta, or null on failure.
  */
 export async function llmChatCompletion(
   messages: ChatMessage[],
-  opts: { correlationId?: string; model?: string } = {},
+  opts: { correlationId?: string; model?: string; maxTokens?: number } = {},
 ): Promise<ChatResult | null> {
+  const { provider, model } = llmChatProvider(opts.model);
   const result = await callMcpTool<unknown>(
     "llm_chat",
-    { messages, ...(opts.model ? { model: opts.model } : {}) },
+    {
+      provider,
+      messages,
+      max_tokens: opts.maxTokens ?? 4096,
+      ...(model ? { model } : {}),
+    },
     { correlationId: opts.correlationId, timeoutMs: 60000 },
   );
   if (result == null) return null;
-  return extractChatResult(result);
+  const extracted = extractChatResult(result);
+  if (!extracted) return null;
+  // Surface which provider/model actually answered (reasoning panel).
+  return {
+    text: extracted.text,
+    meta: { provider: `platform:${provider}`, ...(model ? { model } : {}), ...extracted.meta },
+  };
 }
 
 /**
