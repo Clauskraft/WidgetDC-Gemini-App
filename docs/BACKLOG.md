@@ -108,14 +108,21 @@ results inline.
 **Tools:** `governance_plan_create/approve/evaluate/execute`,
 `governance_policy_decide`, `governance_matrix`, `agentic_hitl_escalate`.
 
-### AUR-5 — Deep-reasoning & verification mode in chat
-**Why:** Long/strategic queries deserve the platform's reasoning stack, not a
-single LLM pass.
-**Build:** A "Reason deeply" toggle that routes to `reason_deeply`, then
-`verify_output` / `judge_response` / `critique_refine` before display; show the
-reasoning plan as pinnable Canvas notes.
-**Tools:** `reason_deeply`, `verify_output`, `judge_response`, `critique_refine`,
-`next_best_action`.
+### AUR-5 — Deep-reasoning & verification mode in chat ✅ DONE (2026-06-08)
+**Done:** "Deep" toggle (Brain icon) in chat header, persisted in localStorage.
+When ON, `api/chat.ts` sends `reflect: true` to `reason_deeply` and surfaces the
+RLM's rich reflection envelope: `reasoning_chain[]`, `confidence`,
+`quality.overall_score`, `quality.reflection_attempted/kept`, and
+`routing.provider/model/domain/latency_ms`. Server emits this as a custom
+`data-reasoning` UI-message-stream part alongside the text. Client renders it
+inline under the assistant message as a collapsible `ReasoningPanel`
+(confidence%, quality, reflection chip, provider/model, numbered chain).
+**Backend reality:** the backend MCP route exposes only `reason_deeply`
+(`verify_output`/`judge_response`/`critique_refine` all 404 — they live on a
+different MCP surface). The RLM's internal reflection signal is rich enough to
+ship the experience without chaining; revisit verify/judge if/when they appear
+on this route.
+**Tools used:** `reason_deeply` (with `reflect: true`).
 
 ### AUR-6 — Agent memory persistence (cross-session continuity)
 **Why:** Threads persist in Supabase, but no agent memory / lessons feed the
