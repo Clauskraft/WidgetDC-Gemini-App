@@ -45,6 +45,7 @@ export const Route = createFileRoute("/api/chat")({
           messages?: unknown;
           model?: string;
           system?: string;
+          deep?: boolean;
         };
         if (!Array.isArray(body.messages)) {
           return new Response("Messages are required", { status: 400 });
@@ -77,10 +78,12 @@ export const Route = createFileRoute("/api/chat")({
         ];
 
         // Provider/model selection is owned by the platform RLM (reason_deeply
-        // routes per domain). correlation_id threads through for audit.
-        const answer = await orchestratorChat(chatMessages, { correlationId });
+        // routes per domain). correlation_id threads through for audit. AUR-5:
+        // `deep` triggers RLM reflection and surfaces reasoning chain + quality.
+        const deep = body.deep === true;
+        const chatResult = await orchestratorChat(chatMessages, { correlationId, deep });
 
-        if (answer == null) {
+        if (chatResult == null) {
           return new Response(
             "WidgeTDC platform did not return a response (reason_deeply unavailable or timed out).",
             { status: 502, headers: { "x-correlation-id": correlationId } },
@@ -88,15 +91,18 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         // Emit the platform answer as an AI-SDK UI message stream so the client
-        // useChat() transport renders it unchanged. Single text part — the RLM
-        // reason_deeply call is non-streaming.
+        // useChat() transport renders it unchanged.
         //
-        // IMPORTANT: the full message-frame sequence is required. useChat's read
-        // path only CREATES the assistant UIMessage when it sees the message-level
-        // `start` chunk (it seeds state.message.id from messageId). Emitting only
+        // The full message-frame sequence is required. useChat's read path only
+        // CREATES the assistant UIMessage when it sees the message-level `start`
+        // chunk (it seeds state.message.id from messageId). Emitting only
         // text-start/text-delta/text-end (no start/finish) makes useChat silently
         // drop the whole message — 200 + valid SSE but nothing renders. This is
         // exactly the sequence the SDK's own toUIMessageStream() emits.
+        //
+        // AUR-5: alongside the text part, we emit a custom `data-reasoning` part
+        // carrying the RLM reasoning chain, confidence, quality, and routing.
+        // The client renders it as a pinnable Canvas note when present.
         const stream = createUIMessageStream({
           execute: ({ writer }) => {
             const id = crypto.randomUUID();
@@ -104,8 +110,21 @@ export const Route = createFileRoute("/api/chat")({
             writer.write({ type: "start", messageId });
             writer.write({ type: "start-step" });
             writer.write({ type: "text-start", id });
-            writer.write({ type: "text-delta", id, delta: answer });
+            writer.write({ type: "text-delta", id, delta: chatResult.text });
             writer.write({ type: "text-end", id });
+            // Custom data part — UIMessageChunk schema accepts any type starting
+            // with "data-". The client picks this up as a `data-reasoning` part
+            // on the assistant message.
+            const hasMeta =
+              chatResult.meta &&
+              Object.values(chatResult.meta).some((v) => v != null && v !== "");
+            if (hasMeta) {
+              writer.write({
+                type: "data-reasoning",
+                id: crypto.randomUUID(),
+                data: chatResult.meta,
+              });
+            }
             writer.write({ type: "finish-step" });
             writer.write({ type: "finish" });
           },

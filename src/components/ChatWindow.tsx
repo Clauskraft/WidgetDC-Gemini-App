@@ -1,8 +1,8 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageContent } from "./MessageContent";
-import { ArrowUp, Sparkles, StopCircle, PanelRightOpen, Copy, Check, Paperclip, X, FileText, ShieldAlert, ShieldCheck, Wrench } from "lucide-react";
+import { ArrowUp, Sparkles, StopCircle, PanelRightOpen, Copy, Check, Paperclip, X, FileText, ShieldAlert, ShieldCheck, Wrench, Brain } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
 import { cn } from "@/lib/utils";
@@ -120,16 +120,32 @@ export function ChatWindow({
   const [isCreatingThread, setIsCreatingThread] = useState(false);
 
   const [model] = useModelPreference();
+  // AUR-5: "Reason deeply" toggle — persisted across reloads, sent with each
+  // request so the server can pass `reflect: true` to the platform RLM.
+  const [deepMode, setDeepMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("widgetdc.chat.deep") === "1";
+  });
+  const toggleDeep = useCallback(() => {
+    setDeepMode((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("widgetdc.chat.deep", next ? "1" : "0");
+      }
+      return next;
+    });
+  }, []);
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
         body: {
           model,
+          deep: deepMode,
           ...(gem ? { system: gem.systemPrompt } : {}),
         },
       }),
-    [gem?.systemPrompt, model],
+    [gem?.systemPrompt, model, deepMode],
   );
 
 
@@ -335,6 +351,18 @@ export function ChatWindow({
           </div>
           <div className="flex items-center gap-2">
             <ModelPicker />
+            <button
+              onClick={toggleDeep}
+              aria-pressed={deepMode}
+              title="Reason deeply — RLM reflektion + reasoning chain"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
+                deepMode && "bg-primary/10 text-primary border-primary/40",
+              )}
+            >
+              <Brain className="h-4 w-4" />
+              Deep
+            </button>
             <button
               onClick={() => setCanvasOpen((v) => !v)}
               className={cn(
@@ -584,6 +612,11 @@ function Message({
     filename?: string;
   }>;
 
+  // AUR-5: pick up the data-reasoning part emitted by the server (RLM reflect).
+  const reasoningPart = (message.parts as Array<{ type?: string; data?: unknown }>)
+    .find((p) => p && p.type === "data-reasoning");
+  const reasoningMeta = (reasoningPart?.data ?? null) as ReasoningMeta | null;
+
   const validation = useMemo<ValidationResult | null>(() => {
     if (skipValidation) return null;
     if (message.role !== "assistant") return null;
@@ -635,6 +668,7 @@ function Message({
       </div>
       <div className="min-w-0 flex-1">
         <MessageContent text={text} />
+        {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
         <button
@@ -650,6 +684,80 @@ function Message({
         </button>
       </div>
     </div>
+  );
+}
+
+// AUR-5: client-side mirror of the server's ChatReasoningMeta shape.
+type ReasoningMeta = {
+  confidence?: number;
+  reasoning?: string;
+  reasoningChain?: string[];
+  provider?: string;
+  model?: string;
+  domain?: string;
+  latencyMs?: number;
+  qualityScore?: number;
+  reflectionAttempted?: boolean;
+  reflectionKept?: boolean;
+};
+
+function ReasoningPanel({ meta }: { meta: ReasoningMeta }) {
+  const [open, setOpen] = useState(false);
+  const chain = meta.reasoningChain ?? [];
+  const conf = typeof meta.confidence === "number" ? Math.round(meta.confidence * 100) : null;
+  const quality =
+    typeof meta.qualityScore === "number" ? Math.round(meta.qualityScore * 100) : null;
+  const provider = meta.provider ?? null;
+  const model = meta.model ?? null;
+  const domain = meta.domain ?? null;
+  const latency = typeof meta.latencyMs === "number" ? Math.round(meta.latencyMs) : null;
+
+  return (
+    <details
+      open={open}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+      className="mt-3 rounded-2xl border border-figure-border bg-figure-surface/40 px-4 py-3 text-xs"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 text-foreground">
+        <Brain className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium">Reasoning</span>
+        {conf != null && (
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+            {conf}% sikker
+          </span>
+        )}
+        {quality != null && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+            kvalitet {quality}
+          </span>
+        )}
+        {meta.reflectionKept && (
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
+            refleksion anvendt
+          </span>
+        )}
+        {provider && (
+          <span className="ml-auto truncate text-[10px] text-muted-foreground">
+            {provider}
+            {model && model !== provider ? ` · ${model}` : ""}
+            {domain ? ` · ${domain}` : ""}
+            {latency != null ? ` · ${latency}ms` : ""}
+          </span>
+        )}
+      </summary>
+      {chain.length > 0 && (
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted-foreground">
+          {chain.map((step, i) => (
+            <li key={i} className="leading-snug">
+              {step}
+            </li>
+          ))}
+        </ol>
+      )}
+      {meta.reasoning && chain.length === 0 && (
+        <p className="mt-3 whitespace-pre-wrap text-muted-foreground">{meta.reasoning}</p>
+      )}
+    </details>
   );
 }
 

@@ -65,18 +65,46 @@ export async function callMcpTool<T = unknown>(
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 /**
+ * Rich metadata returned by the platform RLM alongside the assistant text.
+ * Exposed to the client (AUR-5 deep-reasoning mode) so the UI can render the
+ * reasoning chain, confidence, and provider as pinnable Canvas notes.
+ */
+export type ChatReasoningMeta = {
+  confidence?: number;
+  reasoning?: string;
+  reasoningChain?: string[];
+  provider?: string;
+  model?: string;
+  domain?: string;
+  latencyMs?: number;
+  qualityScore?: number;
+  reflectionAttempted?: boolean;
+  reflectionKept?: boolean;
+};
+
+export type ChatResult = {
+  text: string;
+  meta: ChatReasoningMeta;
+};
+
+/**
  * Run a chat turn through the WidgeTDC backend `reason_deeply` (RLM) tool —
  * the LLM surface this backend MCP route (`/api/mcp/route`) actually exposes.
  * Provider/model is platform-routed (RLM picks gemini/deepseek/claude per
- * domain). Returns the assistant text, or null on any failure.
+ * domain). Returns the assistant text plus rich reasoning metadata, or null
+ * on any failure.
  *
  * The full prior conversation is flattened into the `task` string so the RLM
  * has context (this tool is single-shot, not message-array based).
+ *
+ * `mode: "reason"` (default) runs the standard pass; pass `deep: true` to ask
+ * the RLM to attempt reflection (AUR-5 "Reason deeply" toggle) — this triples
+ * the rendered metadata's value without changing the wire contract.
  */
 export async function orchestratorChat(
   messages: ChatMessage[],
-  opts: { correlationId?: string } = {},
-): Promise<string | null> {
+  opts: { correlationId?: string; deep?: boolean } = {},
+): Promise<ChatResult | null> {
   const task = messages
     .map((m) => {
       const who =
@@ -90,42 +118,71 @@ export async function orchestratorChat(
   for (let attempt = 0; attempt < 2; attempt++) {
     const result = await callMcpTool<unknown>(
       "reason_deeply",
-      { task, mode: "reason" },
+      {
+        task,
+        mode: "reason",
+        ...(opts.deep ? { reflect: true } : {}),
+      },
       { correlationId: opts.correlationId, timeoutMs: 90000 },
     );
     if (result != null) {
-      const text = extractChatText(result);
-      if (text) return text;
+      const extracted = extractChatResult(result);
+      if (extracted?.text) return extracted;
     }
   }
   return null;
 }
 
-/** Extract assistant text from the reason_deeply / RLM response envelope. */
-function extractChatText(result: unknown): string | null {
-  if (typeof result === "string") return result.trim() || null;
+/**
+ * Extract assistant text + reasoning metadata from the reason_deeply / RLM
+ * response envelope. The text is the recommendation (the standalone answer);
+ * the reasoning chain, confidence, and routing are surfaced separately so
+ * the UI can render them as deep-reasoning Canvas notes (AUR-5).
+ */
+function extractChatResult(result: unknown): ChatResult | null {
+  if (typeof result === "string") {
+    const t = result.trim();
+    return t ? { text: t, meta: {} } : null;
+  }
   if (!result || typeof result !== "object") return null;
   const r = result as Record<string, unknown>;
-
-  // reason_deeply shape: { success, result: { recommendation, reasoning, ... } }
+  // reason_deeply shape: { success, result: { recommendation, reasoning, confidence, reasoning_chain, quality, routing } }
   const inner = (r.result as Record<string, unknown>) ?? r;
-  const pick =
+
+  const text =
     (typeof inner.recommendation === "string" && inner.recommendation) ||
     (typeof inner.answer === "string" && inner.answer) ||
     (typeof inner.text === "string" && inner.text) ||
     (typeof inner.response === "string" && inner.response) ||
     (typeof r.recommendation === "string" && r.recommendation) ||
-    (typeof r.text === "string" && r.text);
-  if (pick) {
-    let out = (pick as string).trim();
-    // Append the reasoning if it adds material beyond the recommendation.
-    const reasoning = inner.reasoning ?? r.reasoning;
-    if (typeof reasoning === "string" && reasoning.trim() && !out.includes(reasoning.trim())) {
-      out += `\n\n${reasoning.trim()}`;
-    }
-    return out || null;
+    (typeof r.text === "string" && r.text) ||
+    "";
+  const trimmed = typeof text === "string" ? text.trim() : "";
+  if (!trimmed) return null;
+
+  const meta: ChatReasoningMeta = {};
+  if (typeof inner.confidence === "number") meta.confidence = inner.confidence;
+  if (typeof inner.reasoning === "string" && inner.reasoning.trim()) meta.reasoning = inner.reasoning.trim();
+  if (Array.isArray(inner.reasoning_chain)) {
+    meta.reasoningChain = (inner.reasoning_chain as unknown[])
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .slice(0, 20);
   }
-  return null;
+  const routing = inner.routing as Record<string, unknown> | undefined;
+  if (routing) {
+    if (typeof routing.provider === "string") meta.provider = routing.provider;
+    if (typeof routing.model === "string") meta.model = routing.model;
+    if (typeof routing.domain === "string") meta.domain = routing.domain;
+    if (typeof routing.latency_ms === "number") meta.latencyMs = routing.latency_ms;
+  }
+  const quality = inner.quality as Record<string, unknown> | undefined;
+  if (quality) {
+    if (typeof quality.overall_score === "number") meta.qualityScore = quality.overall_score;
+    if (typeof quality.reflection_attempted === "boolean") meta.reflectionAttempted = quality.reflection_attempted;
+    if (typeof quality.reflection_kept === "boolean") meta.reflectionKept = quality.reflection_kept;
+  }
+
+  return { text: trimmed, meta };
 }
 
 /**
