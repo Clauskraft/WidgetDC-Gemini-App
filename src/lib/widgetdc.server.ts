@@ -396,3 +396,114 @@ export async function queryGraph(
   if (!Array.isArray(rows)) return null;
   return (normalizeNeo(rows) as Array<Record<string, unknown>>) ?? null;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Deliverable Studio (Phase 1) — turn a chat brief into a consulting artifact.
+// Surfaces the platform `assembly` tool family the frontend never used:
+// `generate_deliverable` (RAG-backed, citation-bearing markdown) gated by an
+// optional `judge_response` PRISM quality pass.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** The three deliverable kinds the platform `generate_deliverable` accepts. */
+export type DeliverableKind = "analysis" | "roadmap" | "assessment";
+
+/** A generated deliverable: markdown body + citation count. */
+export type DeliverableResult = { markdown: string; citations: number };
+
+/** PRISM quality verdict (0–10 aggregate + per-dimension breakdown). */
+export type DeliverableQuality = { score: number; dimensions?: Record<string, number> };
+
+/**
+ * Extract markdown + citation count from the varied `generate_deliverable`
+ * response envelope. Pure + synchronous so it is unit-testable without a live
+ * platform. Handles a bare string, a top-level object, and the standard
+ * `{ result: {...} }` MCP envelope.
+ */
+export function extractDeliverable(result: unknown): DeliverableResult | null {
+  if (typeof result === "string") {
+    const md = result.trim();
+    return md ? { markdown: md, citations: 0 } : null;
+  }
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const md =
+    (typeof inner.markdown === "string" && inner.markdown) ||
+    (typeof inner.content === "string" && inner.content) ||
+    (typeof inner.document === "string" && inner.document) ||
+    (typeof inner.deliverable === "string" && inner.deliverable) ||
+    (typeof inner.report === "string" && inner.report) ||
+    (typeof inner.text === "string" && inner.text) ||
+    (typeof r.markdown === "string" && r.markdown) ||
+    "";
+  const trimmed = typeof md === "string" ? md.trim() : "";
+  if (!trimmed) return null;
+  const citationsRaw = inner.citations ?? inner.sources ?? r.citations;
+  const citations = Array.isArray(citationsRaw)
+    ? citationsRaw.length
+    : typeof inner.citation_count === "number"
+      ? inner.citation_count
+      : 0;
+  return { markdown: trimmed, citations };
+}
+
+/**
+ * Generate a consulting deliverable (analysis / roadmap / assessment) from a
+ * brief via the platform `generate_deliverable` tool. RAG-backed and
+ * multi-section, so the timeout is generous (>60s observed). Returns null on
+ * any failure so the caller can surface a clean error.
+ */
+export async function generateDeliverable(
+  brief: string,
+  kind: DeliverableKind,
+  opts: { correlationId?: string; maxSections?: number } = {},
+): Promise<DeliverableResult | null> {
+  const result = await callMcpTool<unknown>(
+    "generate_deliverable",
+    {
+      prompt: brief,
+      type: kind,
+      format: "markdown",
+      ...(opts.maxSections ? { max_sections: opts.maxSections } : {}),
+    },
+    { correlationId: opts.correlationId, timeoutMs: 120000 },
+  );
+  if (result == null) return null;
+  return extractDeliverable(result);
+}
+
+/** Extract the PRISM aggregate + dimensions from a `judge_response` envelope. */
+export function extractQuality(result: unknown): DeliverableQuality | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const score =
+    (typeof inner.aggregate === "number" && inner.aggregate) ||
+    (typeof inner.overall === "number" && inner.overall) ||
+    (typeof inner.score === "number" && inner.score) ||
+    null;
+  if (score == null) return null;
+  const dims =
+    (inner.dimensions as Record<string, number> | undefined) ??
+    (inner.scores as Record<string, number> | undefined);
+  return { score, dimensions: dims };
+}
+
+/**
+ * Phase-1 quality gate: PRISM-score a generated deliverable via the platform
+ * `judge_response` tool. Best-effort — returns null if unavailable so the
+ * deliverable still renders (plan acceptance gate target: PRISM ≥ 7).
+ */
+export async function judgeDeliverable(
+  brief: string,
+  markdown: string,
+  correlationId?: string,
+): Promise<DeliverableQuality | null> {
+  const result = await callMcpTool<unknown>(
+    "judge_response",
+    { query: brief, response: markdown },
+    { correlationId, timeoutMs: 30000 },
+  );
+  if (result == null) return null;
+  return extractQuality(result);
+}
