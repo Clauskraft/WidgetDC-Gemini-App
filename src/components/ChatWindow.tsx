@@ -147,19 +147,19 @@ export function ChatWindow({
   const [model] = useModelPreference();
   // AUR-5: "Reason deeply" toggle — persisted across reloads, sent with each
   // request so the server can pass `reflect: true` to the platform RLM.
-  const [deepMode, setDeepMode] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("widgetdc.chat.deep") === "1";
-  });
-  // Council (Mixture-of-Agents) mode — mutually exclusive with Deep; both are
-  // platform multi-pass paths so enabling one disables the other.
-  const [councilMode, setCouncilMode] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("widgetdc.chat.council") === "1";
-  });
+  // Deep + Council (Mixture-of-Agents) are platform multi-pass paths and are
+  // mutually exclusive. Both start false to match SSR, then hydrate from
+  // localStorage after mount (avoids hydration mismatch); Council wins if both
+  // flags are stored.
+  const [deepMode, setDeepMode] = useState(false);
+  const [councilMode, setCouncilMode] = useState(false);
   const setFlag = (key: string, on: boolean) => {
     if (typeof window !== "undefined") window.localStorage.setItem(key, on ? "1" : "0");
   };
+  useEffect(() => {
+    if (window.localStorage.getItem("widgetdc.chat.council") === "1") setCouncilMode(true);
+    else if (window.localStorage.getItem("widgetdc.chat.deep") === "1") setDeepMode(true);
+  }, []);
   const toggleDeep = useCallback(() => {
     setDeepMode((prev) => {
       const next = !prev;

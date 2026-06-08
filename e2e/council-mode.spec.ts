@@ -37,3 +37,19 @@ test("council toggle sends body.council and is exclusive with deep", async ({ pa
   expect(payload.council).toBe(true);
   expect(payload.deep).toBe(false);
 });
+
+test("with both flags stored, only Council is active on load (Council wins)", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("widgetdc.chat.deep", "1");
+    localStorage.setItem("widgetdc.chat.council", "1");
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: /^Council$/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: /^Deep$/ })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
