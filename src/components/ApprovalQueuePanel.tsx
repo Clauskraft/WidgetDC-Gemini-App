@@ -146,9 +146,26 @@ function BackendTab({ approverIdentity }: { approverIdentity: string }) {
           headers: { "content-type": "application/json", accept: "application/json" },
           body: JSON.stringify(body),
         });
-        const json = (await res.json()) as { ok?: boolean; error?: string };
+        const json = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          code?: string;
+          current_status?: string;
+          hint?: string;
+        };
         if (!res.ok || !json.ok) {
-          window.alert(`Failed: ${json.error ?? `HTTP ${res.status}`}`);
+          // Issue #14: backend now returns structured codes when the request
+          // has already been approved/rejected/expired (NOT_PENDING) or no
+          // longer exists (NOT_FOUND). Auto-refresh the queue so the stale
+          // button disappears, and show a humanized message instead of the
+          // generic "Failed: Invalid request" that hides the cause.
+          if (json.code === "NOT_PENDING" || json.code === "NOT_FOUND") {
+            await load();
+            const status = json.current_status ? ` (now ${json.current_status})` : "";
+            window.alert(`Request already processed${status}. ${json.hint ?? "Queue refreshed."}`);
+          } else {
+            window.alert(`Failed: ${json.error ?? `HTTP ${res.status}`}`);
+          }
         } else {
           await load();
         }
