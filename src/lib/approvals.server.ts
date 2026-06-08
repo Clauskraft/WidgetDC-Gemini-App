@@ -101,14 +101,17 @@ export async function listBackendPending(): Promise<
   return { ok: true, requests: body.requests };
 }
 
+export type BackendApprovalErrorCode = "NOT_FOUND" | "NOT_PENDING" | "network_error" | "non_2xx" | "malformed_response" | "backend_not_configured" | string;
+
 export async function approveBackend(
   requestId: string,
   approvedBy: string,
 ): Promise<
-  { ok: true; request: BackendApprovalRequest } | { ok: false; error: string; status?: number }
+  | { ok: true; request: BackendApprovalRequest }
+  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
 > {
   const cfg = backendConfig();
-  if (!cfg) return { ok: false, error: "backend_not_configured" };
+  if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };
   const res = await fetchWithTimeout(
     `${cfg.url}/api/approvals/${encodeURIComponent(requestId)}/approve`,
     {
@@ -121,15 +124,32 @@ export async function approveBackend(
       body: JSON.stringify({ approvedBy }),
     },
   );
-  if (!res) return { ok: false, error: "network_error" };
-  if (!res.ok) return { ok: false, error: "non_2xx", status: res.status };
+  if (!res) return { ok: false, error: "network_error", code: "network_error" };
+  // Note: backend may now return 200 with success:false + code:"NOT_PENDING"
+  // when the request has already been approved/rejected/expired (e.g. via
+  // parallel approval path). We MUST read the body even on 2xx to detect
+  // these structured errors instead of treating them as success.
   const body = (await res.json()) as {
     success?: boolean;
     request?: BackendApprovalRequest;
     error?: string;
+    code?: string;
+    current_status?: string;
+    hint?: string;
   };
+  if (!res.ok && !body.code) {
+    // True non-2xx without structured code — surface raw status.
+    return { ok: false, error: "non_2xx", status: res.status };
+  }
   if (!body.success || !body.request) {
-    return { ok: false, error: body.error ?? "malformed_response" };
+    return {
+      ok: false,
+      error: body.error ?? "malformed_response",
+      code: body.code ?? "malformed_response",
+      current_status: body.current_status,
+      hint: body.hint,
+      status: res.status,
+    };
   }
   return { ok: true, request: body.request };
 }
@@ -139,10 +159,11 @@ export async function rejectBackend(
   rejectedBy: string,
   reason: string,
 ): Promise<
-  { ok: true; request: BackendApprovalRequest } | { ok: false; error: string; status?: number }
+  | { ok: true; request: BackendApprovalRequest }
+  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
 > {
   const cfg = backendConfig();
-  if (!cfg) return { ok: false, error: "backend_not_configured" };
+  if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };
   const res = await fetchWithTimeout(
     `${cfg.url}/api/approvals/${encodeURIComponent(requestId)}/reject`,
     {
@@ -155,15 +176,27 @@ export async function rejectBackend(
       body: JSON.stringify({ rejectedBy, reason }),
     },
   );
-  if (!res) return { ok: false, error: "network_error" };
-  if (!res.ok) return { ok: false, error: "non_2xx", status: res.status };
+  if (!res) return { ok: false, error: "network_error", code: "network_error" };
   const body = (await res.json()) as {
     success?: boolean;
     request?: BackendApprovalRequest;
     error?: string;
+    code?: string;
+    current_status?: string;
+    hint?: string;
   };
+  if (!res.ok && !body.code) {
+    return { ok: false, error: "non_2xx", status: res.status };
+  }
   if (!body.success || !body.request) {
-    return { ok: false, error: body.error ?? "malformed_response" };
+    return {
+      ok: false,
+      error: body.error ?? "malformed_response",
+      code: body.code ?? "malformed_response",
+      current_status: body.current_status,
+      hint: body.hint,
+      status: res.status,
+    };
   }
   return { ok: true, request: body.request };
 }

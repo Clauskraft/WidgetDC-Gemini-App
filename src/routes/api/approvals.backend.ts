@@ -84,7 +84,31 @@ export const Route = createFileRoute("/api/approvals/backend")({
             ? await approveBackend(body.requestId, body.approvedBy)
             : await rejectBackend(body.requestId, body.rejectedBy, body.reason);
         if (!result.ok) {
-          return json({ error: result.error, upstream_status: result.status }, { status: 502 });
+          // Pass through structured codes from backend so the panel can show
+          // humanized messages and auto-recover (Issue #14). When backend
+          // returned a structured NOT_PENDING/NOT_FOUND code, surface it with
+          // a 200 status so the frontend doesn't treat it as upstream failure.
+          if (result.code === "NOT_PENDING" || result.code === "NOT_FOUND") {
+            return json(
+              {
+                ok: false,
+                code: result.code,
+                error: result.error,
+                current_status: result.current_status,
+                hint: result.hint,
+              },
+              { status: 200 },
+            );
+          }
+          return json(
+            {
+              ok: false,
+              error: result.error,
+              code: result.code,
+              upstream_status: result.status,
+            },
+            { status: 502 },
+          );
         }
         return json({ ok: true, request: result.request });
       },
