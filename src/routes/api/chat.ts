@@ -132,15 +132,15 @@ export const Route = createFileRoute("/api/chat")({
         // it. The FULL frame sequence is required — useChat only creates the
         // assistant UIMessage when it sees the message-level `start` chunk.
         //
-        // Only emit `data-reasoning` for the platform RLM path: direct providers
-        // don't return reasoning chains, and a misplaced data part caused useChat
-        // to silently drop the assistant message in earlier iterations.
+        // `data-reasoning` is emitted for BOTH paths so the UI always shows
+        // which model actually answered. For direct providers the chunk
+        // carries only provider/model/latency (no reasoning chain). For the
+        // RLM path it carries the full reflection envelope (chain, quality,
+        // confidence).
         const finalText = answerText;
         const meta = answerMeta;
         const emitReasoning =
-          usedPath === "platform" &&
-          meta &&
-          Object.values(meta).some((v) => v != null && v !== "");
+          meta && Object.values(meta).some((v) => v != null && v !== "");
 
         const stream = createUIMessageStream({
           execute: ({ writer }) => {
