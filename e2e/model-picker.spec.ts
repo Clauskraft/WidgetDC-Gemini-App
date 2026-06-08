@@ -9,8 +9,8 @@ import { expect, test } from "@playwright/test";
  * /api/chat stubbes så testen kører uden LOVABLE_API_KEY og uden ægte LLM-kald.
  */
 
-const TARGET_MODEL_ID = "google/gemini-3.5-flash";
-const TARGET_MODEL_LABEL = "Gemini 3.5 Flash";
+const TARGET_MODEL_ID = "google/gemini-2.5-pro";
+const TARGET_MODEL_LABEL = "Gemini 2.5 Pro";
 
 test("model-picker sender body.model og dashboardet viser valget", async ({ page }) => {
   // Stub chat-endpointet: returnér en tom UI-message stream så useChat ikke fejler.
