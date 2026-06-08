@@ -289,7 +289,7 @@ export async function streamDirectProvider(
             "content-type": "application/json",
             authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           },
-          body: JSON.stringify({ model, messages, stream: true }),
+          body: JSON.stringify({ model, messages, stream: true, max_tokens: 4096 }),
         },
         controller.signal,
       );
@@ -366,7 +366,10 @@ export async function streamDirectProvider(
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         }));
-      const reqBody: Record<string, unknown> = { contents };
+      const reqBody: Record<string, unknown> = {
+        contents,
+        generationConfig: { maxOutputTokens: 4096 },
+      };
       if (systemText) reqBody.systemInstruction = { parts: [{ text: systemText }] };
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(process.env.GEMINI_API_KEY ?? "")}`;
       const res = await fetchWithDegradationRetry(
