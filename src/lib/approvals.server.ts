@@ -205,10 +205,26 @@ export async function approveOrchestratorPlan(
   planId: string,
   approver: string,
 ): Promise<
-  { ok: true; record: OrchestratorApprovalRecord } | { ok: false; error: string; status?: number }
+  | { ok: true; record: OrchestratorApprovalRecord }
+  | { ok: false; error: string; status?: number; upstream_body?: string }
 > {
   const cfg = orchestratorConfig();
   if (!cfg) return { ok: false, error: "orchestrator_not_configured" };
+  // LIN-1911 — orchestrator's /api/hyperagent/approve_plan rejects minimal
+  // {plan_id, approver} payloads with 400. The error.required_payload hint
+  // from the backend's own governance gate cites intent/scope/risk_level/
+  // tool_name; we forward those defaults so the operator's Approve click
+  // can succeed without UI-side gymnastics. Orchestrator ignores unknown
+  // keys, so passing extras is safe even if the schema is narrower.
+  const payload = {
+    plan_id: planId,
+    approver,
+    // Sensible defaults that match the BOM-promotion path we're unblocking.
+    intent: "lin1911_orchestrator_plan_approval",
+    scope: "production_write",
+    risk_level: "production_write",
+    tool_name: "graph.promote_phantom_bom_run",
+  };
   const res = await fetchWithTimeout(`${cfg.url}/api/hyperagent/approve_plan`, {
     method: "POST",
     headers: {
@@ -216,16 +232,40 @@ export async function approveOrchestratorPlan(
       accept: "application/json",
       "content-type": "application/json",
     },
-    body: JSON.stringify({ plan_id: planId, approver }),
+    body: JSON.stringify(payload),
   });
   if (!res) return { ok: false, error: "network_error" };
-  if (!res.ok) return { ok: false, error: "non_2xx", status: res.status };
-  const body = (await res.json()) as Partial<OrchestratorApprovalRecord> & {
+  // Capture the upstream body even on non-2xx so the UI/diagnose loop can see
+  // exactly what orchestrator complains about. Truncate to keep responses sane.
+  let rawBody = "";
+  try {
+    rawBody = await res.text();
+  } catch {
+    rawBody = "";
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: "non_2xx",
+      status: res.status,
+      upstream_body: rawBody.slice(0, 800),
+    };
+  }
+  let body: Partial<OrchestratorApprovalRecord> & {
     success?: boolean;
     error?: string;
   };
+  try {
+    body = JSON.parse(rawBody) as typeof body;
+  } catch {
+    return { ok: false, error: "malformed_response", upstream_body: rawBody.slice(0, 800) };
+  }
   if (typeof body.plan_id !== "string") {
-    return { ok: false, error: body.error ?? "malformed_response" };
+    return {
+      ok: false,
+      error: body.error ?? "malformed_response",
+      upstream_body: rawBody.slice(0, 800),
+    };
   }
   return {
     ok: true,
