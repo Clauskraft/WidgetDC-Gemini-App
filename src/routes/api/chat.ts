@@ -10,6 +10,11 @@ import {
   orchestratorChat,
   type ChatMessage,
 } from "@/lib/widgetdc.server";
+import {
+  callDirectProvider,
+  providerConfigured,
+  providerForModel,
+} from "@/lib/providers.server";
 
 const SYSTEM_PROMPT = `You are WidgeTDC Aurora — a precise, consultant-grade assistant. You help users reason about complex artifacts, governance, runtime models, and architecture.
 
@@ -50,19 +55,10 @@ export const Route = createFileRoute("/api/chat")({
         if (!Array.isArray(body.messages)) {
           return new Response("Messages are required", { status: 400 });
         }
-        if (!isPlatformConfigured()) {
-          return new Response(
-            "WidgeTDC platform not configured — set WIDGETDC_API_KEY (or MCP_AGENT_API_KEY) and WIDGETDC_BACKEND_URL.",
-            { status: 503 },
-          );
-        }
-
         const messages = body.messages as UIMessage[];
         const correlationId =
           request.headers.get("x-correlation-id") ?? crypto.randomUUID();
 
-        // reason_deeply (RLM) performs its own retrieval/RAG internally, so no
-        // separate grounding call is needed here.
         const system =
           typeof body.system === "string" && body.system.trim().length > 0
             ? body.system
@@ -77,57 +73,90 @@ export const Route = createFileRoute("/api/chat")({
           ...toChatMessages(modelMessages),
         ];
 
-        // Provider/model selection is owned by the platform RLM (reason_deeply
-        // routes per domain). correlation_id threads through for audit. AUR-5:
-        // `deep` triggers RLM reflection and surfaces reasoning chain + quality.
+        // ROUTING:
+        // - Direct provider (OpenAI / Gemini / Anthropic) if the model id maps
+        //   to a configured provider and Deep mode is OFF. This is what makes
+        //   the user's model picker actually mean something — the WidgeTDC
+        //   backend MCP route's reason_deeply ignores provider/model overrides
+        //   and always returns gemini-2.5-flash-lite.
+        // - Otherwise (Deep mode ON, unknown provider, missing key, or platform
+        //   chosen) fall through to reason_deeply (RLM): it owns provider
+        //   selection per domain and surfaces a rich reasoning chain.
         const deep = body.deep === true;
-        const chatResult = await orchestratorChat(chatMessages, { correlationId, deep });
+        const requestedProvider = providerForModel(body.model);
+        const useDirect =
+          !deep &&
+          requestedProvider !== "platform" &&
+          providerConfigured(requestedProvider);
 
-        if (chatResult == null) {
+        let answerText: string | null = null;
+        let answerMeta: import("@/lib/widgetdc.server").ChatReasoningMeta = {};
+        let usedPath: "direct" | "platform" = "platform";
+
+        if (useDirect && body.model) {
+          const direct = await callDirectProvider(body.model, chatMessages);
+          if (direct) {
+            answerText = direct.text;
+            answerMeta = {
+              provider: direct.provider,
+              model: direct.model,
+              latencyMs: direct.latencyMs,
+            };
+            usedPath = "direct";
+          }
+        }
+
+        if (!answerText) {
+          if (!isPlatformConfigured()) {
+            return new Response(
+              "No chat provider available — configure OPENAI_API_KEY/GEMINI_API_KEY/ANTHROPIC_API_KEY for the chosen model, or WIDGETDC_API_KEY for the platform RLM.",
+              { status: 503, headers: { "x-correlation-id": correlationId } },
+            );
+          }
+          const chatResult = await orchestratorChat(chatMessages, { correlationId, deep });
+          if (chatResult) {
+            answerText = chatResult.text;
+            answerMeta = chatResult.meta;
+            usedPath = "platform";
+          }
+        }
+
+        if (!answerText) {
           return new Response(
-            "WidgeTDC platform did not return a response (reason_deeply unavailable or timed out).",
+            "Chat provider did not return a response (direct provider failed and reason_deeply unavailable).",
             { status: 502, headers: { "x-correlation-id": correlationId } },
           );
         }
 
-        // Emit the platform answer as an AI-SDK UI message stream so the client
-        // useChat() transport renders it unchanged.
+        // Emit the answer as an AI-SDK v6 UI message stream so useChat() renders
+        // it. The FULL frame sequence is required — useChat only creates the
+        // assistant UIMessage when it sees the message-level `start` chunk.
         //
-        // The full message-frame sequence is required. useChat's read path only
-        // CREATES the assistant UIMessage when it sees the message-level `start`
-        // chunk (it seeds state.message.id from messageId). Emitting only
-        // text-start/text-delta/text-end (no start/finish) makes useChat silently
-        // drop the whole message — 200 + valid SSE but nothing renders. This is
-        // exactly the sequence the SDK's own toUIMessageStream() emits.
-        //
-        // AUR-5: alongside the text part, we emit a custom `data-reasoning` part
-        // carrying the RLM reasoning chain, confidence, quality, and routing.
-        // The client renders it as a pinnable Canvas note when present.
+        // Only emit `data-reasoning` for the platform RLM path: direct providers
+        // don't return reasoning chains, and a misplaced data part caused useChat
+        // to silently drop the assistant message in earlier iterations.
+        const finalText = answerText;
+        const meta = answerMeta;
+        const emitReasoning =
+          usedPath === "platform" &&
+          meta &&
+          Object.values(meta).some((v) => v != null && v !== "");
+
         const stream = createUIMessageStream({
           execute: ({ writer }) => {
             const id = crypto.randomUUID();
             const messageId = crypto.randomUUID();
-            const hasMeta =
-              chatResult.meta &&
-              Object.values(chatResult.meta).some((v) => v != null && v !== "");
-
             writer.write({ type: "start", messageId });
             writer.write({ type: "start-step" });
-            // Emit the custom data-reasoning part BEFORE the text part. The AI
-            // SDK v6 UI-message read path attaches data-* parts to the message
-            // in order; placing it after text-end + before finish-step caused
-            // useChat to drop the whole assistant message on persistence.
-            // Emitting it before text-start makes the data part settle into
-            // message.parts cleanly so both render and persistence include it.
-            if (hasMeta) {
+            if (emitReasoning) {
               writer.write({
                 type: "data-reasoning",
                 id: crypto.randomUUID(),
-                data: chatResult.meta,
+                data: meta,
               });
             }
             writer.write({ type: "text-start", id });
-            writer.write({ type: "text-delta", id, delta: chatResult.text });
+            writer.write({ type: "text-delta", id, delta: finalText });
             writer.write({ type: "text-end", id });
             writer.write({ type: "finish-step" });
             writer.write({ type: "finish" });
