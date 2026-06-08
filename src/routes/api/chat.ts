@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   isPlatformConfigured,
   orchestratorChat,
+  councilChat,
   llmChatCompletion,
   fetchRagGrounding,
   modelPolicyPreflight,
@@ -43,6 +44,7 @@ const BodySchema = z.object({
   model: z.string().optional(),
   system: z.string().optional(),
   deep: z.boolean().optional(),
+  council: z.boolean().optional(),
 });
 
 /** Flatten AI-SDK model messages to plain {role,content} for the orchestrator. */
@@ -147,9 +149,15 @@ export const Route = createFileRoute("/api/chat")({
         const lastUser = [...baseMessages].reverse().find((m) => m.role === "user");
 
         const deep = body.deep === true;
+        // Council (Mixture-of-Agents) is a platform-only multi-agent path, so it
+        // bypasses the direct-provider route just like Deep mode does.
+        const council = body.council === true;
         const requestedProvider = providerForModel(body.model);
         const useDirect =
-          !deep && requestedProvider !== "platform" && providerConfigured(requestedProvider);
+          !deep &&
+          !council &&
+          requestedProvider !== "platform" &&
+          providerConfigured(requestedProvider);
 
         // F3: governance preflight on whichever model we are about to call.
         if (useDirect && body.model) {
@@ -257,12 +265,16 @@ export const Route = createFileRoute("/api/chat")({
               }
             }
 
-            // ── Path B: platform (deep RLM reflection or llm_chat completion) ──
+            // ── Path B: platform (council MoA, deep RLM reflection, or llm_chat) ──
             if (!produced && !request.signal.aborted && isPlatformConfigured()) {
-              const chatResult = deep
-                ? await orchestratorChat(chatMessages, { correlationId, deep: true })
-                : ((await llmChatCompletion(chatMessages, { correlationId, model: body.model })) ??
-                  (await orchestratorChat(chatMessages, { correlationId, deep: false })));
+              const chatResult = council
+                ? await councilChat(chatMessages, { correlationId })
+                : deep
+                  ? await orchestratorChat(chatMessages, { correlationId, deep: true })
+                  : ((await llmChatCompletion(chatMessages, {
+                      correlationId,
+                      model: body.model,
+                    })) ?? (await orchestratorChat(chatMessages, { correlationId, deep: false })));
               if (chatResult?.text) {
                 for (const piece of chunkText(chatResult.text)) {
                   writer.write({ type: "text-delta", id: textId, delta: piece });

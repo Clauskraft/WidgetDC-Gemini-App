@@ -135,6 +135,70 @@ export async function orchestratorChat(
   return null;
 }
 
+/** Flatten a conversation into a single task string for single-shot tools. */
+function flattenConversation(messages: ChatMessage[]): string {
+  return messages
+    .map((m) => {
+      const who =
+        m.role === "system" ? "INSTRUCTIONS" : m.role === "assistant" ? "ASSISTANT" : "USER";
+      return `${who}:\n${m.content}`;
+    })
+    .join("\n\n");
+}
+
+/**
+ * Phase 4 "Council" mode: answer via the platform `moa_query` (Mixture-of-Agents)
+ * tool — classifies complexity, dispatches 2–3 specialist agents in parallel and
+ * merges them by LLM consensus. Returns the merged answer plus light meta
+ * (participating agents + confidence), or null on failure.
+ */
+export async function councilChat(
+  messages: ChatMessage[],
+  opts: { correlationId?: string } = {},
+): Promise<ChatResult | null> {
+  const result = await callMcpTool<unknown>(
+    "moa_query",
+    { query: flattenConversation(messages) },
+    { correlationId: opts.correlationId, timeoutMs: 90000 },
+  );
+  if (result == null) return null;
+  return extractCouncilResult(result);
+}
+
+/** Extract the merged answer + agent/confidence meta from a moa_query envelope. */
+export function extractCouncilResult(result: unknown): ChatResult | null {
+  if (typeof result === "string") {
+    const t = result.trim();
+    return t ? { text: t, meta: { provider: "MoA Council" } } : null;
+  }
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const text =
+    (typeof inner.merged === "string" && inner.merged) ||
+    (typeof inner.answer === "string" && inner.answer) ||
+    (typeof inner.response === "string" && inner.response) ||
+    (typeof inner.recommendation === "string" && inner.recommendation) ||
+    (typeof inner.text === "string" && inner.text) ||
+    "";
+  const trimmed = typeof text === "string" ? text.trim() : "";
+  if (!trimmed) return null;
+  const meta: ChatReasoningMeta = { provider: "MoA Council" };
+  const agents = inner.agents;
+  if (Array.isArray(agents) && agents.length > 0) {
+    const names = agents
+      .map((a) => (typeof a === "string" ? a : ((a as Record<string, unknown>)?.id ?? "")))
+      .filter((s): s is string => typeof s === "string" && s.length > 0);
+    if (names.length > 0) meta.model = names.join(", ");
+  }
+  if (typeof inner.confidence === "number") meta.confidence = inner.confidence;
+  const domains = inner.domains;
+  if (Array.isArray(domains) && domains.length > 0) {
+    meta.domain = domains.filter((d): d is string => typeof d === "string").join(", ");
+  }
+  return { text: trimmed, meta };
+}
+
 /**
  * Extract assistant text + reasoning metadata from the reason_deeply / RLM
  * response envelope. The text is the recommendation (the standalone answer);
