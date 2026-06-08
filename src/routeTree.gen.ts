@@ -14,6 +14,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
@@ -22,6 +23,9 @@ import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
+import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
+import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
+import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -47,6 +51,11 @@ const GemsRoute = GemsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdoptionRoute = AdoptionRouteImport.update({
+  id: '/adoption',
+  path: '/adoption',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -89,6 +98,22 @@ const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
   path: '/api/graph/query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiApprovalsOrchestratorRoute =
+  ApiApprovalsOrchestratorRouteImport.update({
+    id: '/api/approvals/orchestrator',
+    path: '/api/approvals/orchestrator',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiApprovalsBackendRoute = ApiApprovalsBackendRouteImport.update({
+  id: '/api/approvals/backend',
+  path: '/api/approvals/backend',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdoptionMetricsRoute = ApiAdoptionMetricsRouteImport.update({
+  id: '/api/adoption/metrics',
+  path: '/api/adoption/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
   id: '/api/mrp/canvas/resolve',
   path: '/api/mrp/canvas/resolve',
@@ -97,6 +122,7 @@ const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
@@ -107,12 +133,16 @@ export interface FileRoutesByFullPath {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
+  '/api/approvals/backend': typeof ApiApprovalsBackendRoute
+  '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
@@ -123,6 +153,9 @@ export interface FileRoutesByTo {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
+  '/api/approvals/backend': typeof ApiApprovalsBackendRoute
+  '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
@@ -130,6 +163,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
@@ -140,6 +174,9 @@ export interface FileRoutesById {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
+  '/api/approvals/backend': typeof ApiApprovalsBackendRoute
+  '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
@@ -148,6 +185,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adoption'
     | '/dashboard'
     | '/gems'
     | '/graph'
@@ -158,12 +196,16 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/adoption/metrics'
+    | '/api/approvals/backend'
+    | '/api/approvals/orchestrator'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adoption'
     | '/dashboard'
     | '/gems'
     | '/graph'
@@ -174,12 +216,16 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/adoption/metrics'
+    | '/api/approvals/backend'
+    | '/api/approvals/orchestrator'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   id:
     | '__root__'
     | '/'
+    | '/adoption'
     | '/dashboard'
     | '/gems'
     | '/graph'
@@ -190,6 +236,9 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/api/adoption/metrics'
+    | '/api/approvals/backend'
+    | '/api/approvals/orchestrator'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
@@ -197,6 +246,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdoptionRoute: typeof AdoptionRoute
   DashboardRoute: typeof DashboardRoute
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
@@ -206,6 +256,9 @@ export interface RootRouteChildren {
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
   VisualGraphRoute: typeof VisualGraphRoute
+  ApiAdoptionMetricsRoute: typeof ApiAdoptionMetricsRoute
+  ApiApprovalsBackendRoute: typeof ApiApprovalsBackendRoute
+  ApiApprovalsOrchestratorRoute: typeof ApiApprovalsOrchestratorRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
@@ -246,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adoption': {
+      id: '/adoption'
+      path: '/adoption'
+      fullPath: '/adoption'
+      preLoaderRoute: typeof AdoptionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -304,6 +364,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGraphQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/approvals/orchestrator': {
+      id: '/api/approvals/orchestrator'
+      path: '/api/approvals/orchestrator'
+      fullPath: '/api/approvals/orchestrator'
+      preLoaderRoute: typeof ApiApprovalsOrchestratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/approvals/backend': {
+      id: '/api/approvals/backend'
+      path: '/api/approvals/backend'
+      fullPath: '/api/approvals/backend'
+      preLoaderRoute: typeof ApiApprovalsBackendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adoption/metrics': {
+      id: '/api/adoption/metrics'
+      path: '/api/adoption/metrics'
+      fullPath: '/api/adoption/metrics'
+      preLoaderRoute: typeof ApiAdoptionMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mrp/canvas/resolve': {
       id: '/api/mrp/canvas/resolve'
       path: '/api/mrp/canvas/resolve'
@@ -326,6 +407,7 @@ const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdoptionRoute: AdoptionRoute,
   DashboardRoute: DashboardRoute,
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
@@ -335,6 +417,9 @@ const rootRouteChildren: RootRouteChildren = {
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
   VisualGraphRoute: VisualGraphRoute,
+  ApiAdoptionMetricsRoute: ApiAdoptionMetricsRoute,
+  ApiApprovalsBackendRoute: ApiApprovalsBackendRoute,
+  ApiApprovalsOrchestratorRoute: ApiApprovalsOrchestratorRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,

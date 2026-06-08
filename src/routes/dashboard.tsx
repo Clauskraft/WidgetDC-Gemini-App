@@ -11,6 +11,7 @@ import {
   Cpu,
   Layers,
   StickyNote,
+  TrendingUp,
 } from "lucide-react";
 import { useThreads, type Thread } from "@/hooks/useThreads";
 import { GEMS, getGem, gemThreadId } from "@/lib/gems";
@@ -128,6 +129,13 @@ function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <ModelPicker variant="full" />
+            <Link
+              to="/adoption"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-soft hover:bg-accent"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Runtime adoption
+            </Link>
             <Link
               to="/"
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-soft hover:bg-accent"
