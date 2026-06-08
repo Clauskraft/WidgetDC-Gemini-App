@@ -507,3 +507,95 @@ export async function judgeDeliverable(
   if (result == null) return null;
   return extractQuality(result);
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Observability Monitor (Phase 3) — surface the platform's live runtime health
+// (fleet success-rate + per-tool error rates) and graph size to the operator.
+// Uses `runtime_summary` + `data_graph_stats`, whose shapes are stable.
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Per-tool health row derived from runtime_summary.top_tools. */
+export type ToolHealth = {
+  name: string;
+  calls: number;
+  errors: number;
+  errorRate: number; // 0–1
+  avgMs: number;
+};
+
+/** Fleet runtime snapshot (agents, requests, success-rate, top tools). */
+export type RuntimeSnapshot = {
+  totalAgents: number;
+  totalRequests: number;
+  successRate: number; // percentage 0–100
+  tools: ToolHealth[];
+};
+
+/** Neo4j graph size snapshot. */
+export type GraphSnapshot = { nodes: number; relationships: number; online: boolean };
+
+/** Parse a runtime_summary envelope into a normalized fleet snapshot (pure). */
+export function extractRuntimeSummary(result: unknown): RuntimeSnapshot | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const totalRequests = typeof inner.total_requests === "number" ? inner.total_requests : 0;
+  const totalAgents = typeof inner.total_agents === "number" ? inner.total_agents : 0;
+  const successRate = typeof inner.avg_success_rate === "number" ? inner.avg_success_rate : 0;
+  const rawTools = Array.isArray(inner.top_tools) ? inner.top_tools : [];
+  const tools: ToolHealth[] = rawTools
+    .map((t) => {
+      const o = (t ?? {}) as Record<string, unknown>;
+      const calls = typeof o.call_count === "number" ? o.call_count : 0;
+      const errors = typeof o.error_count === "number" ? o.error_count : 0;
+      return {
+        name: typeof o.tool_name === "string" ? o.tool_name : "unknown",
+        calls,
+        errors,
+        errorRate: calls > 0 ? errors / calls : 0,
+        avgMs: typeof o.avg_duration_ms === "number" ? Math.round(o.avg_duration_ms) : 0,
+      };
+    })
+    .filter((t) => t.calls > 0);
+  if (totalRequests === 0 && tools.length === 0) return null;
+  return { totalAgents, totalRequests, successRate, tools };
+}
+
+/** Parse a data_graph_stats envelope into a graph size snapshot (pure). */
+export function extractGraphSnapshot(result: unknown): GraphSnapshot | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const nodes = typeof inner.nodes === "number" ? inner.nodes : null;
+  const relationships = typeof inner.relationships === "number" ? inner.relationships : null;
+  if (nodes == null && relationships == null) return null;
+  return {
+    nodes: nodes ?? 0,
+    relationships: relationships ?? 0,
+    online: inner.status === "online" || inner.status == null,
+  };
+}
+
+/** Fetch the fleet runtime snapshot via the platform `runtime_summary` tool. */
+export async function fetchRuntimeSnapshot(
+  correlationId?: string,
+): Promise<RuntimeSnapshot | null> {
+  const result = await callMcpTool<unknown>(
+    "runtime_summary",
+    {},
+    { correlationId, timeoutMs: 10000 },
+  );
+  if (result == null) return null;
+  return extractRuntimeSummary(result);
+}
+
+/** Fetch the Neo4j graph size via the platform `data_graph_stats` tool. */
+export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphSnapshot | null> {
+  const result = await callMcpTool<unknown>(
+    "data_graph_stats",
+    {},
+    { correlationId, timeoutMs: 15000 },
+  );
+  if (result == null) return null;
+  return extractGraphSnapshot(result);
+}

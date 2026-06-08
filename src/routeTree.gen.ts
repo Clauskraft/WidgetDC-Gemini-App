@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
@@ -23,6 +24,7 @@ import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
+import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
 import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
@@ -33,6 +35,11 @@ import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObservabilityRoute = ObservabilityRouteImport.update({
+  id: '/observability',
+  path: '/observability',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -100,6 +107,11 @@ const EmbedCanvasCanvasIdRoute = EmbedCanvasCanvasIdRouteImport.update({
   path: '/embed/canvas/$canvasId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiObservabilitySummaryRoute = ApiObservabilitySummaryRouteImport.update({
+  id: '/api/observability/summary',
+  path: '/api/observability/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
   id: '/api/graph/query',
   path: '/api/graph/query',
@@ -140,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/observability': typeof ObservabilityRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -151,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -162,6 +176,7 @@ export interface FileRoutesByTo {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/observability': typeof ObservabilityRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -173,6 +188,7 @@ export interface FileRoutesByTo {
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -185,6 +201,7 @@ export interface FileRoutesById {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/observability': typeof ObservabilityRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -196,6 +213,7 @@ export interface FileRoutesById {
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -209,6 +227,7 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/observability'
     | '/settings'
     | '/api/chat'
     | '/c/$threadId'
@@ -220,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/approvals/orchestrator'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
@@ -231,6 +251,7 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/observability'
     | '/settings'
     | '/api/chat'
     | '/c/$threadId'
@@ -242,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/approvals/orchestrator'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   id:
@@ -253,6 +275,7 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/observability'
     | '/settings'
     | '/api/chat'
     | '/c/$threadId'
@@ -264,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/approvals/orchestrator'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
   fileRoutesById: FileRoutesById
@@ -276,6 +300,7 @@ export interface RootRouteChildren {
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
+  ObservabilityRoute: typeof ObservabilityRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
   CThreadIdRoute: typeof CThreadIdRoute
@@ -286,6 +311,7 @@ export interface RootRouteChildren {
   ApiApprovalsOrchestratorRoute: typeof ApiApprovalsOrchestratorRoute
   ApiDeliverableGenerateRoute: typeof ApiDeliverableGenerateRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
+  ApiObservabilitySummaryRoute: typeof ApiObservabilitySummaryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
 }
@@ -297,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/observability': {
+      id: '/observability'
+      path: '/observability'
+      fullPath: '/observability'
+      preLoaderRoute: typeof ObservabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -390,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmbedCanvasCanvasIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/observability/summary': {
+      id: '/api/observability/summary'
+      path: '/api/observability/summary'
+      fullPath: '/api/observability/summary'
+      preLoaderRoute: typeof ApiObservabilitySummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/graph/query': {
       id: '/api/graph/query'
       path: '/api/graph/query'
@@ -453,6 +493,7 @@ const rootRouteChildren: RootRouteChildren = {
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
+  ObservabilityRoute: ObservabilityRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
   CThreadIdRoute: CThreadIdRoute,
@@ -463,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiApprovalsOrchestratorRoute: ApiApprovalsOrchestratorRoute,
   ApiDeliverableGenerateRoute: ApiDeliverableGenerateRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
+  ApiObservabilitySummaryRoute: ApiObservabilitySummaryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
 }
