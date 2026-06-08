@@ -14,9 +14,14 @@ import process from "node:process";
 const DEFAULT_TIMEOUT_MS = 8000;
 
 function mcpConfig(): { url: string; key: string } | null {
-  const base =
-    process.env.WIDGETDC_BACKEND_URL ?? process.env.WIDGETDC_ORCHESTRATOR_URL;
-  const key = process.env.WIDGETDC_API_KEY ?? process.env.MCP_AGENT_API_KEY;
+  const base = process.env.WIDGETDC_BACKEND_URL ?? process.env.WIDGETDC_ORCHESTRATOR_URL;
+  // Canonical WidgeTDC unified bearer is `WIDGETDC_BEARER_TOKEN`; `WIDGETDC_API_KEY`
+  // and `MCP_AGENT_API_KEY` are legacy aliases kept for backward compatibility
+  // (matches apps/backend/src/utils/serviceBearer.ts resolution order).
+  const key =
+    process.env.WIDGETDC_BEARER_TOKEN ??
+    process.env.WIDGETDC_API_KEY ??
+    process.env.MCP_AGENT_API_KEY;
   if (!base || !key) return null;
   return { url: `${base.replace(/\/+$/, "")}/api/mcp/route`, key };
 }
@@ -38,10 +43,7 @@ export async function callMcpTool<T = unknown>(
   if (!cfg) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-  );
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   try {
     const res = await fetch(cfg.url, {
       method: "POST",
@@ -162,7 +164,8 @@ function extractChatResult(result: unknown): ChatResult | null {
 
   const meta: ChatReasoningMeta = {};
   if (typeof inner.confidence === "number") meta.confidence = inner.confidence;
-  if (typeof inner.reasoning === "string" && inner.reasoning.trim()) meta.reasoning = inner.reasoning.trim();
+  if (typeof inner.reasoning === "string" && inner.reasoning.trim())
+    meta.reasoning = inner.reasoning.trim();
   if (Array.isArray(inner.reasoning_chain)) {
     meta.reasoningChain = (inner.reasoning_chain as unknown[])
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
@@ -178,36 +181,178 @@ function extractChatResult(result: unknown): ChatResult | null {
   const quality = inner.quality as Record<string, unknown> | undefined;
   if (quality) {
     if (typeof quality.overall_score === "number") meta.qualityScore = quality.overall_score;
-    if (typeof quality.reflection_attempted === "boolean") meta.reflectionAttempted = quality.reflection_attempted;
+    if (typeof quality.reflection_attempted === "boolean")
+      meta.reflectionAttempted = quality.reflection_attempted;
     if (typeof quality.reflection_kept === "boolean") meta.reflectionKept = quality.reflection_kept;
   }
 
   return { text: trimmed, meta };
 }
 
+/** A grounding snippet surfaced to the client for inline citations (AUR-2/14). */
+export type RagSource = { text: string; source?: string; score?: number };
+
+export type RagGrounding = {
+  /** Compact context block injected into the system prompt. */
+  context: string;
+  /** Structured sources for the client's `data-sources` panel. */
+  sources: RagSource[];
+};
+
 /**
- * Fetch RAG grounding for a user query via the orchestrator's adaptive RAG
- * route. Returns a compact, newline-joined snippet string for injection into
- * the system prompt, or null if unavailable.
+ * AUR-14: NEXUS/graph grounding for a user query. Per WidgeTDC Rule R14 this
+ * uses `srag.query` (hybrid semantic + graph) as the primary channel and falls
+ * back to `rag_route` only if SRAG is unavailable. Returns a compact context
+ * block plus structured sources, or null if the platform yields nothing.
+ *
+ * This is the function the chat handler MUST call before completion — without
+ * it the chat answers ungrounded (the pre-AUR-14 defect: `fetchRagGrounding`
+ * existed but was never invoked).
  */
 export async function fetchRagGrounding(
   query: string,
   correlationId?: string,
-): Promise<string | null> {
-  const result = await callMcpTool<unknown>(
+): Promise<RagGrounding | null> {
+  // Primary: srag.query hybrid (graph + vector). R14 hard-gate channel.
+  const srag = await callMcpTool<unknown>(
+    "srag.query",
+    { query, mode: "hybrid" },
+    { correlationId, timeoutMs: 8000 },
+  );
+  const fromSrag = extractSources(srag);
+  if (fromSrag.length > 0) return packGrounding(fromSrag);
+
+  // Fallback: adaptive rag_route.
+  const rag = await callMcpTool<unknown>(
     "rag_route",
     { query, limit: 6 },
     { correlationId, timeoutMs: 6000 },
   );
-  if (result == null) return null;
-
-  // The orchestrator returns either structured results or a markdown string.
-  if (typeof result === "string") {
-    return result.trim().slice(0, 4000) || null;
+  if (rag == null) return null;
+  if (typeof rag === "string") {
+    const text = rag.trim().slice(0, 4000);
+    return text ? { context: text, sources: [{ text }] } : null;
   }
+  const fromRag = extractSources(rag);
+  if (fromRag.length > 0) return packGrounding(fromRag);
   try {
-    const text = JSON.stringify(result);
-    return text.slice(0, 4000);
+    const text = JSON.stringify(rag).slice(0, 4000);
+    return { context: text, sources: [{ text }] };
+  } catch {
+    return null;
+  }
+}
+
+/** Pull a best-effort list of {text, source} snippets from a varied envelope. */
+function extractSources(result: unknown): RagSource[] {
+  if (!result || typeof result !== "object") return [];
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const candidates =
+    (inner.results as unknown[]) ??
+    (inner.sources as unknown[]) ??
+    (inner.documents as unknown[]) ??
+    (inner.hits as unknown[]) ??
+    [];
+  const out: RagSource[] = [];
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue;
+    const o = c as Record<string, unknown>;
+    const text =
+      (typeof o.text === "string" && o.text) ||
+      (typeof o.content === "string" && o.content) ||
+      (typeof o.snippet === "string" && o.snippet) ||
+      (typeof o.answer === "string" && o.answer) ||
+      "";
+    if (!text.trim()) continue;
+    out.push({
+      text: text.trim().slice(0, 600),
+      source:
+        (typeof o.source === "string" && o.source) ||
+        (typeof o.title === "string" && o.title) ||
+        (typeof o.name === "string" && o.name) ||
+        undefined,
+      score: typeof o.score === "number" ? o.score : undefined,
+    });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+function packGrounding(sources: RagSource[]): RagGrounding {
+  const context = sources
+    .map((s, i) => `[${i + 1}]${s.source ? ` (${s.source})` : ""}: ${s.text}`)
+    .join("\n");
+  return { context: context.slice(0, 4000), sources };
+}
+
+/**
+ * AUR-1 follow-up: streaming-friendly completion via the platform `llm_chat`
+ * tool — the correct chat primitive (vs. `reason_deeply`, a reasoning tool).
+ * `llm_chat` accepts a message array and honors model routing. Returns the
+ * assistant text + light meta, or null on failure.
+ */
+export async function llmChatCompletion(
+  messages: ChatMessage[],
+  opts: { correlationId?: string; model?: string } = {},
+): Promise<ChatResult | null> {
+  const result = await callMcpTool<unknown>(
+    "llm_chat",
+    { messages, ...(opts.model ? { model: opts.model } : {}) },
+    { correlationId: opts.correlationId, timeoutMs: 60000 },
+  );
+  if (result == null) return null;
+  return extractChatResult(result);
+}
+
+/**
+ * AUR-3/F3: model governance preflight. Best-effort — returns `{ allowed }`.
+ * Never blocks on platform unavailability (null → allowed, fail-open for a
+ * read-only chat; the real write-gate lives server-side on the platform).
+ */
+export async function modelPolicyPreflight(
+  model: string,
+  correlationId?: string,
+): Promise<{ allowed: boolean; reason?: string }> {
+  const policy = await callMcpTool<Record<string, unknown>>(
+    "model_policy_check",
+    { model },
+    { correlationId, timeoutMs: 5000 },
+  );
+  if (policy && policy.allowed === false) {
+    return { allowed: false, reason: String(policy.reason ?? "model policy denied") };
+  }
+  return { allowed: true };
+}
+
+/** AUR-6: persist a chat insight to platform agent memory. Best-effort. */
+export async function storeChatMemory(
+  agentId: string,
+  key: string,
+  value: unknown,
+  correlationId?: string,
+): Promise<void> {
+  await callMcpTool(
+    "memory_store",
+    { agent_id: agentId, key, value: typeof value === "string" ? value : JSON.stringify(value) },
+    { correlationId, timeoutMs: 5000 },
+  );
+}
+
+/** AUR-6: hydrate prior context from platform memory at session start. */
+export async function retrieveChatMemory(
+  query: string,
+  correlationId?: string,
+): Promise<string | null> {
+  const result = await callMcpTool<unknown>(
+    "memory_search",
+    { query },
+    { correlationId, timeoutMs: 5000 },
+  );
+  if (result == null) return null;
+  if (typeof result === "string") return result.slice(0, 2000) || null;
+  try {
+    return JSON.stringify(result).slice(0, 2000);
   } catch {
     return null;
   }
