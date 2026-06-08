@@ -119,14 +119,20 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Correlation id first, so EVERY response path — including the 400
+        // below — is traceable in logs.
+        const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
+
         const raw = await request.json();
         const parsed = BodySchema.safeParse(raw);
         if (!parsed.success) {
-          return new Response("Messages are required", { status: 400 });
+          return new Response("Messages are required", {
+            status: 400,
+            headers: { "x-correlation-id": correlationId },
+          });
         }
         const body = parsed.data;
         const messages = body.messages as UIMessage[];
-        const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
 
         const system =
           typeof body.system === "string" && body.system.trim().length > 0
@@ -138,25 +144,7 @@ export const Route = createFileRoute("/api/chat")({
           content: unknown;
         }>;
         const baseMessages = toChatMessages(modelMessages);
-
-        // AUR-14: NEXUS/graph grounding. Fetch for the latest user turn and
-        // inject as system context BEFORE completion. Surfaced to the client as
-        // a `data-sources` part for inline citations.
         const lastUser = [...baseMessages].reverse().find((m) => m.role === "user");
-        let sources: RagSource[] = [];
-        let groundedSystem = system;
-        if (lastUser) {
-          const grounding = await fetchRagGrounding(lastUser.content, correlationId);
-          if (grounding && grounding.context) {
-            sources = grounding.sources;
-            groundedSystem = `${system}\n\n# WidgeTDC knowledge context (cite as [n])\n${grounding.context}`;
-          }
-        }
-
-        const chatMessages: ChatMessage[] = [
-          { role: "system", content: groundedSystem },
-          ...baseMessages,
-        ];
 
         const deep = body.deep === true;
         const requestedProvider = providerForModel(body.model);
@@ -188,13 +176,26 @@ export const Route = createFileRoute("/api/chat")({
             writer.write({ type: "start", messageId });
             writer.write({ type: "start-step" });
 
-            // Emit grounding sources up front (client renders citations panel).
+            // AUR-14 grounding lives INSIDE the stream so the client receives
+            // start/start-step immediately — perceived TTFT is not blocked by
+            // the up-to-~8s grounding fetch (which previously ran before the
+            // response was even constructed). Build the grounded prompt +
+            // sources here, then emit the sources part before the text.
+            let sources: RagSource[] = [];
+            let groundedSystem = system;
+            if (lastUser) {
+              const grounding = await fetchRagGrounding(lastUser.content, correlationId);
+              if (grounding && grounding.context) {
+                sources = grounding.sources;
+                groundedSystem = `${system}\n\n# WidgeTDC knowledge context (cite as [n])\n${grounding.context}`;
+              }
+            }
+            const chatMessages: ChatMessage[] = [
+              { role: "system", content: groundedSystem },
+              ...baseMessages,
+            ];
             if (sources.length > 0) {
-              writer.write({
-                type: "data-sources",
-                id: crypto.randomUUID(),
-                data: { sources },
-              });
+              writer.write({ type: "data-sources", id: crypto.randomUUID(), data: { sources } });
             }
 
             writer.write({ type: "text-start", id: textId });
@@ -235,9 +236,11 @@ export const Route = createFileRoute("/api/chat")({
                     latencyMs: result.latencyMs,
                   };
                   produced = true;
-                } else {
-                  // Streaming failed — try a one-shot direct call before falling
-                  // through to the platform path.
+                } else if (!request.signal.aborted) {
+                  // Streaming failed (not a client abort) — try a one-shot direct
+                  // call before falling through to the platform path. Skip when
+                  // the client aborted: callDirectProvider is non-abortable and
+                  // would keep generating (and billing) after stop().
                   const direct = await callDirectProvider(body.model, chatMessages);
                   if (direct) {
                     for (const piece of chunkText(direct.text)) {
@@ -255,7 +258,7 @@ export const Route = createFileRoute("/api/chat")({
             }
 
             // ── Path B: platform (deep RLM reflection or llm_chat completion) ──
-            if (!produced && isPlatformConfigured()) {
+            if (!produced && !request.signal.aborted && isPlatformConfigured()) {
               const chatResult = deep
                 ? await orchestratorChat(chatMessages, { correlationId, deep: true })
                 : ((await llmChatCompletion(chatMessages, { correlationId, model: body.model })) ??

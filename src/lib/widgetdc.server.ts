@@ -248,12 +248,11 @@ function extractSources(result: unknown): RagSource[] {
   if (!result || typeof result !== "object") return [];
   const r = result as Record<string, unknown>;
   const inner = (r.result as Record<string, unknown>) ?? r;
-  const candidates =
-    (inner.results as unknown[]) ??
-    (inner.sources as unknown[]) ??
-    (inner.documents as unknown[]) ??
-    (inner.hits as unknown[]) ??
-    [];
+  // Pick the first field that is actually an array. A non-array object here
+  // (common across varied tool envelopes) would otherwise make the for-of below
+  // throw "is not iterable".
+  const candidates: unknown[] =
+    [inner.results, inner.sources, inner.documents, inner.hits].find(Array.isArray) ?? [];
   const out: RagSource[] = [];
   for (const c of candidates) {
     if (!c || typeof c !== "object") continue;

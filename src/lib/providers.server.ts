@@ -237,6 +237,10 @@ async function fetchWithDegradationRetry(
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(url, { ...init, signal });
     if (res.ok) return res;
+    // Non-OK: release the unconsumed body so the socket is returned to the pool
+    // instead of leaking (undici keeps the connection alive until the body is
+    // read or cancelled).
+    await res.body?.cancel().catch(() => {});
     // Credential/config failure — do not retry (R18: provider ≠ credential).
     if (res.status === 401 || res.status === 403) return null;
     if (DEGRADED.has(res.status) && attempt === 0) {
@@ -440,7 +444,14 @@ export async function openAiToolRound(
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, messages, tools, tool_choice: "auto" }),
+    // Only advertise tools when there are some. The post-loop final-answer call
+    // passes an empty array, and `tools: [] + tool_choice: "auto"` can be
+    // rejected (400) by OpenAI — omit both in that case.
+    body: JSON.stringify({
+      model,
+      messages,
+      ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+    }),
     signal,
   });
   if (!res.ok) return null;
