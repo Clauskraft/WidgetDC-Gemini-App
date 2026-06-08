@@ -1,5 +1,13 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from "react";
-import { Maximize2, Minus, Network, Plus } from "lucide-react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type WheelEvent,
+} from "react";
+import { ChevronRight, Maximize2, Minus, Network, Plus } from "lucide-react";
 import type { GraphEdge, GraphNode, GraphSpec, KnowledgeGraphSpec } from "@/lib/figureBlocks";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +69,8 @@ function layoutLayered(spec: GraphSpec, degree: Map<string, number>): Positioned
   const layers = assignGraphLayers(spec.nodes, spec.edges);
   const groups = new Map<number, GraphNode[]>();
   for (const node of spec.nodes) {
-    const layer = spec.layout === "manual" && node.x != null && node.y != null ? 0 : layers.get(node.id) ?? 0;
+    const layer =
+      spec.layout === "manual" && node.x != null && node.y != null ? 0 : (layers.get(node.id) ?? 0);
     if (!groups.has(layer)) groups.set(layer, []);
     groups.get(layer)!.push(node);
   }
@@ -72,7 +81,9 @@ function layoutLayered(spec: GraphSpec, degree: Map<string, number>): Positioned
   const nodes: PositionedNode[] = [];
 
   ordered.forEach(([layer, group]) => {
-    const sorted = [...group].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id));
+    const sorted = [...group].sort(
+      (a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id),
+    );
     const yOffset = ((maxRows - sorted.length) * GRAPH_ROW_GAP) / 2;
     sorted.forEach((node, row) => {
       let x = node.x ?? layer * GRAPH_COL_GAP;
@@ -83,14 +94,22 @@ function layoutLayered(spec: GraphSpec, degree: Map<string, number>): Positioned
         y = layer * GRAPH_COL_GAP;
         if (direction === "UP") y = (maxLayer - layer) * GRAPH_COL_GAP;
       }
-      nodes.push({ ...node, x, y, colorVar: chartColorFor(nodes.length), degree: degree.get(node.id) ?? 0 });
+      nodes.push({
+        ...node,
+        x,
+        y,
+        colorVar: chartColorFor(nodes.length),
+        degree: degree.get(node.id) ?? 0,
+      });
     });
   });
   return nodes;
 }
 
 function layoutKnowledge(spec: KnowledgeGraphSpec, degree: Map<string, number>): PositionedNode[] {
-  const nodes = [...spec.nodes].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id));
+  const nodes = [...spec.nodes].sort(
+    (a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || a.id.localeCompare(b.id),
+  );
   if (spec.layout === "grid") {
     const cols = Math.ceil(Math.sqrt(nodes.length));
     return nodes.map((node, index) => ({
@@ -105,7 +124,15 @@ function layoutKnowledge(spec: KnowledgeGraphSpec, degree: Map<string, number>):
     return layoutLayered({ ...spec, direction: "RIGHT", layout: "dagre" }, degree);
   }
   if (nodes.length === 1) {
-    return [{ ...nodes[0], x: 160, y: 120, colorVar: chartColorFor(0), degree: degree.get(nodes[0].id) ?? 0 }];
+    return [
+      {
+        ...nodes[0],
+        x: 160,
+        y: 120,
+        colorVar: chartColorFor(0),
+        degree: degree.get(nodes[0].id) ?? 0,
+      },
+    ];
   }
   const center = spec.layout === "circle" ? null : nodes[0];
   const orbit = center ? nodes.slice(1) : nodes;
@@ -114,7 +141,13 @@ function layoutKnowledge(spec: KnowledgeGraphSpec, degree: Map<string, number>):
   const cy = radius + 160;
   const placed: PositionedNode[] = [];
   if (center) {
-    placed.push({ ...center, x: cx - NODE_W / 2, y: cy - NODE_H / 2, colorVar: chartColorFor(0), degree: degree.get(center.id) ?? 0 });
+    placed.push({
+      ...center,
+      x: cx - NODE_W / 2,
+      y: cy - NODE_H / 2,
+      colorVar: chartColorFor(0),
+      degree: degree.get(center.id) ?? 0,
+    });
   }
   orbit.forEach((node, i) => {
     const angle = -Math.PI / 2 + (i / orbit.length) * Math.PI * 2;
@@ -157,9 +190,12 @@ function anchor(node: PositionedNode, other: PositionedNode): { from: Point; to:
 export function GraphCanvas({
   spec,
   variant,
+  onNodeActivate,
 }: {
   spec: GraphSpec | KnowledgeGraphSpec;
   variant: "graph" | "knowledge";
+  /** When provided, the inspector shows a "Drill" action to expand the node. */
+  onNodeActivate?: (nodeId: string, label?: string) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
@@ -168,12 +204,21 @@ export function GraphCanvas({
 
   const { nodes, nodeMap, bounds } = useMemo(() => {
     const degree = computeDegrees(spec.nodes, spec.edges);
-    const positioned = variant === "knowledge"
-      ? layoutKnowledge(spec as KnowledgeGraphSpec, degree)
-      : layoutLayered(spec as GraphSpec, degree);
+    const positioned =
+      variant === "knowledge"
+        ? layoutKnowledge(spec as KnowledgeGraphSpec, degree)
+        : layoutLayered(spec as GraphSpec, degree);
     const b = boundsOf(positioned);
-    const shifted = positioned.map((node) => ({ ...node, x: node.x - b.minX + 32, y: node.y - b.minY + 32 }));
-    return { nodes: shifted, nodeMap: new Map(shifted.map((n) => [n.id, n])), bounds: { w: b.w, h: b.h } };
+    const shifted = positioned.map((node) => ({
+      ...node,
+      x: node.x - b.minX + 32,
+      y: node.y - b.minY + 32,
+    }));
+    return {
+      nodes: shifted,
+      nodeMap: new Map(shifted.map((n) => [n.id, n])),
+      bounds: { w: b.w, h: b.h },
+    };
   }, [spec, variant]);
 
   const selected = selectedId ? nodeMap.get(selectedId) : null;
@@ -191,23 +236,38 @@ export function GraphCanvas({
     setViewport((current) => {
       const nextScale = clampScale(current.scale * Math.exp(-event.deltaY * 0.0012));
       const ratio = nextScale / current.scale;
-      return { scale: nextScale, x: cx - ratio * (cx - current.x), y: cy - ratio * (cy - current.y) };
+      return {
+        scale: nextScale,
+        x: cx - ratio * (cx - current.x),
+        y: cy - ratio * (cy - current.y),
+      };
     });
   }, []);
 
-  const onPointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { x: event.clientX, y: event.clientY, vx: viewport.x, vy: viewport.y };
-  }, [viewport.x, viewport.y]);
+  const onPointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragRef.current = { x: event.clientX, y: event.clientY, vx: viewport.x, vy: viewport.y };
+    },
+    [viewport.x, viewport.y],
+  );
   const onPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
-    setViewport((current) => ({ ...current, x: drag.vx + event.clientX - drag.x, y: drag.vy + event.clientY - drag.y }));
+    setViewport((current) => ({
+      ...current,
+      x: drag.vx + event.clientX - drag.x,
+      y: drag.vy + event.clientY - drag.y,
+    }));
   }, []);
   const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
     dragRef.current = null;
-    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* noop */ }
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const height = Math.max(320, Math.min(620, spec.height ?? (variant === "knowledge" ? 460 : 400)));
@@ -217,18 +277,33 @@ export function GraphCanvas({
     <figure className="aurora-figure aurora-figure--flat viz-graph-shell" data-variant={variant}>
       <div className="viz-graph-toolbar">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="viz-graph-mark" aria-hidden><Network className="h-3.5 w-3.5" /></span>
+          <span className="viz-graph-mark" aria-hidden>
+            <Network className="h-3.5 w-3.5" />
+          </span>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-foreground">{spec.caption ?? label}</div>
+            <div className="truncate text-sm font-semibold text-foreground">
+              {spec.caption ?? label}
+            </div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
               {spec.nodes.length} nodes · {spec.edges.length} relations
             </div>
           </div>
         </div>
         <div className="viz-graph-controls">
-          <button type="button" onClick={() => zoomBy(1.16)} title="Zoom ind" aria-label="Zoom ind"><Plus className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => zoomBy(1 / 1.16)} title="Zoom ud" aria-label="Zoom ud"><Minus className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={resetViewport} title="Nulstil" aria-label="Nulstil"><Maximize2 className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => zoomBy(1.16)} title="Zoom ind" aria-label="Zoom ind">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / 1.16)}
+            title="Zoom ud"
+            aria-label="Zoom ud"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={resetViewport} title="Nulstil" aria-label="Nulstil">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
@@ -252,7 +327,15 @@ export function GraphCanvas({
         >
           <svg className="viz-graph-edges" width={bounds.w} height={bounds.h} aria-hidden>
             <defs>
-              <marker id={`viz-arrow-${variant}`} viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <marker
+                id={`viz-arrow-${variant}`}
+                viewBox="0 0 10 10"
+                refX="8.5"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
                 <path d="M 0 0 L 10 5 L 0 10 z" className="viz-arrow-fill" />
               </marker>
             </defs>
@@ -264,14 +347,21 @@ export function GraphCanvas({
               const mx = (from.x + to.x) / 2;
               const my = (from.y + to.y) / 2;
               const dx = Math.abs(to.x - from.x);
-              const d = dx > 20
-                ? `M ${from.x} ${from.y} C ${mx} ${from.y}, ${mx} ${to.y}, ${to.x} ${to.y}`
-                : `M ${from.x} ${from.y} C ${from.x} ${my}, ${to.x} ${my}, ${to.x} ${to.y}`;
+              const d =
+                dx > 20
+                  ? `M ${from.x} ${from.y} C ${mx} ${from.y}, ${mx} ${to.y}, ${to.x} ${to.y}`
+                  : `M ${from.x} ${from.y} C ${from.x} ${my}, ${to.x} ${my}, ${to.x} ${to.y}`;
               return (
                 <g key={edgeKey(edge, index)} className="viz-edge">
                   <path d={d} markerEnd={`url(#viz-arrow-${variant})`} />
                   {edge.label && (
-                    <foreignObject x={mx - 70} y={my - 13} width="140" height="26" className="viz-edge-label-wrap">
+                    <foreignObject
+                      x={mx - 70}
+                      y={my - 13}
+                      width="140"
+                      height="26"
+                      className="viz-edge-label-wrap"
+                    >
                       <div className="viz-edge-label">{edge.label}</div>
                     </foreignObject>
                   )}
@@ -286,14 +376,22 @@ export function GraphCanvas({
                 key={node.id}
                 type="button"
                 className={cn("viz-node", active && "viz-node--selected")}
-                style={{ left: node.x, top: node.y, ["--viz-node-color" as string]: node.colorVar } as CSSProperties}
+                style={
+                  {
+                    left: node.x,
+                    top: node.y,
+                    ["--viz-node-color" as string]: node.colorVar,
+                  } as CSSProperties
+                }
                 onClick={(event) => {
                   event.stopPropagation();
                   setSelectedId(node.id);
                 }}
                 title={node.label ?? node.id}
               >
-                <span className="viz-node-kicker">{node.type ?? (variant === "knowledge" ? "entity" : "node")}</span>
+                <span className="viz-node-kicker">
+                  {node.type ?? (variant === "knowledge" ? "entity" : "node")}
+                </span>
                 <span className="viz-node-title">{node.label ?? node.id}</span>
                 <span className="viz-node-meta">degree {node.degree}</span>
               </button>
@@ -304,13 +402,30 @@ export function GraphCanvas({
 
       {selected && (
         <div className="viz-graph-inspector">
-          <span className="viz-inspector-dot" style={{ ["--viz-node-color" as string]: selected.colorVar } as CSSProperties} aria-hidden />
+          <span
+            className="viz-inspector-dot"
+            style={{ ["--viz-node-color" as string]: selected.colorVar } as CSSProperties}
+            aria-hidden
+          />
           <div className="min-w-0">
-            <div className="truncate text-xs font-semibold text-foreground">{selected.label ?? selected.id}</div>
+            <div className="truncate text-xs font-semibold text-foreground">
+              {selected.label ?? selected.id}
+            </div>
             <div className="truncate text-[11px] text-muted-foreground">
               {selected.type ?? "node"} · {selected.degree} relationer
             </div>
           </div>
+          {onNodeActivate && (
+            <button
+              type="button"
+              onClick={() => onNodeActivate(selected.id, selected.label ?? undefined)}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[11px] font-medium text-foreground transition hover:bg-accent"
+              title="Udforsk naboer til denne node"
+            >
+              <ChevronRight className="h-3 w-3" />
+              Drill
+            </button>
+          )}
         </div>
       )}
     </figure>

@@ -13,9 +13,11 @@ import { isPlatformConfigured, queryGraph } from "@/lib/widgetdc.server";
 import type { GraphSpec, KnowledgeGraphSpec } from "@/lib/figureBlocks";
 
 const RequestSchema = z.object({
-  query: z.enum(["label-overview", "neighbors", "sample-subgraph"]),
+  query: z.enum(["label-overview", "neighbors", "sample-subgraph", "node-neighbors"]),
   // neighbors only: a node label to explore around (whitelisted set below).
   label: z.string().min(1).max(64).optional(),
+  // node-neighbors only: a concrete Neo4j node id to drill into.
+  nodeId: z.number().int().nonnegative().optional(),
   limit: z.number().int().min(1).max(100).optional(),
 });
 
@@ -129,6 +131,45 @@ export const Route = createFileRoute("/api/graph/query")({
             caption: `Neighbors of ${label}`,
             layout: "elk-layered",
             direction: "RIGHT",
+            nodes,
+            edges,
+          };
+          return json({ kind: "graph", spec, correlationId });
+        }
+
+        if (query === "node-neighbors") {
+          // Drill-down: expand a single concrete node by its Neo4j id. The id is
+          // a Zod-validated non-negative integer, so interpolation is injection-safe.
+          const nodeId = v.data.nodeId;
+          if (nodeId == null) {
+            return json({ error: "nodeId required for node-neighbors" }, { status: 422 });
+          }
+          const rows = await queryGraph(
+            `MATCH (a)-[r]-(b) WHERE id(a) = ${nodeId} RETURN id(a) AS aid, coalesce(a.name,a.id,a.title,labels(a)[0]) AS a, labels(a)[0] AS at, type(r) AS rel, id(b) AS bid, coalesce(b.name,b.id,b.title,labels(b)[0]) AS b, labels(b)[0] AS bt LIMIT ${limit}`,
+            correlationId,
+          );
+          if (!rows) return json({ error: "graph unavailable" }, { status: 502 });
+          const seen = new Set<string>();
+          const nodes: GraphSpec["nodes"] = [];
+          const edges: GraphSpec["edges"] = [];
+          let centerLabel = `node ${nodeId}`;
+          for (const r of rows) {
+            const aId = `n${num(r.aid)}`;
+            const bId = `n${num(r.bid)}`;
+            if (num(r.aid) === nodeId) centerLabel = str(r.a) || centerLabel;
+            if (!seen.has(aId)) {
+              seen.add(aId);
+              nodes.push({ id: aId, label: str(r.a), type: str(r.at).toLowerCase() });
+            }
+            if (!seen.has(bId)) {
+              seen.add(bId);
+              nodes.push({ id: bId, label: str(r.b), type: str(r.bt).toLowerCase() });
+            }
+            edges.push({ source: aId, target: bId, label: str(r.rel) });
+          }
+          const spec: GraphSpec = {
+            caption: `Naboer til ${centerLabel}`,
+            layout: "elk-force",
             nodes,
             edges,
           };
