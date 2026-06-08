@@ -1,5 +1,15 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { MessageSquarePlus, Trash2, Sparkles, LayoutDashboard, Settings as SettingsIcon, Gem, Network, FileText } from "lucide-react";
+import {
+  MessageSquarePlus,
+  Trash2,
+  Sparkles,
+  LayoutDashboard,
+  Settings as SettingsIcon,
+  Gem,
+  Network,
+  FileText,
+  Activity,
+} from "lucide-react";
 import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +78,14 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         >
           <FileText className="h-4 w-4" />
           {!collapsed && <span>Deliverables</span>}
+        </Link>
+        <Link
+          to="/observability"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
+        >
+          <Activity className="h-4 w-4" />
+          {!collapsed && <span>Observability</span>}
         </Link>
       </nav>
 
