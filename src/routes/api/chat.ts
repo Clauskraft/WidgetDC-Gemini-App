@@ -90,12 +90,24 @@ export const Route = createFileRoute("/api/chat")({
         // Emit the platform answer as an AI-SDK UI message stream so the client
         // useChat() transport renders it unchanged. Single text part — the RLM
         // reason_deeply call is non-streaming.
+        //
+        // IMPORTANT: the full message-frame sequence is required. useChat's read
+        // path only CREATES the assistant UIMessage when it sees the message-level
+        // `start` chunk (it seeds state.message.id from messageId). Emitting only
+        // text-start/text-delta/text-end (no start/finish) makes useChat silently
+        // drop the whole message — 200 + valid SSE but nothing renders. This is
+        // exactly the sequence the SDK's own toUIMessageStream() emits.
         const stream = createUIMessageStream({
           execute: ({ writer }) => {
             const id = crypto.randomUUID();
+            const messageId = crypto.randomUUID();
+            writer.write({ type: "start", messageId });
+            writer.write({ type: "start-step" });
             writer.write({ type: "text-start", id });
             writer.write({ type: "text-delta", id, delta: answer });
             writer.write({ type: "text-end", id });
+            writer.write({ type: "finish-step" });
+            writer.write({ type: "finish" });
           },
         });
 

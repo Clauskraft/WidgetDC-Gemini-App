@@ -72,8 +72,15 @@ describe("Regressionstest: Ny chat → ChatWindow remountes og rydder messages",
     // Tekst-baseret guardrail: koden MÅ ikke regredere væk fra
     // synkron udledning + key på threadId — det er det der forhindrer
     // useChat i at fryse gamle beskeder fast ved tråd-skift.
+    //
+    // VIGTIGT: key MÅ kun afhænge af threadId. Et key der ALSO inkluderer en
+    // hydrerings-flag (fx `${threadId}:${hydrated}`) remounter ChatWindow lige
+    // efter hydrering og smider en igangværende useChat-stream væk — det var
+    // præcis det der gjorde at assistent-svaret aldrig blev renderet.
     const src = readFileSync(resolve(__dirname, "../routes/c.$threadId.tsx"), "utf8");
-    expect(src).toMatch(/key=\{`?\$\{threadId\}/);
+    // key={threadId} — plain expression, keyed ONLY on threadId (no hydrated flag).
+    expect(src).toMatch(/key=\{threadId\}/);
+    expect(src).not.toMatch(/key=\{`[^`]*\$\{hydrated\}/); // ingen hydrated i key
     expect(src).toMatch(/readThreadMessages\(threadId\)/);
     expect(src).not.toMatch(/setInitial\(/); // ingen async setState af initial
   });

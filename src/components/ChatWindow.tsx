@@ -154,10 +154,10 @@ export function ChatWindow({
     upsertThread(threadId, { title, messages });
     if (firstUser && !firedFirstRef.current) {
       firedFirstRef.current = true;
-      if (onFirstMessage) {
-        setIsCreatingThread(true);
-        onFirstMessage();
-      }
+      // onFirstMessage now updates the URL in place (history.replaceState) and
+      // does NOT unmount us, so we must NOT show the creating-thread overlay —
+      // it would cover the streaming reply. The stream keeps rendering here.
+      onFirstMessage?.();
     }
   }, [messages, threadId, upsertThread, onFirstMessage]);
 
