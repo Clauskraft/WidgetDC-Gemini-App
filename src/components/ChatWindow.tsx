@@ -2,7 +2,22 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageContent } from "./MessageContent";
-import { ArrowUp, Sparkles, StopCircle, PanelRightOpen, Copy, Check, Paperclip, X, FileText, ShieldAlert, ShieldCheck, Wrench, Brain } from "lucide-react";
+import {
+  ArrowUp,
+  Sparkles,
+  StopCircle,
+  PanelRightOpen,
+  Copy,
+  Check,
+  Paperclip,
+  X,
+  FileText,
+  ShieldAlert,
+  ShieldCheck,
+  Wrench,
+  Brain,
+  Users,
+} from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
 import { cn } from "@/lib/utils";
@@ -11,10 +26,22 @@ import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
 
 const SUGGESTIONS = [
-  { title: "Forklar GraphRAG", body: "Forklar hvordan GraphRAG med Neo4j fungerer og hvornår det er bedre end vektor-RAG." },
-  { title: "Resizable canvas plan", body: "Foreslå en konkret implementation af resizable workspace med strategic zoom." },
-  { title: "Agent-arbitrage", body: "Skitsér Omega Sentinel multi-agent routing baseret på 10-point analyse." },
-  { title: "Markdown demo", body: "Vis et eksempel-svar med headings, kode, liste og en lille tabel." },
+  {
+    title: "Forklar GraphRAG",
+    body: "Forklar hvordan GraphRAG med Neo4j fungerer og hvornår det er bedre end vektor-RAG.",
+  },
+  {
+    title: "Resizable canvas plan",
+    body: "Foreslå en konkret implementation af resizable workspace med strategic zoom.",
+  },
+  {
+    title: "Agent-arbitrage",
+    body: "Skitsér Omega Sentinel multi-agent routing baseret på 10-point analyse.",
+  },
+  {
+    title: "Markdown demo",
+    body: "Vis et eksempel-svar med headings, kode, liste og en lille tabel.",
+  },
 ];
 
 function getText(m: UIMessage) {
@@ -54,9 +81,7 @@ function countArtifacts(r: ValidationResult): HealAttempt["artifactCounts"] {
 }
 
 function buildHealPrompt(result: ValidationResult, attempt: number): string {
-  const lines = result.issues.map(
-    (i) => `- [${i.severity.toUpperCase()} ${i.code}] ${i.message}`,
-  );
+  const lines = result.issues.map((i) => `- [${i.severity.toUpperCase()} ${i.code}] ${i.message}`);
   return [
     `🛠️ Self-heal forsøg ${attempt}/${MAX_HEAL_RETRIES}: dit forrige svar bestod ikke canvas-valideringen.`,
     "",
@@ -122,33 +147,63 @@ export function ChatWindow({
   const [model] = useModelPreference();
   // AUR-5: "Reason deeply" toggle — persisted across reloads, sent with each
   // request so the server can pass `reflect: true` to the platform RLM.
-  const [deepMode, setDeepMode] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("widgetdc.chat.deep") === "1";
-  });
+  // Deep + Council (Mixture-of-Agents) are platform multi-pass paths and are
+  // mutually exclusive. Both start false to match SSR, then hydrate from
+  // localStorage after mount (avoids hydration mismatch); Council wins if both
+  // flags are stored.
+  const [deepMode, setDeepMode] = useState(false);
+  const [councilMode, setCouncilMode] = useState(false);
+  const setFlag = (key: string, on: boolean) => {
+    if (typeof window !== "undefined") window.localStorage.setItem(key, on ? "1" : "0");
+  };
+  useEffect(() => {
+    if (window.localStorage.getItem("widgetdc.chat.council") === "1") setCouncilMode(true);
+    else if (window.localStorage.getItem("widgetdc.chat.deep") === "1") setDeepMode(true);
+  }, []);
   const toggleDeep = useCallback(() => {
     setDeepMode((prev) => {
       const next = !prev;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("widgetdc.chat.deep", next ? "1" : "0");
+      setFlag("widgetdc.chat.deep", next);
+      if (next) {
+        setCouncilMode(false);
+        setFlag("widgetdc.chat.council", false);
       }
       return next;
     });
   }, []);
-  // Per-request body (model / deep / persona) is read at SEND time via a ref so
-  // the latest model-picker selection always reaches the request. The transport
-  // is stable on purpose: useChat binds it once at init, so recreating it when
+  const toggleCouncil = useCallback(() => {
+    setCouncilMode((prev) => {
+      const next = !prev;
+      setFlag("widgetdc.chat.council", next);
+      if (next) {
+        setDeepMode(false);
+        setFlag("widgetdc.chat.deep", false);
+      }
+      return next;
+    });
+  }, []);
+  // Per-request body (model / deep / council / persona) is read at SEND time via
+  // a ref so the latest selection always reaches the request. The transport is
+  // stable on purpose: useChat binds it once at init, so recreating it when
   // `model` changes does NOT take effect — that was the bug where the picker
   // selection was ignored and the server always received the initial model.
-  const requestMetaRef = useRef({ model, deep: deepMode, system: gem?.systemPrompt });
-  requestMetaRef.current = { model, deep: deepMode, system: gem?.systemPrompt };
+  const requestMetaRef = useRef({
+    model,
+    deep: deepMode,
+    council: councilMode,
+    system: gem?.systemPrompt,
+  });
+  requestMetaRef.current = {
+    model,
+    deep: deepMode,
+    council: councilMode,
+    system: gem?.systemPrompt,
+  };
   const buildRequestBody = useCallback(() => {
-    const { model: m, deep, system } = requestMetaRef.current;
-    return { model: m, deep, ...(system ? { system } : {}) };
+    const { model: m, deep, council, system } = requestMetaRef.current;
+    return { model: m, deep, council, ...(system ? { system } : {}) };
   }, []);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
-
-
 
   const { messages, sendMessage, status, stop } = useChat({
     id: threadId,
@@ -268,9 +323,6 @@ export function ChatWindow({
     );
   }, [status, messages, gem, sendMessage, buildRequestBody]);
 
-
-
-
   const submit = async (text?: string) => {
     const content = (text ?? input).trim();
     if ((!content && attachments.length === 0) || isLoading) return;
@@ -341,15 +393,16 @@ export function ChatWindow({
         </div>
       )}
       <div className="flex flex-1 flex-col">
-
         {/* Top bar */}
         <header className="flex items-center justify-between border-b border-border/60 bg-background/80 px-6 py-3 backdrop-blur">
           <div className="flex items-center gap-2">
             {gem ? (
-              <div className={cn(
-                "rounded-md px-2 py-1 text-xs font-medium text-white bg-gradient-to-br",
-                gem.accent ?? "from-primary to-primary",
-              )}>
+              <div
+                className={cn(
+                  "rounded-md px-2 py-1 text-xs font-medium text-white bg-gradient-to-br",
+                  gem.accent ?? "from-primary to-primary",
+                )}
+              >
                 Gem · {gem.name}
               </div>
             ) : null}
@@ -370,6 +423,18 @@ export function ChatWindow({
               Deep
             </button>
             <button
+              onClick={toggleCouncil}
+              aria-pressed={councilMode}
+              title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
+                councilMode && "bg-primary/10 text-primary border-primary/40",
+              )}
+            >
+              <Users className="h-4 w-4" />
+              Council
+            </button>
+            <button
               onClick={() => setCanvasOpen((v) => !v)}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
@@ -382,21 +447,24 @@ export function ChatWindow({
           </div>
         </header>
 
-
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {empty ? (
             <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-6 text-center">
-              <div className={cn(
-                "mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-glow",
-                gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
-              )}>
+              <div
+                className={cn(
+                  "mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-glow",
+                  gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
+                )}
+              >
                 <Sparkles className="h-8 w-8 text-white" />
               </div>
-              <h1 className={cn(
-                "bg-clip-text text-4xl font-semibold text-transparent",
-                gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
-              )}>
+              <h1
+                className={cn(
+                  "bg-clip-text text-4xl font-semibold text-transparent",
+                  gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
+                )}
+              >
                 {gem ? gem.name : "Hej. Hvad arbejder vi på i dag?"}
               </h1>
               <p className="mt-3 text-muted-foreground">
@@ -419,9 +487,7 @@ export function ChatWindow({
             <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
               {messages.map((m, i) => {
                 const isLastAssistant =
-                  m.role === "assistant" &&
-                  i === messages.length - 1 &&
-                  isLoading;
+                  m.role === "assistant" && i === messages.length - 1 && isLoading;
                 return (
                   <Message
                     key={m.id}
@@ -481,7 +547,9 @@ export function ChatWindow({
                       )}
                       <div className="max-w-[160px]">
                         <div className="truncate font-medium">{a.file.name}</div>
-                        <div className="text-muted-foreground">{(a.file.size / 1024).toFixed(0)} KB</div>
+                        <div className="text-muted-foreground">
+                          {(a.file.size / 1024).toFixed(0)} KB
+                        </div>
                       </div>
                       <button
                         onClick={() => removeAttachment(i)}
@@ -561,12 +629,9 @@ export function ChatWindow({
             </p>
           </div>
         </div>
-
       </div>
 
-      {canvasOpen && (
-        <CanvasPanel messages={messages} onClose={() => setCanvasOpen(false)} />
-      )}
+      {canvasOpen && <CanvasPanel messages={messages} onClose={() => setCanvasOpen(false)} />}
 
       {/* Image preview modal */}
       {previewAttachment && (
@@ -581,7 +646,9 @@ export function ChatWindow({
               className="max-h-[80vh] max-w-[85vw] rounded-xl object-contain"
             />
             <div className="mt-2 flex items-center justify-between px-1">
-              <span className="text-sm font-medium text-foreground">{previewAttachment.file.name}</span>
+              <span className="text-sm font-medium text-foreground">
+                {previewAttachment.file.name}
+              </span>
               <button
                 onClick={() => setPreviewAttachment(null)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-muted-foreground transition hover:bg-destructive hover:text-destructive-foreground"
@@ -619,8 +686,9 @@ function Message({
   }>;
 
   // AUR-5: pick up the data-reasoning part emitted by the server (RLM reflect).
-  const reasoningPart = (message.parts as Array<{ type?: string; data?: unknown }>)
-    .find((p) => p && p.type === "data-reasoning");
+  const reasoningPart = (message.parts as Array<{ type?: string; data?: unknown }>).find(
+    (p) => p && p.type === "data-reasoning",
+  );
   const reasoningMeta = (reasoningPart?.data ?? null) as ReasoningMeta | null;
 
   // AUR-14: pick up the data-sources part (NEXUS/SRAG grounding) so the [n]
@@ -816,15 +884,17 @@ function ValidationBadge({ result }: { result: ValidationResult }) {
         <ShieldCheck className="h-3 w-3" />
         Canvas-validering OK
         <span className="text-emerald-400/70">
-          · {result.artifacts.flowBlocks.length} flow · {result.artifacts.mermaidBlocks.length} mermaid · {result.artifacts.canvasNotes.length} notes
+          · {result.artifacts.flowBlocks.length} flow · {result.artifacts.mermaidBlocks.length}{" "}
+          mermaid · {result.artifacts.canvasNotes.length} notes
         </span>
       </div>
     );
   }
 
-  const tone = errors.length > 0
-    ? "border-destructive/40 bg-destructive/10 text-destructive"
-    : "border-amber-500/40 bg-amber-500/10 text-amber-400";
+  const tone =
+    errors.length > 0
+      ? "border-destructive/40 bg-destructive/10 text-destructive"
+      : "border-amber-500/40 bg-amber-500/10 text-amber-400";
 
   return (
     <div className={cn("mt-2 rounded-md border px-2.5 py-1.5 text-xs", tone)}>
@@ -886,13 +956,24 @@ function HealDiffPanel({ summary }: { summary: HealSummary }) {
         <div className="mt-2 space-y-2">
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono">
             <span className="opacity-60">flow blocks</span>
-            <span>{diffCount(first.artifactCounts.flowBlocks, summary.finalArtifactCounts.flowBlocks)}</span>
+            <span>
+              {diffCount(first.artifactCounts.flowBlocks, summary.finalArtifactCounts.flowBlocks)}
+            </span>
             <span className="opacity-60">mermaid</span>
-            <span>{diffCount(first.artifactCounts.mermaidBlocks, summary.finalArtifactCounts.mermaidBlocks)}</span>
+            <span>
+              {diffCount(
+                first.artifactCounts.mermaidBlocks,
+                summary.finalArtifactCounts.mermaidBlocks,
+              )}
+            </span>
             <span className="opacity-60">tables</span>
-            <span>{diffCount(first.artifactCounts.tables, summary.finalArtifactCounts.tables)}</span>
+            <span>
+              {diffCount(first.artifactCounts.tables, summary.finalArtifactCounts.tables)}
+            </span>
             <span className="opacity-60">canvas notes</span>
-            <span>{diffCount(first.artifactCounts.canvasNotes, summary.finalArtifactCounts.canvasNotes)}</span>
+            <span>
+              {diffCount(first.artifactCounts.canvasNotes, summary.finalArtifactCounts.canvasNotes)}
+            </span>
           </div>
           <div>
             <div className="mb-1 font-medium opacity-80">Issue-diff (oprindelig → endelig):</div>
@@ -904,7 +985,10 @@ function HealDiffPanel({ summary }: { summary: HealSummary }) {
                 return (
                   <li
                     key={idx}
-                    className={cn("list-disc", stillThere ? "opacity-60" : "line-through opacity-70")}
+                    className={cn(
+                      "list-disc",
+                      stillThere ? "opacity-60" : "line-through opacity-70",
+                    )}
                   >
                     <span className="font-mono opacity-70">[{i.code}]</span> {i.message}
                     {!stillThere && <span className="ml-1 text-emerald-400">✓ rettet</span>}
@@ -915,7 +999,8 @@ function HealDiffPanel({ summary }: { summary: HealSummary }) {
           </div>
           {summary.attempts.length > 1 && (
             <div className="opacity-70">
-              Historik: {summary.attempts.map((a) => `#${a.attempt} (${a.issues.length} issues)`).join(" → ")}
+              Historik:{" "}
+              {summary.attempts.map((a) => `#${a.attempt} (${a.issues.length} issues)`).join(" → ")}
               {finalOk && " → ✓ valid"}
             </div>
           )}
@@ -924,4 +1009,3 @@ function HealDiffPanel({ summary }: { summary: HealSummary }) {
     </div>
   );
 }
-
