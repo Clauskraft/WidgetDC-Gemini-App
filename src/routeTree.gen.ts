@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
+import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,7 @@ import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
+import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
 import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
@@ -46,6 +48,11 @@ const GraphRoute = GraphRouteImport.update({
 const GemsRoute = GemsRouteImport.update({
   id: '/gems',
   path: '/gems',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliverableRoute = DeliverableRouteImport.update({
+  id: '/deliverable',
+  path: '/deliverable',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -98,6 +105,11 @@ const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
   path: '/api/graph/query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDeliverableGenerateRoute = ApiDeliverableGenerateRouteImport.update({
+  id: '/api/deliverable/generate',
+  path: '/api/deliverable/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiApprovalsOrchestratorRoute =
   ApiApprovalsOrchestratorRouteImport.update({
     id: '/api/approvals/orchestrator',
@@ -124,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
+  '/deliverable': typeof DeliverableRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -136,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
@@ -144,6 +158,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
+  '/deliverable': typeof DeliverableRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -156,6 +171,7 @@ export interface FileRoutesByTo {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
@@ -165,6 +181,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
+  '/deliverable': typeof DeliverableRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -177,6 +194,7 @@ export interface FileRoutesById {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
@@ -187,6 +205,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adoption'
     | '/dashboard'
+    | '/deliverable'
     | '/gems'
     | '/graph'
     | '/health'
@@ -199,6 +218,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
@@ -207,6 +227,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adoption'
     | '/dashboard'
+    | '/deliverable'
     | '/gems'
     | '/graph'
     | '/health'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
@@ -227,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/adoption'
     | '/dashboard'
+    | '/deliverable'
     | '/gems'
     | '/graph'
     | '/health'
@@ -239,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/embed/canvas/$canvasId'
     | '/api/mrp/canvas/resolve'
@@ -248,6 +272,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdoptionRoute: typeof AdoptionRoute
   DashboardRoute: typeof DashboardRoute
+  DeliverableRoute: typeof DeliverableRoute
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
@@ -259,6 +284,7 @@ export interface RootRouteChildren {
   ApiAdoptionMetricsRoute: typeof ApiAdoptionMetricsRoute
   ApiApprovalsBackendRoute: typeof ApiApprovalsBackendRoute
   ApiApprovalsOrchestratorRoute: typeof ApiApprovalsOrchestratorRoute
+  ApiDeliverableGenerateRoute: typeof ApiDeliverableGenerateRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
@@ -292,6 +318,13 @@ declare module '@tanstack/react-router' {
       path: '/gems'
       fullPath: '/gems'
       preLoaderRoute: typeof GemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deliverable': {
+      id: '/deliverable'
+      path: '/deliverable'
+      fullPath: '/deliverable'
+      preLoaderRoute: typeof DeliverableRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -364,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGraphQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/deliverable/generate': {
+      id: '/api/deliverable/generate'
+      path: '/api/deliverable/generate'
+      fullPath: '/api/deliverable/generate'
+      preLoaderRoute: typeof ApiDeliverableGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/approvals/orchestrator': {
       id: '/api/approvals/orchestrator'
       path: '/api/approvals/orchestrator'
@@ -409,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
   DashboardRoute: DashboardRoute,
+  DeliverableRoute: DeliverableRoute,
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
@@ -420,6 +461,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdoptionMetricsRoute: ApiAdoptionMetricsRoute,
   ApiApprovalsBackendRoute: ApiApprovalsBackendRoute,
   ApiApprovalsOrchestratorRoute: ApiApprovalsOrchestratorRoute,
+  ApiDeliverableGenerateRoute: ApiDeliverableGenerateRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
