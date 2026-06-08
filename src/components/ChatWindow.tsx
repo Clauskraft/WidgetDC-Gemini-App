@@ -135,18 +135,18 @@ export function ChatWindow({
       return next;
     });
   }, []);
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: {
-          model,
-          deep: deepMode,
-          ...(gem ? { system: gem.systemPrompt } : {}),
-        },
-      }),
-    [gem?.systemPrompt, model, deepMode],
-  );
+  // Per-request body (model / deep / persona) is read at SEND time via a ref so
+  // the latest model-picker selection always reaches the request. The transport
+  // is stable on purpose: useChat binds it once at init, so recreating it when
+  // `model` changes does NOT take effect — that was the bug where the picker
+  // selection was ignored and the server always received the initial model.
+  const requestMetaRef = useRef({ model, deep: deepMode, system: gem?.systemPrompt });
+  requestMetaRef.current = { model, deep: deepMode, system: gem?.systemPrompt };
+  const buildRequestBody = useCallback(() => {
+    const { model: m, deep, system } = requestMetaRef.current;
+    return { model: m, deep, ...(system ? { system } : {}) };
+  }, []);
+  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
 
 
 
@@ -262,8 +262,11 @@ export function ChatWindow({
     });
     healAttemptsRef.current.set(last.id, healChainRef.current);
     setHealingMessageId(last.id);
-    void sendMessage({ text: buildHealPrompt(result, healChainRef.current) });
-  }, [status, messages, gem, sendMessage]);
+    void sendMessage(
+      { text: buildHealPrompt(result, healChainRef.current) },
+      { body: buildRequestBody() },
+    );
+  }, [status, messages, gem, sendMessage, buildRequestBody]);
 
 
 
@@ -285,12 +288,15 @@ export function ChatWindow({
       url: a.dataUrl,
     }));
     if (fileParts.length > 0) {
-      await sendMessage({
-        role: "user",
-        parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
-      });
+      await sendMessage(
+        {
+          role: "user",
+          parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
+        },
+        { body: buildRequestBody() },
+      );
     } else {
-      await sendMessage({ text: content });
+      await sendMessage({ text: content }, { body: buildRequestBody() });
     }
   };
 
@@ -617,6 +623,13 @@ function Message({
     .find((p) => p && p.type === "data-reasoning");
   const reasoningMeta = (reasoningPart?.data ?? null) as ReasoningMeta | null;
 
+  // AUR-14: pick up the data-sources part (NEXUS/SRAG grounding) so the [n]
+  // citations the server injected are actually visible to the user.
+  const sourcesPart = (message.parts as Array<{ type?: string; data?: unknown }>).find(
+    (p) => p && p.type === "data-sources",
+  );
+  const sources = (sourcesPart?.data as { sources?: ChatSource[] } | undefined)?.sources ?? [];
+
   const validation = useMemo<ValidationResult | null>(() => {
     if (skipValidation) return null;
     if (message.role !== "assistant") return null;
@@ -668,6 +681,7 @@ function Message({
       </div>
       <div className="min-w-0 flex-1">
         <MessageContent text={text} />
+        {sources.length > 0 && <SourcesPanel sources={sources} />}
         {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
@@ -684,6 +698,36 @@ function Message({
         </button>
       </div>
     </div>
+  );
+}
+
+// AUR-14: client-side mirror of the server's RagSource shape (data-sources part).
+type ChatSource = { text: string; source?: string; score?: number };
+
+function SourcesPanel({ sources }: { sources: ChatSource[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      open={open}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+      className="mt-3 rounded-2xl border border-figure-border bg-figure-surface/40 px-4 py-3 text-xs"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 text-foreground">
+        <FileText className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium">Kilder</span>
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+          {sources.length}
+        </span>
+      </summary>
+      <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted-foreground">
+        {sources.map((s, i) => (
+          <li key={i} className="leading-snug">
+            {s.source && <span className="font-medium text-foreground">{s.source}: </span>}
+            {s.text}
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 

@@ -152,7 +152,7 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
 export const Route = createFileRoute("/visual/graph")({
   validateSearch: (search: Record<string, unknown>) => ({
     case: typeof search.case === "string" ? search.case : "linear",
-    fs: search.fs === "1" || search.fs === true,
+    fs: String(search.fs) === "1" || search.fs === true,
   }),
   component: function VisualGraphRoute() {
     const { case: caseId, fs } = Route.useSearch();

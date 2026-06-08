@@ -40,7 +40,14 @@ export default defineConfig({
   webServer: process.env.PW_NO_SERVER
     ? undefined
     : {
-        command: `bun run build && bun run preview --port ${PORT} --host 127.0.0.1`,
+        // This project pins nitro `preset: "node-server"`, so the build emits a
+        // standalone server entry at `index.mjs` (the `start` script). `vite
+        // preview` is incompatible with that layout — its preview-server plugin
+        // imports `dist/server/server.js`, which the node-server preset never
+        // produces — so boot the nitro output directly. The output dir is either
+        // `.output/server` or `dist/server` depending on the build's sandbox
+        // detection, so pick whichever entry exists.
+        command: `bun run build && PORT=${PORT} HOST=127.0.0.1 node "$([ -f .output/server/index.mjs ] && echo .output/server/index.mjs || echo dist/server/index.mjs)"`,
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
