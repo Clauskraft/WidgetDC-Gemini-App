@@ -37,8 +37,20 @@ describe("extractRuntimeSummary (Phase 3 Observability)", () => {
     expect(snap?.tools).toEqual([]);
   });
 
-  it("returns null when there is no runtime signal", () => {
-    expect(extractRuntimeSummary({ total_requests: 0, top_tools: [] })).toBeNull();
+  it("keeps a registered-but-idle fleet (agents present, zero requests)", () => {
+    const snap = extractRuntimeSummary({
+      total_agents: 16,
+      avg_success_rate: 100,
+      total_requests: 0,
+      top_tools: [],
+    });
+    expect(snap).not.toBeNull();
+    expect(snap?.totalAgents).toBe(16);
+    expect(snap?.successRate).toBe(100);
+  });
+
+  it("returns null only when the fleet is genuinely empty", () => {
+    expect(extractRuntimeSummary({ total_requests: 0, total_agents: 0, top_tools: [] })).toBeNull();
     expect(extractRuntimeSummary(null)).toBeNull();
   });
 });

@@ -557,7 +557,9 @@ export function extractRuntimeSummary(result: unknown): RuntimeSnapshot | null {
       };
     })
     .filter((t) => t.calls > 0);
-  if (totalRequests === 0 && tools.length === 0) return null;
+  // Only treat as "no signal" when the fleet is genuinely empty. A registered-
+  // but-idle fleet (agents/success-rate present, zero requests) is still valid.
+  if (totalRequests === 0 && totalAgents === 0 && tools.length === 0) return null;
   return { totalAgents, totalRequests, successRate, tools };
 }
 
