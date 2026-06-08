@@ -216,10 +216,14 @@ export async function approveOrchestratorPlan(
   // tool_name; we forward those defaults so the operator's Approve click
   // can succeed without UI-side gymnastics. Orchestrator ignores unknown
   // keys, so passing extras is safe even if the schema is narrower.
+  // Orchestrator's webhook API is camelCase (`planId`) while the backend
+  // gate's `required_payload` hint uses snake_case (`plan_id`). Send both so
+  // we don't have to pick — orchestrator's validator only consumes what its
+  // schema names; the other is silently ignored.
   const payload = {
+    planId,
     plan_id: planId,
     approver,
-    // Sensible defaults that match the BOM-promotion path we're unblocking.
     intent: "lin1911_orchestrator_plan_approval",
     scope: "production_write",
     risk_level: "production_write",
