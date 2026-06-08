@@ -107,17 +107,18 @@ export const Route = createFileRoute("/api/chat")({
           execute: ({ writer }) => {
             const id = crypto.randomUUID();
             const messageId = crypto.randomUUID();
-            writer.write({ type: "start", messageId });
-            writer.write({ type: "start-step" });
-            writer.write({ type: "text-start", id });
-            writer.write({ type: "text-delta", id, delta: chatResult.text });
-            writer.write({ type: "text-end", id });
-            // Custom data part — UIMessageChunk schema accepts any type starting
-            // with "data-". The client picks this up as a `data-reasoning` part
-            // on the assistant message.
             const hasMeta =
               chatResult.meta &&
               Object.values(chatResult.meta).some((v) => v != null && v !== "");
+
+            writer.write({ type: "start", messageId });
+            writer.write({ type: "start-step" });
+            // Emit the custom data-reasoning part BEFORE the text part. The AI
+            // SDK v6 UI-message read path attaches data-* parts to the message
+            // in order; placing it after text-end + before finish-step caused
+            // useChat to drop the whole assistant message on persistence.
+            // Emitting it before text-start makes the data part settle into
+            // message.parts cleanly so both render and persistence include it.
             if (hasMeta) {
               writer.write({
                 type: "data-reasoning",
@@ -125,6 +126,9 @@ export const Route = createFileRoute("/api/chat")({
                 data: chatResult.meta,
               });
             }
+            writer.write({ type: "text-start", id });
+            writer.write({ type: "text-delta", id, delta: chatResult.text });
+            writer.write({ type: "text-end", id });
             writer.write({ type: "finish-step" });
             writer.write({ type: "finish" });
           },
