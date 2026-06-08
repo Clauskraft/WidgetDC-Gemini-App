@@ -614,6 +614,93 @@ export async function judgeDeliverable(
   return extractQuality(result);
 }
 
+/**
+ * Lego Factory engine (Phase 1b): generate a deliverable via the platform
+ * `deliverable_draft` tool — the 5-step pipeline Plan → Retrieve → Write →
+ * Assemble → Render, with knowledge-graph citations and optional engagement
+ * attachment. Returns the markdown draft, or null on failure.
+ */
+export async function deliverableDraft(
+  brief: string,
+  kind: DeliverableKind,
+  opts: { correlationId?: string; maxSections?: number; engagementId?: string } = {},
+): Promise<DeliverableResult | null> {
+  const result = await callMcpTool<unknown>(
+    "deliverable_draft",
+    {
+      prompt: brief,
+      type: kind,
+      format: "markdown",
+      include_citations: true,
+      ...(opts.maxSections ? { max_sections: opts.maxSections } : {}),
+      ...(opts.engagementId ? { engagement_id: opts.engagementId } : {}),
+    },
+    { correlationId: opts.correlationId, timeoutMs: 120000 },
+  );
+  if (result == null) return null;
+  return extractDeliverable(result);
+}
+
+/** A rendered binary document (Output Forge) for client-side download. */
+export type DocumentFormat = "docx" | "pdf";
+export type ProducedDocument = { base64: string; filename: string; mediaType: string };
+
+const DOCUMENT_MIME: Record<DocumentFormat, string> = {
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pdf: "application/pdf",
+};
+
+/** Extract base64 artifact bytes + filename from a produce_document envelope (pure). */
+export function extractProducedDocument(
+  result: unknown,
+  format: DocumentFormat,
+  title?: string,
+): ProducedDocument | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const base64 =
+    (typeof inner.artifact === "string" && inner.artifact) ||
+    (typeof inner.base64 === "string" && inner.base64) ||
+    (typeof inner.bytes === "string" && inner.bytes) ||
+    (typeof inner.data === "string" && inner.data) ||
+    (typeof inner.content === "string" && inner.content) ||
+    "";
+  if (!base64) return null;
+  const filename =
+    (typeof inner.filename === "string" && inner.filename) ||
+    `${(title || "deliverable").replace(/[^a-z0-9-_]+/gi, "-").slice(0, 60)}.${format}`;
+  const mediaType =
+    (typeof inner.media_type === "string" && inner.media_type) ||
+    (typeof inner.mime === "string" && inner.mime) ||
+    DOCUMENT_MIME[format];
+  return { base64, filename, mediaType };
+}
+
+/**
+ * Output Forge (Phase 1b): render a brief to a downloadable DOCX/PDF via the
+ * platform `produce_document` tool. Returns base64 bytes + filename + mime, or
+ * null on failure.
+ */
+export async function produceDocument(
+  brief: string,
+  format: DocumentFormat,
+  opts: { correlationId?: string; title?: string } = {},
+): Promise<ProducedDocument | null> {
+  const result = await callMcpTool<unknown>(
+    "produce_document",
+    {
+      brief,
+      format,
+      product_type: "document",
+      ...(opts.title ? { title: opts.title } : {}),
+    },
+    { correlationId: opts.correlationId, timeoutMs: 120000 },
+  );
+  if (result == null) return null;
+  return extractProducedDocument(result, format, opts.title);
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Observability Monitor (Phase 3) — surface the platform's live runtime health
 // (fleet success-rate + per-tool error rates) and graph size to the operator.

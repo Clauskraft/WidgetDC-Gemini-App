@@ -8,13 +8,21 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { isPlatformConfigured, generateDeliverable, judgeDeliverable } from "@/lib/widgetdc.server";
+import {
+  isPlatformConfigured,
+  generateDeliverable,
+  deliverableDraft,
+  judgeDeliverable,
+} from "@/lib/widgetdc.server";
 
 const BodySchema = z.object({
   brief: z.string().min(10, "Brief must be at least 10 characters"),
   kind: z.enum(["analysis", "roadmap", "assessment"]),
   maxSections: z.number().int().min(2).max(8).optional(),
   validate: z.boolean().optional(),
+  // "rag" = generate_deliverable (fast); "lego" = deliverable_draft Lego Factory
+  // pipeline (Plan→Retrieve→Write→Assemble→Render, citation-backed).
+  engine: z.enum(["rag", "lego"]).optional(),
 });
 
 function json(body: unknown, status: number, correlationId: string): Response {
@@ -57,8 +65,11 @@ export const Route = createFileRoute("/api/deliverable/generate")({
           );
         }
 
-        const { brief, kind, maxSections, validate } = parsed.data;
-        const deliverable = await generateDeliverable(brief, kind, { correlationId, maxSections });
+        const { brief, kind, maxSections, validate, engine } = parsed.data;
+        const deliverable =
+          engine === "lego"
+            ? await deliverableDraft(brief, kind, { correlationId, maxSections })
+            : await generateDeliverable(brief, kind, { correlationId, maxSections });
         if (!deliverable) {
           return json(
             { error: "Deliverable generation failed or timed out — try a tighter brief." },
@@ -73,7 +84,11 @@ export const Route = createFileRoute("/api/deliverable/generate")({
             ? null
             : await judgeDeliverable(brief, deliverable.markdown, correlationId);
 
-        return json({ ...deliverable, kind, quality, correlationId }, 200, correlationId);
+        return json(
+          { ...deliverable, kind, engine: engine ?? "rag", quality, correlationId },
+          200,
+          correlationId,
+        );
       },
     },
   },
