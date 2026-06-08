@@ -16,13 +16,16 @@ import { useThreads, type Thread } from "@/hooks/useThreads";
 import { GEMS, getGem, gemThreadId } from "@/lib/gems";
 import { ModelPicker } from "@/components/ModelPicker";
 import { getModelMeta, useModelPreference } from "@/lib/modelPreference";
-
+import { ApprovalQueuePanel } from "@/components/ApprovalQueuePanel";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard · WidgeTDC Aurora" },
-      { name: "description", content: "Mission control — live overblik over samtaler, gems og aktivitet." },
+      {
+        name: "description",
+        content: "Mission control — live overblik over samtaler, gems og aktivitet.",
+      },
     ],
   }),
   component: Dashboard,
@@ -63,7 +66,11 @@ function Dashboard() {
         if (m.role === "user") userMsgs++;
         else if (m.role === "assistant") assistantMsgs++;
         const text = (m.parts ?? [])
-          .map((p) => (p as { type: string; text?: string }).type === "text" ? (p as { text: string }).text : "")
+          .map((p) =>
+            (p as { type: string; text?: string }).type === "text"
+              ? (p as { text: string }).text
+              : "",
+          )
           .join("\n");
         if (!text) continue;
         // tæl figure-fences pr. type
@@ -88,14 +95,26 @@ function Dashboard() {
       .filter((x) => x.gem)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-    return { totalMessages, userMsgs, assistantMsgs, active24h, active7d, topGems, fenceCounts, canvasNotes };
+    return {
+      totalMessages,
+      userMsgs,
+      assistantMsgs,
+      active24h,
+      active7d,
+      topGems,
+      fenceCounts,
+      canvasNotes,
+    };
   }, [threads]);
 
   const recent = useMemo(() => threads.slice(0, 6), [threads]);
-  const totalFigures = stats.fenceCounts.mermaid + stats.fenceCounts.flow + stats.fenceCounts.graph + stats.fenceCounts.kg;
+  const totalFigures =
+    stats.fenceCounts.mermaid +
+    stats.fenceCounts.flow +
+    stats.fenceCounts.graph +
+    stats.fenceCounts.kg;
 
   return (
-
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-6xl px-8 py-10">
         <header className="flex items-end justify-between gap-4">
@@ -149,12 +168,36 @@ function Dashboard() {
 
         {/* Platform-mix */}
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metric icon={Layers} label="Mermaid" value={hydrated ? String(stats.fenceCounts.mermaid) : "—"} hint="diagrammer" />
-          <Metric icon={Layers} label="Flow" value={hydrated ? String(stats.fenceCounts.flow) : "—"} hint="CFDS-blokke" />
-          <Metric icon={Layers} label="Graph / KG" value={hydrated ? String(stats.fenceCounts.graph + stats.fenceCounts.kg) : "—"} hint={`${totalFigures} figurer i alt`} />
-          <Metric icon={StickyNote} label="Canvas-noter" value={hydrated ? String(stats.canvasNotes) : "—"} hint="pinbare indsigter" />
+          <Metric
+            icon={Layers}
+            label="Mermaid"
+            value={hydrated ? String(stats.fenceCounts.mermaid) : "—"}
+            hint="diagrammer"
+          />
+          <Metric
+            icon={Layers}
+            label="Flow"
+            value={hydrated ? String(stats.fenceCounts.flow) : "—"}
+            hint="CFDS-blokke"
+          />
+          <Metric
+            icon={Layers}
+            label="Graph / KG"
+            value={hydrated ? String(stats.fenceCounts.graph + stats.fenceCounts.kg) : "—"}
+            hint={`${totalFigures} figurer i alt`}
+          />
+          <Metric
+            icon={StickyNote}
+            label="Canvas-noter"
+            value={hydrated ? String(stats.canvasNotes) : "—"}
+            hint="pinbare indsigter"
+          />
         </div>
 
+        {/* Approval queues — backend humanApprovalService + orchestrator HyperAgent (LIN-1911) */}
+        <div className="mt-8">
+          <ApprovalQueuePanel approverIdentity="clauskraft@gmail.com" />
+        </div>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-5">
           {/* Recent threads */}
@@ -249,13 +292,17 @@ function Dashboard() {
                         params={{ threadId: gemThreadId(gem.id) }}
                         className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40"
                       >
-                        <span className={`rounded-md bg-gradient-to-br p-1.5 text-white ${gem.accent}`}>
+                        <span
+                          className={`rounded-md bg-gradient-to-br p-1.5 text-white ${gem.accent}`}
+                        >
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-2">
                             <span className="truncate text-sm font-medium">{gem.name}</span>
-                            <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
+                            <span className="text-xs tabular-nums text-muted-foreground">
+                              {count}
+                            </span>
                           </div>
                           <div className="mt-1 h-1 rounded-full bg-muted">
                             <div
