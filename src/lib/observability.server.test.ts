@@ -4,6 +4,7 @@ import {
   extractGraphSnapshot,
   extractRuntimeSummary,
   fetchGraphSnapshot,
+  fetchRuntimeSnapshot,
 } from "./widgetdc.server";
 
 beforeEach(() => {
@@ -67,6 +68,95 @@ describe("extractRuntimeSummary (Phase 3 Observability)", () => {
   it("returns null only when the fleet is genuinely empty", () => {
     expect(extractRuntimeSummary({ total_requests: 0, total_agents: 0, top_tools: [] })).toBeNull();
     expect(extractRuntimeSummary(null)).toBeNull();
+  });
+
+  it("normalizes audit.adoption_metrics fallback telemetry", () => {
+    const snap = extractRuntimeSummary({
+      result: {
+        dau: 5,
+        wau: 7,
+        activationRate: 40,
+        topTools: [
+          { tool: "graph.read_cypher", count: 105 },
+          { tool: "graph.stats", count: 20 },
+        ],
+      },
+    });
+
+    expect(snap).toMatchObject({
+      totalAgents: 7,
+      totalRequests: 125,
+      successRate: 40,
+      source: "audit.adoption_metrics",
+    });
+    expect(snap?.tools[0]).toMatchObject({
+      name: "graph.read_cypher",
+      calls: 105,
+      errors: 0,
+      errorRate: 0,
+    });
+  });
+
+  it("normalizes intent.stats fallback telemetry and Neo4j integer counters", () => {
+    const snap = extractRuntimeSummary({
+      result: {
+        toolCount: { low: 410, high: 0 },
+        edgeCount: { low: 72, high: 0 },
+        topTools: [
+          { tool: "skill-knowledge-work", edgeCount: { low: 17, high: 0 }, avgConfidence: 0.5 },
+          { tool: "flow-discover", edgeCount: { low: 15, high: 0 }, avgConfidence: 0.7 },
+        ],
+      },
+    });
+
+    expect(snap).toMatchObject({
+      totalAgents: 410,
+      totalRequests: 72,
+      successRate: 60,
+      source: "intent.stats",
+    });
+    expect(snap?.tools.map((tool) => [tool.name, tool.calls])).toEqual([
+      ["skill-knowledge-work", 17],
+      ["flow-discover", 15],
+    ]);
+  });
+
+  it("uses catalogued runtime fallback tools instead of calling missing runtime_summary", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["audit.adoption_metrics"] } });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        const body = JSON.parse(String(init?.body)) as { tool: string };
+        expect(body.tool).toBe("audit.adoption_metrics");
+        return Response.json({
+          success: true,
+          result: {
+            wau: 5,
+            activationRate: 40,
+            topTools: [{ tool: "graph.stats", count: 20 }],
+          },
+        });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchRuntimeSnapshot("runtime-fallback")).resolves.toMatchObject({
+      totalAgents: 5,
+      totalRequests: 20,
+      successRate: 40,
+      source: "audit.adoption_metrics",
+    });
+
+    const postedTools = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)).tool);
+    expect(postedTools).toEqual(["audit.adoption_metrics"]);
   });
 });
 
