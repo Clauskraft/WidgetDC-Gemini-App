@@ -5,6 +5,7 @@ import {
   extractProducedDocument,
   extractQuality,
   isSubstantiveDeliverable,
+  localTemplateDeliverable,
   resolveMcpRoute,
 } from "./widgetdc.server";
 
@@ -212,5 +213,14 @@ describe("isSubstantiveDeliverable", () => {
     ].join("\n");
 
     expect(isSubstantiveDeliverable(markdown, brief)).toBe(true);
+  });
+
+  it("accepts the deterministic local template fallback", () => {
+    const deliverable = localTemplateDeliverable(brief, "analysis");
+
+    expect(deliverable.markdown).toContain("Canvas notes:");
+    expect(deliverable.markdown).toContain("```mermaid");
+    expect(deliverable.markdown).toContain("ræsonnement");
+    expect(isSubstantiveDeliverable(deliverable.markdown, brief)).toBe(true);
   });
 });

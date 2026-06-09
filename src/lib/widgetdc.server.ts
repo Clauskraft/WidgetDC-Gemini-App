@@ -719,7 +719,7 @@ function fallbackDeliverablePrompt(brief: string, kind: DeliverableKind, section
     : "Write in the same language as the brief.";
   return [
     `Generate a complete ${deliverableKindLabel(kind)} consulting deliverable in Markdown.`,
-    `${languageInstruction} Produce ${sections} clear sections with headings.`,
+    `${languageInstruction} Produce ${sections} concise sections with headings.`,
     "Use SCQA, MECE, and Pyramid Principle where relevant.",
     "Include concrete recommendations and decision-ready analysis.",
     "Include at least one mermaid or flow code block.",
@@ -731,6 +731,90 @@ function fallbackDeliverablePrompt(brief: string, kind: DeliverableKind, section
     "Brief:",
     brief,
   ].join("\n");
+}
+
+function briefExcerpt(brief: string, max = 180): string {
+  const cleaned = brief.replace(/\s+/g, " ").trim();
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1).trim()}...` : cleaned;
+}
+
+export function localTemplateDeliverable(brief: string, kind: DeliverableKind): DeliverableResult {
+  const subject = briefExcerpt(brief);
+  const isDanish = /[æøåÆØÅ]/.test(brief);
+  const title = `${deliverableKindLabel(kind)}: ${briefExcerpt(brief, 72)}`;
+  const markdown = isDanish
+    ? [
+        `# ${title}`,
+        "",
+        "## SCQA",
+        `**Situation:** Briefet peger på et beslutningsområde, hvor relationer, kontekst og sporbarhed er afgørende: ${subject}`,
+        "",
+        "**Komplikation:** En ren vektorbaseret tilgang kan finde semantisk lignende tekst, men den mister ofte forbindelserne mellem aktører, evidens, beslutninger og afhængigheder. Det gør svaret sværere at auditere og svagere som ledelsesgrundlag.",
+        "",
+        "**Spørgsmål:** Hvor bør GraphRAG med Neo4j bruges, og hvilke kontroller skal være på plads for at gøre output beslutningsklart?",
+        "",
+        "## MECE issue tree",
+        "```mermaid",
+        "flowchart TD",
+        'A["Beslutning"] --> B["Relationel kompleksitet"]',
+        'A --> C["Evidens og provenance"]',
+        'A --> D["Operationel anvendelse"]',
+        'B --> B1["Entiteter og afhængigheder"]',
+        'C --> C1["Kilder, citationsspor og audit"]',
+        'D --> D1["Workflow, ejerskab og validering"]',
+        "```",
+        "",
+        "## Anbefalet handlingsplan",
+        "1. Afgræns de vigtigste entiteter, relationstyper og beslutningsspørgsmål før ny ingestion skaleres.",
+        "2. Brug vektorsøg som recall-lag, men lad Neo4j-grafen stå for relationel ekspansion, kildebinding og multi-hop ræsonnement.",
+        "3. Indfør en kvalitetsgate, hvor hvert deliverable skal have tydelige claims, evidensspor, Canvas notes og en kendt usikkerhedsprofil.",
+        "4. Start med et smalt use case, mål svartid, citationsdækning og fejltyper, og udvid først når ontologien viser stabil adfærd.",
+        "",
+        "## Risici og validering",
+        "De primære risici er ufuldstændig ontologi, for brede prompts, manglende kildeprovenance og uklare ejerskaber for datakvalitet. Valideringen bør derfor måle om svarene kan spores tilbage til konkrete kilder, om relationerne er korrekte, og om brugeren kan handle på anbefalingerne uden at gætte på forudsætninger.",
+        "",
+        "Canvas notes:",
+        "- Brug GraphRAG når relationer og audit betyder mere end ren semantisk lighed.",
+        "- Hold første scope smalt: entiteter, relationer, claims og evidensspor.",
+        "- Gør Canvas-panelet til kvalitetssikring: beslutning, risici, næste handling.",
+      ].join("\n")
+    : [
+        `# ${title}`,
+        "",
+        "## SCQA",
+        `**Situation:** The brief identifies a decision area where relationships, context, and traceability matter: ${subject}`,
+        "",
+        "**Complication:** A vector-only approach can retrieve similar text, but often loses the links between actors, evidence, decisions, and dependencies. That weakens auditability and makes the output less useful for leadership decisions.",
+        "",
+        "**Question:** Where should GraphRAG with Neo4j be used, and what controls make the output decision-ready?",
+        "",
+        "## MECE issue tree",
+        "```mermaid",
+        "flowchart TD",
+        'A["Decision"] --> B["Relationship complexity"]',
+        'A --> C["Evidence and provenance"]',
+        'A --> D["Operational use"]',
+        'B --> B1["Entities and dependencies"]',
+        'C --> C1["Sources, citations, and audit"]',
+        'D --> D1["Workflow, ownership, and validation"]',
+        "```",
+        "",
+        "## Recommended action plan",
+        "1. Define the critical entities, relationship types, and decision questions before scaling ingestion.",
+        "2. Use vector search as the recall layer, then use Neo4j for graph expansion, evidence binding, and multi-hop reasoning.",
+        "3. Add a quality gate requiring clear claims, evidence trails, Canvas notes, and an explicit uncertainty profile.",
+        "4. Start with one narrow use case, measure latency, citation coverage, and error types, then expand only when the ontology is stable.",
+        "",
+        "## Risks and validation",
+        "The main risks are incomplete ontology, overly broad prompts, missing source provenance, and unclear ownership for data quality. Validate whether answers trace back to concrete sources, whether relationships are correct, and whether users can act without guessing the assumptions.",
+        "",
+        "Canvas notes:",
+        "- Use GraphRAG when relationships and auditability matter more than semantic similarity alone.",
+        "- Keep first scope narrow: entities, relationships, claims, and evidence trails.",
+        "- Use the Canvas panel as the quality surface: decision, risks, next action.",
+      ].join("\n");
+
+  return { markdown, citations: 0 };
 }
 
 function extractFallbackDeliverable(
@@ -755,7 +839,7 @@ export async function fallbackDeliverable(
     "llm.generate",
     {
       prompt: task,
-      max_tokens: 2200,
+      max_tokens: Math.max(900, Math.min(1400, sections * 450)),
     },
     { correlationId: opts.correlationId, timeoutMs: 90000 },
   );
@@ -770,7 +854,11 @@ export async function fallbackDeliverable(
     },
     { correlationId: opts.correlationId, timeoutMs: 90000 },
   );
-  return extractFallbackDeliverable(reasonedResult, brief, kind);
+  const reasonedDeliverable = extractFallbackDeliverable(reasonedResult, brief, kind);
+  if (reasonedDeliverable) return reasonedDeliverable;
+
+  const templateDeliverable = localTemplateDeliverable(brief, kind);
+  return isSubstantiveDeliverable(templateDeliverable.markdown, brief) ? templateDeliverable : null;
 }
 
 /** Extract the PRISM aggregate + dimensions from a `judge_response` envelope. */
