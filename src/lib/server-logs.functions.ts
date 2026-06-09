@@ -7,7 +7,7 @@ const InputSchema = z.object({
 });
 
 export const fetchServerLogs = createServerFn({ method: "GET" })
-  .validator((input: unknown) => InputSchema.parse(input))
+  .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin

@@ -23,7 +23,7 @@ import {
 import { verifyCanvasToken } from "@/lib/widgetdcContracts.server";
 
 const resolveCanvasToken = createServerFn({ method: "GET" })
-  .validator((d: { canvas_id: string; token: string }) =>
+  .inputValidator((d: { canvas_id: string; token: string }) =>
     z
       .object({ canvas_id: z.string().min(1).max(128), token: z.string().min(8).max(16384) })
       .parse(d),
