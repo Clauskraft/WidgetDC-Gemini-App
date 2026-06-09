@@ -238,9 +238,10 @@ function cacheMcpToolDiscovery(
 async function discoverMcpToolRoutes(
   env: NodeJS.ProcessEnv,
   opts: { correlationId?: string } = {},
+  allowSingleEndpoint = false,
 ): Promise<Map<string, McpRouteConfig>> {
   const endpoints = configuredMcpEndpoints(env);
-  if (endpoints.length < 2) return new Map();
+  if (endpoints.length === 0 || (!allowSingleEndpoint && endpoints.length < 2)) return new Map();
 
   const signature = mcpDiscoverySignature(endpoints);
   const now = Date.now();
@@ -376,6 +377,28 @@ export async function callMcpTool<T = unknown>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function callMcpToolIfCatalogued<T = unknown>(
+  tool: string,
+  payload: Record<string, unknown>,
+  opts: { timeoutMs?: number; correlationId?: string; env?: NodeJS.ProcessEnv } = {},
+): Promise<T | null> {
+  const env = opts.env ?? process.env;
+  const discovered = await discoverMcpToolRoutes(
+    env,
+    { correlationId: opts.correlationId },
+    true,
+  );
+  if (discovered.size > 0 && !discovered.has(tool)) {
+    logServer("info", {
+      event: "mcp_tool_not_catalogued",
+      requestId: opts.correlationId,
+      tool,
+    });
+    return null;
+  }
+  return callMcpTool<T>(tool, payload, opts);
 }
 
 function summarizeMcpFailure(body: string): string {
@@ -1503,6 +1526,7 @@ export type RuntimeSnapshot = {
   totalRequests: number;
   successRate: number; // percentage 0–100
   tools: ToolHealth[];
+  source?: "runtime_summary" | "audit.adoption_metrics" | "intent.stats" | "generic";
 };
 
 /** Neo4j graph size snapshot. */
@@ -1511,30 +1535,124 @@ export type GraphSnapshot = { nodes: number; relationships: number; online: bool
 /** Parse a runtime_summary envelope into a normalized fleet snapshot (pure). */
 export function extractRuntimeSummary(result: unknown): RuntimeSnapshot | null {
   if (!result || typeof result !== "object") return null;
-  const r = result as Record<string, unknown>;
-  const inner = (r.result as Record<string, unknown>) ?? r;
-  const totalRequests = typeof inner.total_requests === "number" ? inner.total_requests : 0;
-  const totalAgents = typeof inner.total_agents === "number" ? inner.total_agents : 0;
-  const successRate = typeof inner.avg_success_rate === "number" ? inner.avg_success_rate : 0;
-  const rawTools = Array.isArray(inner.top_tools) ? inner.top_tools : [];
+  const normalized = normalizeNeo(result);
+  const r = normalized as Record<string, unknown>;
+  const inner = ((r.result as Record<string, unknown> | undefined) ??
+    (r.data as Record<string, unknown> | undefined) ??
+    r) as Record<string, unknown>;
+  if (inner.success === false) return null;
+
+  const rawTools = Array.isArray(inner.top_tools)
+    ? inner.top_tools
+    : Array.isArray(inner.topTools)
+      ? inner.topTools
+      : Array.isArray(inner.tools)
+        ? inner.tools
+        : [];
   const tools: ToolHealth[] = rawTools
     .map((t) => {
       const o = (t ?? {}) as Record<string, unknown>;
-      const calls = typeof o.call_count === "number" ? o.call_count : 0;
-      const errors = typeof o.error_count === "number" ? o.error_count : 0;
+      const calls =
+        pickMetricNumber(o, "call_count", "callCount", "calls", "count", "edgeCount") ?? 0;
+      const errors = pickMetricNumber(o, "error_count", "errorCount", "errors") ?? 0;
+      const explicitErrorRate = pickMetricNumber(o, "error_rate", "errorRate");
       return {
-        name: typeof o.tool_name === "string" ? o.tool_name : "unknown",
+        name:
+          (typeof o.tool_name === "string" && o.tool_name) ||
+          (typeof o.tool === "string" && o.tool) ||
+          (typeof o.name === "string" && o.name) ||
+          "unknown",
         calls,
         errors,
-        errorRate: calls > 0 ? errors / calls : 0,
-        avgMs: typeof o.avg_duration_ms === "number" ? Math.round(o.avg_duration_ms) : 0,
+        errorRate:
+          explicitErrorRate != null
+            ? explicitErrorRate > 1
+              ? explicitErrorRate / 100
+              : explicitErrorRate
+            : calls > 0
+              ? errors / calls
+              : 0,
+        avgMs: Math.round(
+          pickMetricNumber(o, "avg_duration_ms", "avgDurationMs", "avg_ms", "avgMs") ?? 0,
+        ),
       };
     })
     .filter((t) => t.calls > 0);
+
+  const legacyRequests = pickMetricNumber(inner, "total_requests", "totalRequests");
+  const legacyAgents = pickMetricNumber(inner, "total_agents", "totalAgents");
+  const legacySuccessRate = pickMetricNumber(inner, "avg_success_rate", "successRate");
+  const hasLegacyFleet =
+    legacyRequests != null || legacyAgents != null || legacySuccessRate != null;
+
+  const adoptionActivation = pickMetricNumber(inner, "activationRate", "activation_rate");
+  const adoptionWau = pickMetricNumber(inner, "wau", "weeklyActiveUsers");
+  const adoptionDau = pickMetricNumber(inner, "dau", "dailyActiveUsers");
+  const hasAdoptionFleet = adoptionActivation != null || adoptionWau != null || adoptionDau != null;
+
+  const intentToolCount = pickMetricNumber(inner, "toolCount", "tool_count");
+  const intentEdgeCount = pickMetricNumber(inner, "edgeCount", "edge_count");
+  const hasIntentFleet = intentToolCount != null || intentEdgeCount != null;
+
+  const totalRequests =
+    legacyRequests ??
+    intentEdgeCount ??
+    pickMetricNumber(inner, "totalEvents", "events") ??
+    tools.reduce((sum, tool) => sum + tool.calls, 0);
+  const totalAgents =
+    legacyAgents ??
+    adoptionWau ??
+    adoptionDau ??
+    intentToolCount ??
+    pickMetricNumber(inner, "agents", "agentCount") ??
+    0;
+  const avgConfidence = averageToolConfidence(rawTools);
+  const successRate =
+    legacySuccessRate ??
+    adoptionActivation ??
+    (avgConfidence == null ? 0 : avgConfidence <= 1 ? avgConfidence * 100 : avgConfidence);
+  const source = hasLegacyFleet
+    ? "runtime_summary"
+    : hasAdoptionFleet
+      ? "audit.adoption_metrics"
+      : hasIntentFleet
+        ? "intent.stats"
+        : "generic";
+
   // Only treat as "no signal" when the fleet is genuinely empty. A registered-
   // but-idle fleet (agents/success-rate present, zero requests) is still valid.
   if (totalRequests === 0 && totalAgents === 0 && tools.length === 0) return null;
-  return { totalAgents, totalRequests, successRate, tools };
+  return { totalAgents, totalRequests, successRate, tools, source };
+}
+
+function metricNumber(value: unknown): number | null {
+  const normalized = normalizeNeo(value);
+  if (typeof normalized === "number" && Number.isFinite(normalized)) return normalized;
+  if (typeof normalized === "string" && normalized.trim()) {
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function pickMetricNumber(record: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const key of keys) {
+    const value = metricNumber(record[key]);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function averageToolConfidence(rawTools: unknown[]): number | null {
+  const values = rawTools
+    .map((tool) =>
+      tool && typeof tool === "object"
+        ? pickMetricNumber(tool as Record<string, unknown>, "avgConfidence", "confidence")
+        : null,
+    )
+    .filter((value): value is number => value != null);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 /** Parse a data_graph_stats envelope into a graph size snapshot (pure). */
@@ -1552,17 +1670,21 @@ export function extractGraphSnapshot(result: unknown): GraphSnapshot | null {
   };
 }
 
-/** Fetch the fleet runtime snapshot via the platform `runtime_summary` tool. */
+/** Fetch the fleet runtime snapshot via the best catalogued platform metrics tool. */
 export async function fetchRuntimeSnapshot(
   correlationId?: string,
 ): Promise<RuntimeSnapshot | null> {
-  const result = await callMcpTool<unknown>(
-    "runtime_summary",
-    {},
-    { correlationId, timeoutMs: 10000 },
-  );
-  if (result == null) return null;
-  return extractRuntimeSummary(result);
+  for (const tool of ["runtime_summary", "audit.adoption_metrics", "intent.stats"]) {
+    const result = await callMcpToolIfCatalogued<unknown>(
+      tool,
+      {},
+      { correlationId, timeoutMs: 10000 },
+    );
+    const snapshot = extractRuntimeSummary(result);
+    if (snapshot)
+      return { ...snapshot, source: snapshot.source ?? (tool as RuntimeSnapshot["source"]) };
+  }
+  return null;
 }
 
 /** Fetch the Neo4j graph size via the legacy alias or canonical `graph.stats`. */
