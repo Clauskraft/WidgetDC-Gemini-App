@@ -5,9 +5,11 @@ import {
   callMcpTool,
   clearMcpToolDiscoveryCacheForTests,
   extractDeliverable,
+  extractIntentDetection,
   extractMcpToolNames,
   extractProducedDocument,
   extractQuality,
+  fetchIntentDetection,
   fetchRagGrounding,
   generateDeliverable,
   isSubstantiveDeliverable,
@@ -303,6 +305,95 @@ describe("MCP tool discovery routing", () => {
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/mcp/route")),
     ).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("intent_detect chat routing signal", () => {
+  const query = "Forklar GraphRAG med Neo4j og lav et issue-tree";
+
+  it("extracts the current backend { query, candidates, count } shape", () => {
+    const intent = extractIntentDetection({
+      success: true,
+      result: {
+        query,
+        candidates: [
+          {
+            tool: "query_knowledge_graph",
+            category: null,
+            score: 2.5,
+            matchCount: 16,
+            maxSuccess: 0,
+          },
+        ],
+        count: 1,
+      },
+    });
+
+    expect(intent).toEqual({
+      query,
+      count: 1,
+      candidates: [
+        {
+          tool: "query_knowledge_graph",
+          description: null,
+          category: null,
+          score: 2.5,
+          matchCount: 16,
+          maxSuccess: 0,
+        },
+      ],
+    });
+  });
+
+  it("posts intent_detect with payload.query through discovered MCP routing", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["intent_detect"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ tools: [] });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          tool: "intent_detect",
+          payload: { query },
+        });
+        return Response.json({
+          result: {
+            query,
+            candidates: [{ tool: "query_knowledge_graph", score: 2.5, matchCount: 16 }],
+            count: 1,
+          },
+        });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchIntentDetection(query, "intent-regression")).resolves.toMatchObject({
+      query,
+      candidates: [{ tool: "query_knowledge_graph", score: 2.5, matchCount: 16 }],
+      count: 1,
+    });
+  });
+
+  it("rejects the legacy input-field error envelope", () => {
+    expect(
+      extractIntentDetection({
+        success: true,
+        result: {
+          error: "Missing required field: query",
+          candidates: [],
+        },
+      }),
+    ).toBeNull();
   });
 });
 
