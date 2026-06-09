@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { extractDeliverable, extractQuality } from "./widgetdc.server";
+import { renderMarkdownDocumentFallback } from "./documentFallback.server";
+import {
+  extractDeliverable,
+  extractProducedDocument,
+  extractQuality,
+  resolveMcpRoute,
+} from "./widgetdc.server";
 
 describe("extractDeliverable (Phase 1 Deliverable Studio)", () => {
   it("returns markdown + 0 citations for a bare string", () => {
@@ -53,5 +59,65 @@ describe("extractQuality (PRISM gate)", () => {
   it("returns null when no numeric score is present", () => {
     expect(extractQuality({ verdict: "good" })).toBeNull();
     expect(extractQuality(null)).toBeNull();
+  });
+});
+
+describe("extractProducedDocument (Output Forge)", () => {
+  it("unwraps artifact bytes with a stable fallback filename", () => {
+    expect(extractProducedDocument({ result: { artifact: "YWJj" } }, "docx", "My Report")).toEqual({
+      base64: "YWJj",
+      filename: "My-Report.docx",
+      mediaType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+  });
+});
+
+describe("resolveMcpRoute", () => {
+  it("routes deliverable tools to the orchestrator when configured", () => {
+    const route = resolveMcpRoute("produce_document", {
+      WIDGETDC_BACKEND_URL: "https://backend.example",
+      WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example/",
+      WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+      WIDGETDC_API_KEY: "backend-key",
+    });
+
+    expect(route).toEqual({
+      url: "https://orchestrator.example/api/mcp/route",
+      key: "orch-key",
+      target: "orchestrator",
+    });
+  });
+
+  it("keeps non-deliverable tools on the backend route", () => {
+    const route = resolveMcpRoute("llm_chat", {
+      WIDGETDC_BACKEND_URL: "https://backend.example",
+      WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
+      WIDGETDC_API_KEY: "backend-key",
+    });
+
+    expect(route?.url).toBe("https://backend.example/api/mcp/route");
+    expect(route?.target).toBe("backend");
+  });
+});
+
+describe("renderMarkdownDocumentFallback", () => {
+  it("produces a minimal DOCX package", () => {
+    const doc = renderMarkdownDocumentFallback("# Title\n\nBody", "docx", { title: "Title" });
+    const bytes = Buffer.from(doc.base64, "base64");
+
+    expect(doc.filename).toBe("Title.docx");
+    expect(doc.mediaType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+    expect(bytes.subarray(0, 2).toString("utf8")).toBe("PK");
+  });
+
+  it("produces a minimal PDF", () => {
+    const doc = renderMarkdownDocumentFallback("# Title\n\nBody", "pdf", { title: "Title" });
+    const bytes = Buffer.from(doc.base64, "base64");
+
+    expect(doc.filename).toBe("Title.pdf");
+    expect(doc.mediaType).toBe("application/pdf");
+    expect(bytes.subarray(0, 4).toString("utf8")).toBe("%PDF");
   });
 });

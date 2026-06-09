@@ -32,11 +32,7 @@ function serializeError(err: unknown): Record<string, unknown> {
   return { value: String(err) };
 }
 
-export function logServer(
-  level: ServerLogLevel,
-  fields: ServerLogFields,
-  error?: unknown,
-): void {
+export function logServer(level: ServerLogLevel, fields: ServerLogFields, error?: unknown): void {
   const entry: Record<string, unknown> = {
     ts: new Date().toISOString(),
     level,
@@ -58,6 +54,7 @@ async function persistLogEntry(
   entry: Record<string, unknown>,
 ): Promise<void> {
   try {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("server_logs").insert({
       request_id: fields.requestId ?? "unknown",
@@ -73,7 +70,6 @@ async function persistLogEntry(
     // Never let logging failure break the request path.
   }
 }
-
 
 export function newRequestId(): string {
   // Cheap, dependency-free id (not cryptographic — just for log correlation).
