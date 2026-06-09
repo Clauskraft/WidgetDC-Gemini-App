@@ -18,6 +18,7 @@ import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GemsIndexRouteImport } from './routes/gems.index'
 import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
@@ -77,6 +78,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const GemsIndexRoute = GemsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GemsRoute,
 } as any)
 const VisualGraphRoute = VisualGraphRouteImport.update({
   id: '/visual/graph',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems/': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
@@ -180,7 +187,6 @@ export interface FileRoutesByTo {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
-  '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/observability': typeof ObservabilityRoute
@@ -190,6 +196,7 @@ export interface FileRoutesByTo {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
@@ -216,6 +223,7 @@ export interface FileRoutesById {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems/': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
@@ -243,6 +251,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems/'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
@@ -258,7 +267,6 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
-    | '/gems'
     | '/graph'
     | '/health'
     | '/observability'
@@ -268,6 +276,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
@@ -293,6 +302,7 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems/'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
@@ -393,6 +403,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/gems/': {
+      id: '/gems/'
+      path: '/'
+      fullPath: '/gems/'
+      preLoaderRoute: typeof GemsIndexRouteImport
+      parentRoute: typeof GemsRoute
     }
     '/visual/graph': {
       id: '/visual/graph'
@@ -497,10 +514,12 @@ declare module '@tanstack/react-router' {
 
 interface GemsRouteChildren {
   GemsGemIdRoute: typeof GemsGemIdRoute
+  GemsIndexRoute: typeof GemsIndexRoute
 }
 
 const GemsRouteChildren: GemsRouteChildren = {
   GemsGemIdRoute: GemsGemIdRoute,
+  GemsIndexRoute: GemsIndexRoute,
 }
 
 const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)

@@ -76,7 +76,7 @@ async function callOpenAI(
       "content-type": "application/json",
       authorization: `Bearer ${key}`,
     },
-    body: JSON.stringify({ model, messages }),
+    body: JSON.stringify({ model, messages, max_completion_tokens: 4096 }),
     signal,
   });
   if (!res.ok) return null;
@@ -460,6 +460,7 @@ export async function openAiToolRound(
     body: JSON.stringify({
       model,
       messages,
+      max_completion_tokens: 4096,
       ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
     }),
     signal,
