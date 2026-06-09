@@ -25,7 +25,7 @@ export const Route = createFileRoute("/dashboard")({
       { title: "Dashboard · WidgeTDC Aurora" },
       {
         name: "description",
-        content: "Mission control — live overblik over samtaler, gems og aktivitet.",
+        content: "Mission control — live overblik over samtaler, widgets og aktivitet.",
       },
     ],
   }),
@@ -124,7 +124,7 @@ function Dashboard() {
               Mission Control
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Live overblik over dine samtaler, gems og platform-aktivitet.
+              Live overblik over dine samtaler, widgets og platform-aktivitet.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -229,7 +229,7 @@ function Dashboard() {
               <EmptyState
                 icon={Inbox}
                 title="Ingen samtaler endnu"
-                hint="Start en samtale fra forsiden eller via en Gem."
+                hint="Start en samtale fra forsiden eller via en Widget."
                 cta={{ to: "/", label: "Gå til chat" }}
               />
             ) : (
@@ -271,7 +271,7 @@ function Dashboard() {
           {/* Gem leaderboard */}
           <section className="lg:col-span-2 rounded-2xl border border-border bg-card shadow-soft">
             <div className="border-b border-border px-5 py-3 text-sm font-medium">
-              Mest brugte gems
+              Mest brugte widgets
             </div>
             {!hydrated ? (
               <div className="space-y-2 p-5">
@@ -282,9 +282,9 @@ function Dashboard() {
             ) : stats.topGems.length === 0 ? (
               <EmptyState
                 icon={GemIcon}
-                title="Ingen gem-aktivitet"
-                hint={`${GEMS.length} gems venter på at blive prøvet.`}
-                cta={{ to: "/gems", label: "Udforsk gems" }}
+                title="Ingen widget-aktivitet"
+                hint={`${GEMS.length} widgets venter på at blive prøvet.`}
+                cta={{ to: "/gems", label: "Udforsk widgets" }}
               />
             ) : (
               <ul className="divide-y divide-border">
