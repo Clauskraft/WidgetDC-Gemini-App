@@ -13,45 +13,249 @@ import process from "node:process";
 import { logServer } from "./server-logger";
 
 const DEFAULT_TIMEOUT_MS = 8000;
+const TOOL_DISCOVERY_TIMEOUT_MS = 3000;
+const TOOL_DISCOVERY_TTL_MS = 5 * 60 * 1000;
 
-const ORCHESTRATOR_TOOL_NAMES = new Set<string>();
+type McpTarget = "backend" | "orchestrator";
+type McpRouteConfig = { url: string; key: string; target: McpTarget };
+type McpEndpointConfig = McpRouteConfig & { toolsUrl: string };
+type McpToolDiscoveryCache = {
+  signature: string;
+  expiresAt: number;
+  byTool: Map<string, McpRouteConfig>;
+};
 
-type McpRouteConfig = { url: string; key: string; target: "backend" | "orchestrator" };
+let mcpToolDiscoveryCache: McpToolDiscoveryCache | null = null;
 
-export function resolveMcpRoute(
-  tool: string,
-  env: NodeJS.ProcessEnv = process.env,
-): McpRouteConfig | null {
-  const wantsOrchestrator = ORCHESTRATOR_TOOL_NAMES.has(tool);
-  const orchestratorBase = env.WIDGETDC_ORCHESTRATOR_URL;
-  const backendBase = env.WIDGETDC_BACKEND_URL;
-  const base = wantsOrchestrator
-    ? (orchestratorBase ?? backendBase)
-    : (backendBase ?? orchestratorBase);
-  const target = wantsOrchestrator && orchestratorBase ? "orchestrator" : "backend";
+function cleanMcpBase(base: string): string {
+  return base.replace(/\/+$/, "");
+}
+
+function backendMcpKey(env: NodeJS.ProcessEnv): string | undefined {
   // Canonical WidgeTDC unified bearer is `WIDGETDC_BEARER_TOKEN`; `WIDGETDC_API_KEY`
   // and `MCP_AGENT_API_KEY` are legacy aliases kept for backward compatibility
   // (matches apps/backend/src/utils/serviceBearer.ts resolution order).
-  const key =
-    target === "orchestrator"
-      ? (env.WIDGETDC_ORCHESTRATOR_API_KEY ??
-        env.ORCHESTRATOR_API_KEY ??
-        env.WIDGETDC_BEARER_TOKEN ??
-        env.WIDGETDC_API_KEY ??
-        env.MCP_AGENT_API_KEY)
-      : (env.WIDGETDC_BEARER_TOKEN ??
-        env.WIDGETDC_API_KEY ??
-        env.MCP_AGENT_API_KEY ??
-        env.WIDGETDC_ORCHESTRATOR_API_KEY ??
-        env.ORCHESTRATOR_API_KEY);
-  if (!base || !key) return null;
-  return { url: `${base.replace(/\/+$/, "")}/api/mcp/route`, key, target };
+  return (
+    env.WIDGETDC_BEARER_TOKEN ??
+    env.WIDGETDC_API_KEY ??
+    env.MCP_AGENT_API_KEY ??
+    env.WIDGETDC_ORCHESTRATOR_API_KEY ??
+    env.ORCHESTRATOR_API_KEY
+  );
+}
+
+function orchestratorMcpKey(env: NodeJS.ProcessEnv): string | undefined {
+  return (
+    env.WIDGETDC_ORCHESTRATOR_API_KEY ??
+    env.ORCHESTRATOR_API_KEY ??
+    env.WIDGETDC_BEARER_TOKEN ??
+    env.WIDGETDC_API_KEY ??
+    env.MCP_AGENT_API_KEY
+  );
+}
+
+function mcpRouteFromEndpoint(endpoint: McpEndpointConfig): McpRouteConfig {
+  return { url: endpoint.url, key: endpoint.key, target: endpoint.target };
+}
+
+function configuredMcpEndpoints(env: NodeJS.ProcessEnv = process.env): McpEndpointConfig[] {
+  const endpoints: McpEndpointConfig[] = [];
+  const backendBase = env.WIDGETDC_BACKEND_URL ? cleanMcpBase(env.WIDGETDC_BACKEND_URL) : "";
+  const backendKey = backendMcpKey(env);
+  if (backendBase && backendKey) {
+    endpoints.push({
+      url: `${backendBase}/api/mcp/route`,
+      toolsUrl: `${backendBase}/api/mcp/tools`,
+      key: backendKey,
+      target: "backend",
+    });
+  }
+
+  const orchestratorBase = env.WIDGETDC_ORCHESTRATOR_URL
+    ? cleanMcpBase(env.WIDGETDC_ORCHESTRATOR_URL)
+    : "";
+  const orchestratorKey = orchestratorMcpKey(env);
+  if (orchestratorBase && orchestratorKey && orchestratorBase !== backendBase) {
+    endpoints.push({
+      url: `${orchestratorBase}/api/mcp/route`,
+      toolsUrl: `${orchestratorBase}/api/mcp/tools`,
+      key: orchestratorKey,
+      target: "orchestrator",
+    });
+  }
+
+  return endpoints;
+}
+
+export function resolveMcpRoute(
+  _tool: string,
+  env: NodeJS.ProcessEnv = process.env,
+): McpRouteConfig | null {
+  const endpoint = configuredMcpEndpoints(env)[0];
+  return endpoint ? mcpRouteFromEndpoint(endpoint) : null;
 }
 
 export function isPlatformConfigured(): boolean {
   return (
     resolveMcpRoute("reason_deeply") !== null || resolveMcpRoute("forge.artifact.generate") !== null
   );
+}
+
+function collectToolCandidates(catalog: unknown): unknown[] {
+  if (Array.isArray(catalog)) return catalog;
+  if (!catalog || typeof catalog !== "object") return [];
+  const c = catalog as Record<string, unknown>;
+  const direct: unknown[] = [];
+  for (const key of ["tools", "definitions"]) {
+    if (Array.isArray(c[key])) direct.push(...(c[key] as unknown[]));
+  }
+  for (const key of ["data", "result"]) {
+    direct.push(...collectToolCandidates(c[key]));
+  }
+  return direct;
+}
+
+function extractMcpToolName(candidate: unknown): string | null {
+  if (typeof candidate === "string") {
+    const trimmed = candidate.trim();
+    return trimmed || null;
+  }
+  if (!candidate || typeof candidate !== "object") return null;
+  const c = candidate as Record<string, unknown>;
+  for (const key of ["name", "tool", "id", "tool_name", "canonical_tool"]) {
+    const value = c[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+export function extractMcpToolNames(catalog: unknown): string[] {
+  const names = new Set<string>();
+  for (const candidate of collectToolCandidates(catalog)) {
+    const name = extractMcpToolName(candidate);
+    if (name) names.add(name);
+  }
+  return [...names];
+}
+
+export function buildMcpToolRouteMap(
+  catalogs: Array<{ route: McpRouteConfig; catalog: unknown }>,
+): Map<string, McpRouteConfig> {
+  const byTool = new Map<string, McpRouteConfig>();
+  for (const { route, catalog } of catalogs) {
+    for (const tool of extractMcpToolNames(catalog)) {
+      // Catalogs are passed backend-first, so duplicate tool names stay on backend.
+      if (!byTool.has(tool)) byTool.set(tool, route);
+    }
+  }
+  return byTool;
+}
+
+function mcpDiscoverySignature(endpoints: McpEndpointConfig[]): string {
+  return endpoints.map((endpoint) => `${endpoint.target}:${endpoint.url}:key`).join("|");
+}
+
+async function fetchMcpToolCatalog(
+  endpoint: McpEndpointConfig,
+  opts: { correlationId?: string } = {},
+): Promise<unknown | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TOOL_DISCOVERY_TIMEOUT_MS);
+  const started = Date.now();
+  try {
+    const res = await fetch(endpoint.toolsUrl, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${endpoint.key}`,
+        ...(opts.correlationId ? { "x-correlation-id": opts.correlationId } : {}),
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      logServer(res.status >= 500 ? "error" : "warn", {
+        event: "mcp_tool_discovery_non_2xx",
+        requestId: opts.correlationId,
+        endpoint: endpoint.target,
+        status: res.status,
+        durationMs: Date.now() - started,
+      });
+      return null;
+    }
+    return await res.json();
+  } catch (error) {
+    logServer(
+      "warn",
+      {
+        event: "mcp_tool_discovery_failed",
+        requestId: opts.correlationId,
+        endpoint: endpoint.target,
+        durationMs: Date.now() - started,
+      },
+      error,
+    );
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function discoverMcpToolRoutes(
+  env: NodeJS.ProcessEnv,
+  opts: { correlationId?: string } = {},
+): Promise<Map<string, McpRouteConfig>> {
+  const endpoints = configuredMcpEndpoints(env);
+  if (endpoints.length < 2) return new Map();
+
+  const signature = mcpDiscoverySignature(endpoints);
+  const now = Date.now();
+  if (
+    mcpToolDiscoveryCache &&
+    mcpToolDiscoveryCache.signature === signature &&
+    mcpToolDiscoveryCache.expiresAt > now
+  ) {
+    return mcpToolDiscoveryCache.byTool;
+  }
+
+  type DiscoveredMcpCatalog = { route: McpRouteConfig; catalog: unknown };
+  const catalogResults = await Promise.all(
+    endpoints.map(async (endpoint): Promise<DiscoveredMcpCatalog | null> => {
+      const catalog = await fetchMcpToolCatalog(endpoint, opts);
+      return catalog == null ? null : { route: mcpRouteFromEndpoint(endpoint), catalog };
+    }),
+  );
+  const catalogs = catalogResults.filter((entry): entry is DiscoveredMcpCatalog => entry !== null);
+
+  if (
+    endpoints.some((endpoint) => endpoint.target === "backend") &&
+    !catalogs.some((entry) => entry.route.target === "backend")
+  ) {
+    return new Map();
+  }
+
+  if (catalogs.length === 0) return new Map();
+
+  const byTool = buildMcpToolRouteMap(catalogs);
+  mcpToolDiscoveryCache = {
+    signature,
+    expiresAt: now + TOOL_DISCOVERY_TTL_MS,
+    byTool,
+  };
+  return byTool;
+}
+
+async function resolveMcpRouteWithDiscovery(
+  tool: string,
+  env: NodeJS.ProcessEnv,
+  opts: { correlationId?: string } = {},
+): Promise<McpRouteConfig | null> {
+  const fallback = resolveMcpRoute(tool, env);
+  const discovered = await discoverMcpToolRoutes(env, opts);
+  return discovered.get(tool) ?? fallback;
+}
+
+export function clearMcpToolDiscoveryCacheForTests(): void {
+  mcpToolDiscoveryCache = null;
 }
 
 /**
@@ -61,9 +265,11 @@ export function isPlatformConfigured(): boolean {
 export async function callMcpTool<T = unknown>(
   tool: string,
   payload: Record<string, unknown>,
-  opts: { timeoutMs?: number; correlationId?: string } = {},
+  opts: { timeoutMs?: number; correlationId?: string; env?: NodeJS.ProcessEnv } = {},
 ): Promise<T | null> {
-  const cfg = resolveMcpRoute(tool);
+  const cfg = await resolveMcpRouteWithDiscovery(tool, opts.env ?? process.env, {
+    correlationId: opts.correlationId,
+  });
   if (!cfg) {
     logServer("warn", {
       event: "mcp_tool_not_configured",
