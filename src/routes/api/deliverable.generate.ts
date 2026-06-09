@@ -15,6 +15,7 @@ import {
   longformGenerate,
   judgeDeliverable,
 } from "@/lib/widgetdc.server";
+import { logServer, summarizeError } from "@/lib/server-logger";
 
 const BodySchema = z.object({
   brief: z.string().min(10, "Brief must be at least 10 characters"),
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/api/deliverable/generate")({
     handlers: {
       POST: async ({ request }) => {
         const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
+        const started = Date.now();
 
         let raw: unknown;
         try {
@@ -67,31 +69,80 @@ export const Route = createFileRoute("/api/deliverable/generate")({
         }
 
         const { brief, kind, maxSections, validate, engine } = parsed.data;
-        const deliverable =
-          engine === "longform"
-            ? await longformGenerate(brief, kind, { correlationId, targetSections: maxSections })
-            : engine === "lego"
-              ? await deliverableDraft(brief, kind, { correlationId, maxSections })
-              : await generateDeliverable(brief, kind, { correlationId, maxSections });
-        if (!deliverable) {
+        logServer("info", {
+          event: "deliverable_generate_start",
+          requestId: correlationId,
+          kind,
+          engine: engine ?? "rag",
+          maxSections,
+          validate: validate !== false,
+          briefChars: brief.length,
+        });
+
+        try {
+          const deliverable =
+            engine === "longform"
+              ? await longformGenerate(brief, kind, { correlationId, targetSections: maxSections })
+              : engine === "lego"
+                ? await deliverableDraft(brief, kind, { correlationId, maxSections })
+                : await generateDeliverable(brief, kind, { correlationId, maxSections });
+          if (!deliverable) {
+            logServer("error", {
+              event: "deliverable_generate_failed",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+            });
+            return json(
+              {
+                error: "Deliverable generation failed — see server logs for correlationId.",
+                correlationId,
+              },
+              502,
+              correlationId,
+            );
+          }
+
+          // Best-effort PRISM gate (default on); never blocks the deliverable.
+          const quality =
+            validate === false
+              ? null
+              : await judgeDeliverable(brief, deliverable.markdown, correlationId);
+
+          logServer("info", {
+            event: "deliverable_generate_success",
+            requestId: correlationId,
+            kind,
+            engine: engine ?? "rag",
+            citations: deliverable.citations,
+            markdownChars: deliverable.markdown.length,
+            durationMs: Date.now() - started,
+          });
           return json(
-            { error: "Deliverable generation failed or timed out — try a tighter brief." },
-            502,
+            { ...deliverable, kind, engine: engine ?? "rag", quality, correlationId },
+            200,
+            correlationId,
+          );
+        } catch (error) {
+          logServer(
+            "error",
+            {
+              event: "deliverable_generate_exception",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+              summary: summarizeError(error),
+            },
+            error,
+          );
+          return json(
+            { error: "Deliverable generation crashed", correlationId },
+            500,
             correlationId,
           );
         }
-
-        // Best-effort PRISM gate (default on); never blocks the deliverable.
-        const quality =
-          validate === false
-            ? null
-            : await judgeDeliverable(brief, deliverable.markdown, correlationId);
-
-        return json(
-          { ...deliverable, kind, engine: engine ?? "rag", quality, correlationId },
-          200,
-          correlationId,
-        );
       },
     },
   },

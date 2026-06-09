@@ -112,7 +112,14 @@ function DeliverableRoute() {
       const res = await fetch("/api/deliverable/export", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brief: brief.trim(), format }),
+        body: JSON.stringify({
+          brief: brief.trim(),
+          format,
+          kind,
+          engine,
+          maxSections,
+          markdown: result?.markdown,
+        }),
       });
       const data = (await res.json()) as {
         base64?: string;

@@ -10,24 +10,54 @@
  * just because the platform is momentarily unreachable (MoA resilience finding).
  */
 import process from "node:process";
+import { logServer } from "./server-logger";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
-function mcpConfig(): { url: string; key: string } | null {
-  const base = process.env.WIDGETDC_BACKEND_URL ?? process.env.WIDGETDC_ORCHESTRATOR_URL;
+const ORCHESTRATOR_TOOL_NAMES = new Set([
+  "generate_deliverable",
+  "deliverable_draft",
+  "produce_document",
+  "judge_response",
+  "context_fold",
+]);
+
+type McpRouteConfig = { url: string; key: string; target: "backend" | "orchestrator" };
+
+export function resolveMcpRoute(
+  tool: string,
+  env: NodeJS.ProcessEnv = process.env,
+): McpRouteConfig | null {
+  const wantsOrchestrator = ORCHESTRATOR_TOOL_NAMES.has(tool);
+  const orchestratorBase = env.WIDGETDC_ORCHESTRATOR_URL;
+  const backendBase = env.WIDGETDC_BACKEND_URL;
+  const base = wantsOrchestrator
+    ? (orchestratorBase ?? backendBase)
+    : (backendBase ?? orchestratorBase);
+  const target = wantsOrchestrator && orchestratorBase ? "orchestrator" : "backend";
   // Canonical WidgeTDC unified bearer is `WIDGETDC_BEARER_TOKEN`; `WIDGETDC_API_KEY`
   // and `MCP_AGENT_API_KEY` are legacy aliases kept for backward compatibility
   // (matches apps/backend/src/utils/serviceBearer.ts resolution order).
   const key =
-    process.env.WIDGETDC_BEARER_TOKEN ??
-    process.env.WIDGETDC_API_KEY ??
-    process.env.MCP_AGENT_API_KEY;
+    target === "orchestrator"
+      ? (env.WIDGETDC_ORCHESTRATOR_API_KEY ??
+        env.ORCHESTRATOR_API_KEY ??
+        env.WIDGETDC_BEARER_TOKEN ??
+        env.WIDGETDC_API_KEY ??
+        env.MCP_AGENT_API_KEY)
+      : (env.WIDGETDC_BEARER_TOKEN ??
+        env.WIDGETDC_API_KEY ??
+        env.MCP_AGENT_API_KEY ??
+        env.WIDGETDC_ORCHESTRATOR_API_KEY ??
+        env.ORCHESTRATOR_API_KEY);
   if (!base || !key) return null;
-  return { url: `${base.replace(/\/+$/, "")}/api/mcp/route`, key };
+  return { url: `${base.replace(/\/+$/, "")}/api/mcp/route`, key, target };
 }
 
 export function isPlatformConfigured(): boolean {
-  return mcpConfig() !== null;
+  return (
+    resolveMcpRoute("reason_deeply") !== null || resolveMcpRoute("generate_deliverable") !== null
+  );
 }
 
 /**
@@ -39,11 +69,19 @@ export async function callMcpTool<T = unknown>(
   payload: Record<string, unknown>,
   opts: { timeoutMs?: number; correlationId?: string } = {},
 ): Promise<T | null> {
-  const cfg = mcpConfig();
-  if (!cfg) return null;
+  const cfg = resolveMcpRoute(tool);
+  if (!cfg) {
+    logServer("warn", {
+      event: "mcp_tool_not_configured",
+      requestId: opts.correlationId,
+      tool,
+    });
+    return null;
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const started = Date.now();
   try {
     const res = await fetch(cfg.url, {
       method: "POST",
@@ -55,12 +93,52 @@ export async function callMcpTool<T = unknown>(
       body: JSON.stringify({ tool, payload }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      logServer(res.status >= 500 ? "error" : "warn", {
+        event: "mcp_tool_non_2xx",
+        requestId: opts.correlationId,
+        tool,
+        endpoint: cfg.target,
+        status: res.status,
+        durationMs: Date.now() - started,
+        message: summarizeMcpFailure(body),
+      });
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (error) {
+    logServer(
+      "error",
+      {
+        event: "mcp_tool_request_failed",
+        requestId: opts.correlationId,
+        tool,
+        endpoint: cfg.target,
+        durationMs: Date.now() - started,
+      },
+      error,
+    );
     return null;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function summarizeMcpFailure(body: string): string {
+  if (!body) return "empty error body";
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    const error = parsed.error;
+    if (typeof error === "string") return error.slice(0, 240);
+    if (error && typeof error === "object") {
+      const e = error as Record<string, unknown>;
+      const message = typeof e.message === "string" ? e.message : JSON.stringify(e);
+      return message.slice(0, 240);
+    }
+    return JSON.stringify(parsed).slice(0, 240);
+  } catch {
+    return body.slice(0, 240);
   }
 }
 
