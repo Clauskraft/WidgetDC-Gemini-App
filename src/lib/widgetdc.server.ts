@@ -984,6 +984,28 @@ export async function produceDocument(
   return extractProducedDocument(result, format, opts.title);
 }
 
+export async function emitDeliverableDegradedEvent(event: {
+  correlationId: string;
+  stage: "generate" | "export";
+  kind: DeliverableKind;
+  engine: string;
+  format?: DocumentFormat;
+  reason: string;
+  fallbackType: string;
+}): Promise<void> {
+  const payload = {
+    event_type: "deliverable_generation_degraded",
+    source: "widgetdc-gemini-frontend",
+    correlation_id: event.correlationId,
+    severity: "WARN",
+    payload: event,
+  };
+  await callMcpTool<unknown>("governance.emit_spine_event", payload, {
+    correlationId: event.correlationId,
+    timeoutMs: 8000,
+  });
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Long-form "Dreamscape" generator — ports the RLM writer pipeline: iterative
 // per-section generation with `context_fold` (CaaS Mercury, LIN-568) compressing

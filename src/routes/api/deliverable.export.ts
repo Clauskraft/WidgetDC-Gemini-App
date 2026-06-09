@@ -16,6 +16,7 @@ import {
   deliverableDraft,
   longformGenerate,
   fallbackDeliverable,
+  emitDeliverableDegradedEvent,
 } from "@/lib/widgetdc.server";
 
 const BodySchema = z.object({
@@ -26,13 +27,33 @@ const BodySchema = z.object({
   kind: z.enum(["analysis", "roadmap", "assessment"]).optional(),
   engine: z.enum(["rag", "lego", "longform"]).optional(),
   maxSections: z.number().int().min(2).max(8).optional(),
+  degraded: z.boolean().optional(),
+  fallbackReason: z.string().max(120).optional(),
+  fallbackSource: z.string().max(120).optional(),
 });
 
-function json(body: unknown, status: number, correlationId: string): Response {
+function json(
+  body: unknown,
+  status: number,
+  correlationId: string,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "x-correlation-id": correlationId },
+    headers: {
+      "content-type": "application/json",
+      "x-correlation-id": correlationId,
+      ...extraHeaders,
+    },
   });
+}
+
+function degradedHeaders(reason: string, source: string): Record<string, string> {
+  return {
+    "X-WidgeTDC-Degraded": "true",
+    "X-WidgeTDC-Fallback-Reason": reason,
+    "X-WidgeTDC-Fallback-Source": source,
+  };
 }
 
 export const Route = createFileRoute("/api/deliverable/export")({
@@ -66,6 +87,9 @@ export const Route = createFileRoute("/api/deliverable/export")({
           kind = "analysis",
           engine = "rag",
           maxSections,
+          degraded: inheritedDegraded = false,
+          fallbackReason: inheritedFallbackReason,
+          fallbackSource: inheritedFallbackSource,
         } = parsed.data;
         logServer("info", {
           event: "deliverable_export_start",
@@ -79,6 +103,8 @@ export const Route = createFileRoute("/api/deliverable/export")({
 
         try {
           if (markdown?.trim()) {
+            const reason = inheritedFallbackReason ?? "client_supplied_degraded_markdown";
+            const source = inheritedFallbackSource ?? "client_markdown";
             const doc = renderMarkdownDocumentFallback(markdown, format, {
               title,
               filenameBase: title ?? `deliverable-${kind}`,
@@ -88,9 +114,24 @@ export const Route = createFileRoute("/api/deliverable/export")({
               requestId: correlationId,
               format,
               renderer: "local_markdown",
+              degraded: inheritedDegraded,
+              fallbackReason: inheritedDegraded ? reason : undefined,
+              fallbackSource: inheritedDegraded ? source : undefined,
               durationMs: Date.now() - started,
             });
-            return json({ ...doc, correlationId, renderer: "local_markdown" }, 200, correlationId);
+            return json(
+              {
+                ...doc,
+                correlationId,
+                renderer: "local_markdown",
+                degraded: inheritedDegraded,
+                fallbackReason: inheritedDegraded ? reason : undefined,
+                fallbackSource: inheritedDegraded ? source : undefined,
+              },
+              200,
+              correlationId,
+              inheritedDegraded ? degradedHeaders(reason, source) : {},
+            );
           }
 
           if (isPlatformConfigured()) {
@@ -141,15 +182,42 @@ export const Route = createFileRoute("/api/deliverable/export")({
               generated = await fallbackDeliverable(brief, kind, { correlationId, maxSections });
             }
             if (generated?.markdown) {
+              const degraded = true;
+              const reason = primary
+                ? "document_renderer_unavailable"
+                : "platform_pipeline_unavailable";
+              const source = primary ? "local_generated_markdown" : "writer_fallback";
               const doc = renderMarkdownDocumentFallback(generated.markdown, format, {
                 title,
                 filenameBase: title ?? `deliverable-${kind}`,
+              });
+              logServer("warn", {
+                event: "deliverable_generation_degraded",
+                requestId: correlationId,
+                format,
+                kind,
+                engine,
+                fallbackReason: reason,
+                fallbackSource: source,
+                durationMs: Date.now() - started,
+              });
+              void emitDeliverableDegradedEvent({
+                correlationId,
+                stage: "export",
+                kind,
+                engine,
+                format,
+                reason,
+                fallbackType: source,
               });
               logServer("info", {
                 event: "deliverable_export_success",
                 requestId: correlationId,
                 format,
                 renderer: primary ? "local_generated_markdown" : "local_writer_markdown",
+                degraded,
+                fallbackReason: reason,
+                fallbackSource: source,
                 markdownChars: generated.markdown.length,
                 durationMs: Date.now() - started,
               });
@@ -158,9 +226,13 @@ export const Route = createFileRoute("/api/deliverable/export")({
                   ...doc,
                   correlationId,
                   renderer: primary ? "local_generated_markdown" : "local_writer_markdown",
+                  degraded,
+                  fallbackReason: reason,
+                  fallbackSource: source,
                 },
                 200,
                 correlationId,
+                degradedHeaders(reason, source),
               );
             }
           } else {
