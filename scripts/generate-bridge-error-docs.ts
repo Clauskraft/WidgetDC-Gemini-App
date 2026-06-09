@@ -3,8 +3,8 @@
  * CLI til at generere `docs/mcp-bridge-error-payloads.generated.md`.
  *
  * Brug:
- *   bun run docs:bridge-errors          # skriv filen
- *   bun run docs:bridge-errors --check  # exit 1 hvis filen er out of date
+ *   npm run docs:bridge-errors          # skriv filen
+ *   npm run docs:bridge-errors --check  # exit 1 hvis filen er out of date
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -18,13 +18,15 @@ if (process.argv.includes("--check")) {
   try {
     current = readFileSync(target, "utf8");
   } catch {
-    console.error(`[docs:bridge-errors] ${GENERATED_DOC_PATH} mangler — kør \`bun run docs:bridge-errors\`.`);
+    console.error(
+      `[docs:bridge-errors] ${GENERATED_DOC_PATH} mangler — kør \`npm run docs:bridge-errors\`.`,
+    );
     process.exit(1);
   }
   if (current !== next) {
     console.error(
       `[docs:bridge-errors] ${GENERATED_DOC_PATH} er out of sync med fejlkodespecifikationen.\n` +
-        `Kør \`bun run docs:bridge-errors\` og commit ændringerne.`,
+        `Kør \`npm run docs:bridge-errors\` og commit ændringerne.`,
     );
     process.exit(1);
   }

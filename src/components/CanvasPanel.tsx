@@ -105,7 +105,8 @@ export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onCl
         !dragging && "transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
       )}
       style={{
-        width: typeof window !== "undefined" && window.innerWidth >= 768 ? effectiveWidth : undefined,
+        width:
+          typeof window !== "undefined" && window.innerWidth >= 768 ? effectiveWidth : undefined,
         maxWidth: "100vw",
       }}
     >
@@ -155,16 +156,28 @@ export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onCl
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Canvas</span>
-              <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">{expandedWidth}px</span>
+              <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">
+                {expandedWidth}px
+              </span>
             </div>
             <div className="flex items-center gap-1">
-              <button className="rounded-md p-1.5 text-muted-foreground hover:bg-accent" title="Zoom">
+              <button
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+                title="Zoom"
+              >
                 <ZoomIn className="h-4 w-4" />
               </button>
-              <button className="rounded-md p-1.5 text-muted-foreground hover:bg-accent" title="Pin">
+              <button
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+                title="Pin"
+              >
                 <Pin className="h-4 w-4" />
               </button>
-              <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent" title="Luk">
+              <button
+                onClick={onClose}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+                title="Luk"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -193,7 +206,9 @@ export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onCl
                 <span className="chip">Process Insight</span>
                 <span className="title">Aurora · auto-layout</span>
               </div>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">snap · 8px grid</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                snap · 8px grid
+              </span>
             </div>
             <MessageContent text={content} layout="canvas" />
             <figcaption>Aurora artifact · normaliseret visning</figcaption>

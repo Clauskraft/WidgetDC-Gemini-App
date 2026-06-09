@@ -8,6 +8,8 @@ import {
   extractMcpToolNames,
   extractProducedDocument,
   extractQuality,
+  fetchRagGrounding,
+  generateDeliverable,
   isSubstantiveDeliverable,
   localTemplateDeliverable,
   resolveMcpRoute,
@@ -301,6 +303,119 @@ describe("MCP tool discovery routing", () => {
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/mcp/route")),
     ).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("platform deliverable writer fallback", () => {
+  const brief =
+    "GraphRAG med Neo4j tilbyder en overlegen tilgang til informationshentning og ræsonnement, når data har komplekse relationer og kontekst er afgørende.";
+
+  it("uses the live platform writer path when legacy deliverable aliases are disabled", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+    vi.stubEnv("WIDGETDC_ENABLE_LEGACY_DELIVERABLE_TOOLS", "");
+
+    const writerMarkdown = [
+      "# GraphRAG med Neo4j",
+      "",
+      "## SCQA",
+      "Neo4j GraphRAG er relevant, når spørgsmål kræver relationel kontekst, evidensspor og forklarlig ræsonnering på tværs af entiteter [1]. Det afgørende valg er at bruge grafen til at reducere tvetydighed, mens vektor-RAG stadig kan fungere som recall-lag.",
+      "",
+      "## MECE Issue Tree",
+      "```mermaid",
+      "flowchart TD",
+      "A[Decision] --> B[Relationskompleksitet]",
+      "A --> C[Evidens og provenance]",
+      "A --> D[Driftskrav]",
+      "```",
+      "",
+      "## Anbefalinger",
+      "Start med de vigtigste node- og relationstyper, bind claims til kilder, og brug graph expansion til at validere sammenhænge. Det giver bedre auditability og færre løse antagelser end en ren semantisk søgning.",
+      "",
+      "## Risici",
+      "For bred ingestion uden ontologi skaber støj. Manglende citationer gør svaret svært at stole på. For høj latency kan dæmpes med cachede subgrafer og klare retrieval-grænser.",
+      "",
+      "Canvas notes:",
+      "- Brug SCQA til at ramme beslutningen før teknologien.",
+      "- Prioriter relationer, provenance og citationer.",
+      "- Hold vektor-RAG som recall og Neo4j som reasoning-lag.",
+    ].join("\n");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["srag.query", "reason_deeply"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ tools: [] });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        const body = JSON.parse(String(init?.body)) as { tool: string; payload: unknown };
+        if (body.tool === "srag.query") {
+          return Response.json({
+            result: {
+              results: [
+                {
+                  text: "GraphRAG combines graph relationships, semantic retrieval and auditable evidence.",
+                  source: "GraphRAG platform note",
+                  score: 0.92,
+                },
+              ],
+            },
+          });
+        }
+        if (body.tool === "reason_deeply") {
+          expect(JSON.stringify(body.payload)).toContain("Available evidence context");
+          expect(JSON.stringify(body.payload)).toContain("RAG-backed consulting draft");
+          return Response.json({ result: { recommendation: writerMarkdown } });
+        }
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const deliverable = await generateDeliverable(brief, "analysis", {
+      correlationId: "deliverable-regression",
+      maxSections: 5,
+    });
+
+    expect(deliverable).toEqual({ markdown: writerMarkdown, citations: 1 });
+    const postedTools = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)).tool);
+    expect(postedTools).toEqual(["srag.query", "reason_deeply"]);
+  });
+
+  it("does not treat failed MCP envelopes as grounding context", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["srag.query"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ tools: [] });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        const body = JSON.parse(String(init?.body)) as { tool: string };
+        expect(["srag.query", "rag_route"]).toContain(body.tool);
+        return Response.json({ success: false, error: `Tool Not Found: ${body.tool}` });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchRagGrounding(brief, "rag-regression")).resolves.toBeNull();
+    const postedTools = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)).tool);
+    expect(postedTools).toEqual(["srag.query", "rag_route"]);
   });
 });
 

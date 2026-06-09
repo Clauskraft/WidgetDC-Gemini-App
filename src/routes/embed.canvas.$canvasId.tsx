@@ -23,8 +23,10 @@ import {
 import { verifyCanvasToken } from "@/lib/widgetdcContracts.server";
 
 const resolveCanvasToken = createServerFn({ method: "GET" })
-  .inputValidator((d: { canvas_id: string; token: string }) =>
-    z.object({ canvas_id: z.string().min(1).max(128), token: z.string().min(8).max(16384) }).parse(d),
+  .validator((d: { canvas_id: string; token: string }) =>
+    z
+      .object({ canvas_id: z.string().min(1).max(128), token: z.string().min(8).max(16384) })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const payload = verifyCanvasToken(data.token);
@@ -41,8 +43,7 @@ const resolveCanvasToken = createServerFn({ method: "GET" })
   });
 
 export const Route = createFileRoute("/embed/canvas/$canvasId")({
-  validateSearch: (s: Record<string, unknown>) =>
-    z.object({ t: z.string().min(8) }).parse(s),
+  validateSearch: (s: Record<string, unknown>) => z.object({ t: z.string().min(8) }).parse(s),
   loaderDeps: ({ search }) => ({ t: search.t }),
   loader: async ({ params, deps }) => {
     try {
@@ -106,7 +107,8 @@ export function useCanvasBridge(
   payload: Pick<CanvasEmbedPayload, "canvas_id" | "family" | "intent" | "title">,
   options: UseCanvasBridgeOptions = {},
 ) {
-  const allowedOriginsKey = options.allowedOrigins ? options.allowedOrigins.join("|") : "";
+  const allowedOrigins = options.allowedOrigins;
+  const allowedOriginsKey = allowedOrigins ? allowedOrigins.join("|") : "";
   useEffect(() => {
     postToHost({
       v: 1,
@@ -121,13 +123,9 @@ export function useCanvasBridge(
       ts: Date.now(),
     });
 
-    const allowedOrigins = options.allowedOrigins;
     const onMessage = (ev: MessageEvent) => {
       if (allowedOrigins && !isAllowedOrigin(ev.origin ?? null, allowedOrigins)) {
-        emitRejection(
-          payload.canvas_id,
-          buildOriginRejection(ev.origin || null, allowedOrigins),
-        );
+        emitRejection(payload.canvas_id, buildOriginRejection(ev.origin || null, allowedOrigins));
         return;
       }
       const result = validateIncomingBridgeMessage(ev.data, payload.canvas_id);
@@ -148,7 +146,14 @@ export function useCanvasBridge(
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [payload.canvas_id, payload.family, payload.intent, payload.title, allowedOriginsKey]);
+  }, [
+    payload.canvas_id,
+    payload.family,
+    payload.intent,
+    payload.title,
+    allowedOrigins,
+    allowedOriginsKey,
+  ]);
 }
 
 function CanvasEmbedPage() {
@@ -159,9 +164,7 @@ function CanvasEmbedPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-xs uppercase tracking-wider text-muted-foreground">
-        <span className="font-semibold text-foreground/80">
-          {payload.title ?? "Canvas"}
-        </span>
+        <span className="font-semibold text-foreground/80">{payload.title ?? "Canvas"}</span>
         <span>
           {payload.family} · {payload.intent}
         </span>

@@ -1,5 +1,20 @@
-import { describe, it, expect } from "vitest";
-import { extractRuntimeSummary, extractGraphSnapshot } from "./widgetdc.server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearMcpToolDiscoveryCacheForTests,
+  extractGraphSnapshot,
+  extractRuntimeSummary,
+  fetchGraphSnapshot,
+} from "./widgetdc.server";
+
+beforeEach(() => {
+  clearMcpToolDiscoveryCacheForTests();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("extractRuntimeSummary (Phase 3 Observability)", () => {
   it("normalizes the live runtime_summary shape and computes per-tool error rates", () => {
@@ -75,5 +90,48 @@ describe("extractGraphSnapshot", () => {
   it("returns null when neither count is present", () => {
     expect(extractGraphSnapshot({ status: "online" })).toBeNull();
     expect(extractGraphSnapshot(null)).toBeNull();
+  });
+
+  it("falls back to graph.stats when the legacy data_graph_stats alias returns a failed envelope", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["graph.stats"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ tools: [] });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        const body = JSON.parse(String(init?.body)) as { tool: string };
+        if (body.tool === "data_graph_stats") {
+          return Response.json({ success: false, error: "Tool Not Found: data_graph_stats" });
+        }
+        if (body.tool === "graph.stats") {
+          return Response.json({
+            success: true,
+            nodes: 1632144,
+            relationships: 3621595,
+            status: "online",
+          });
+        }
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchGraphSnapshot("graph-regression")).resolves.toEqual({
+      nodes: 1632144,
+      relationships: 3621595,
+      online: true,
+    });
+    const postedTools = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)).tool);
+    expect(postedTools).toEqual(["data_graph_stats", "graph.stats"]);
   });
 });

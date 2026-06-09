@@ -42,7 +42,8 @@ ${NOTES}`;
         nodes: [{ id: "a", label: "A", kind: "Agent" }],
         edges: [{ from: "a", to: "ghost" }],
       }) +
-      "\n```\n" + NOTES;
+      "\n```\n" +
+      NOTES;
     const r = validateGemResponse(text, "consulting-strategist");
     expect(r.ok).toBe(false);
     expect(r.issues.some((i) => i.code === "flow_dangling_edge")).toBe(true);

@@ -25,7 +25,7 @@ Each item names the concrete platform MCP tool(s) it should call.
 ## Intelligence-stack reflection (2026-06-07)
 
 This backlog was pressure-tested through the WidgeTDC intelligence stack:
-`reason_deeply` (sequencing), `next_best_action` (pattern: *Adoption Flywheel*),
+`reason_deeply` (sequencing), `next_best_action` (pattern: _Adoption Flywheel_),
 `rag_route` (orchestrator wire-facts), and `moa_query` (master + omega + custodian,
 confidence 0.85). Key adjustments folded in below: **chat stays client-side
 streamed** (AUR-1), and **graph responses are never SSR-cached** (AUR-2). The
@@ -58,6 +58,7 @@ overhead. Revisit AUR-4 the moment a real write feature lands.
 ## P0 — Connect chat & graph to the live platform
 
 ### AUR-1 — Route chat through the WidgetDC orchestrator ✅ DONE (2026-06-07)
+
 **Done:** Lovable AI Gateway fully removed (`@ai-sdk/openai-compatible` dropped,
 `ai-gateway.server.ts` deleted). `src/routes/api/chat.ts` now calls the WidgeTDC
 orchestrator: `rag_route` for grounding + `llm_chat` for completion, via
@@ -72,6 +73,7 @@ inferred from the UI model id).
 `model_budget_preflight_status`, `adaptive_rag_query`, `knowledge_query` (follow-up).
 
 ### AUR-2 — Live Neo4j knowledge graph ✅ DONE (2026-06-07)
+
 **Done:** `api/graph.query.ts` server route — **whitelisted named queries only**
 (`label-overview`, `sample-subgraph`, `neighbors`; `neighbors` seed label is
 allow-listed), no raw Cypher from the browser (governance invariant held). Runs
@@ -86,6 +88,7 @@ AgentMemory 204K, :Agent neighbors, typed-edge subgraph).
 `decision_lineage` as richer views.
 
 ### AUR-3 — Wire the canvas resolver to the platform `canvas_builder`
+
 **Why:** `api/mrp.canvas.resolve.ts` resolves intent + signs a token locally but
 never calls the platform; FlowSpecs aren't persisted or graph-derived.
 **Build:** After local `detectIntent`, call platform `canvas_builder` (and
@@ -98,6 +101,7 @@ FlowSpec to be hydrated from `query_graph`. Keep the HMAC embed-token contract.
 ## P1 — High-leverage platform features
 
 ### AUR-4 — Governance plan + approval flow (staged/production writes)
+
 **Why:** Governance is currently UI-display only; there is no real plan/approve
 path for mutating actions.
 **Build:** A "HyperAgent plan" surface: when a chat turn implies a write, call
@@ -109,6 +113,7 @@ results inline.
 `governance_policy_decide`, `governance_matrix`, `agentic_hitl_escalate`.
 
 ### AUR-5 — Deep-reasoning & verification mode in chat ✅ DONE (2026-06-08)
+
 **Done:** "Deep" toggle (Brain icon) in chat header, persisted in localStorage.
 When ON, `api/chat.ts` sends `reflect: true` to `reason_deeply` and surfaces the
 RLM's rich reflection envelope: `reasoning_chain[]`, `confidence`,
@@ -125,6 +130,7 @@ on this route.
 **Tools used:** `reason_deeply` (with `reflect: true`).
 
 ### AUR-6 — Agent memory persistence (cross-session continuity)
+
 **Why:** Threads persist in Supabase, but no agent memory / lessons feed the
 platform flywheel.
 **Build:** On meaningful turns, `memory_store` insights/closures; on session
@@ -134,6 +140,7 @@ start, `memory_search` / `memory_retrieve` to hydrate context. Surface a
 `memory_consolidate`.
 
 ### AUR-7 — Deploy target (Railway) + auto-deploy ✅ DONE (2026-06-07)
+
 **Done:** Target is **Railway** (nitro `node-server` preset, `railway.toml` +
 `nixpacks.toml` Node 22, `npm install` install phase). `/health` route added.
 **Auto-deploy is live:** the service has a GitHub repoTrigger on `main`
@@ -145,6 +152,7 @@ as a pre-merge gate; `commit_sha` in `/health` is "unknown" on CLI deploys but
 populated on GitHub-trigger deploys (`RAILWAY_GIT_COMMIT_SHA`).
 
 ### AUR-8 — Platform health & live dashboard data
+
 **Why:** `dashboard.tsx` is local-only (threads/gems). The old app's "live vs
 preview" gating is gone.
 **Build:** A `serverReachable`-style probe via `get_platform_health` +
@@ -158,28 +166,34 @@ preview" gating is gone.
 ## P2 — Polish, safety, hardening
 
 ### AUR-9 — Auth hardening
+
 Supabase publishable key + URL currently live in `.env` (and were committed in
 the source `.env`). **Rotate the Supabase anon key**, confirm RLS on the
 `threads` table, and verify `auth-middleware` enforces ownership server-side.
 
 ### AUR-10 — Embed/bridge origin allow-list for production
+
 `isAllowedOrigin` defaults must be tightened for prod (no `*`). Set the canvas
 embed origin allow-list from env and keep `docs/mcp-bridge-origins.md` accurate.
 
 ### AUR-11 — `CANVAS_SIGNING_SECRET` must be set in prod
+
 The token signer falls back to `WIDGETDC_API_KEY` then a dev default. Make a real
 `CANVAS_SIGNING_SECRET` required in production (fail-fast if missing).
 
 ### AUR-12 — Observability: ship structured logs to the platform
+
 `src/lib/server-logger.ts` logs locally. Forward error/audit events to
 `system_logs_summary` / the EventSpine so platform governance can correlate.
 **Tools:** `eventspine_replay`, `governance_audit_query`, `system_logs_summary`.
 
 ### AUR-13 — Recharts v3 migration
+
 `recharts@2.15.4` is EOL (deprecation warning on install). Plan the v3 migration
 for `src/components/Chart.tsx` + `ui/chart.tsx`.
 
 ### AUR-14 — Drop the `@types/dompurify` stub
+
 dompurify now ships its own types; remove the redundant `@types/dompurify`
 devDependency.
 

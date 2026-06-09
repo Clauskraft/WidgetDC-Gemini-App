@@ -51,11 +51,10 @@ export function useThreads() {
       const current = load();
       const idx = current.findIndex((t) => t.id === id);
       const base: Thread =
-        idx >= 0
-          ? current[idx]
-          : { id, title: "Ny samtale", updatedAt: Date.now(), messages: [] };
+        idx >= 0 ? current[idx] : { id, title: "Ny samtale", updatedAt: Date.now(), messages: [] };
       const next: Thread = { ...base, ...patch, id, updatedAt: Date.now() };
-      const arr = idx >= 0 ? [...current.slice(0, idx), next, ...current.slice(idx + 1)] : [next, ...current];
+      const arr =
+        idx >= 0 ? [...current.slice(0, idx), next, ...current.slice(idx + 1)] : [next, ...current];
       persist(arr);
     },
     [persist],

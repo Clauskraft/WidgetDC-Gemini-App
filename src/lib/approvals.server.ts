@@ -101,14 +101,28 @@ export async function listBackendPending(): Promise<
   return { ok: true, requests: body.requests };
 }
 
-export type BackendApprovalErrorCode = "NOT_FOUND" | "NOT_PENDING" | "network_error" | "non_2xx" | "malformed_response" | "backend_not_configured" | string;
+export type BackendApprovalErrorCode =
+  | "NOT_FOUND"
+  | "NOT_PENDING"
+  | "network_error"
+  | "non_2xx"
+  | "malformed_response"
+  | "backend_not_configured"
+  | string;
 
 export async function approveBackend(
   requestId: string,
   approvedBy: string,
 ): Promise<
   | { ok: true; request: BackendApprovalRequest }
-  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+      code?: BackendApprovalErrorCode;
+      current_status?: string;
+      hint?: string;
+    }
 > {
   const cfg = backendConfig();
   if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };
@@ -160,7 +174,14 @@ export async function rejectBackend(
   reason: string,
 ): Promise<
   | { ok: true; request: BackendApprovalRequest }
-  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+      code?: BackendApprovalErrorCode;
+      current_status?: string;
+      hint?: string;
+    }
 > {
   const cfg = backendConfig();
   if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };

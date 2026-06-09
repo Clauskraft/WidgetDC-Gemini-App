@@ -7,7 +7,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "WidgeTDC Aurora — Ny samtale" },
-      { name: "description", content: "Start en ny samtale med Aurora, et Gemini-drevet AI workspace." },
+      {
+        name: "description",
+        content: "Start en ny samtale med Aurora, et Gemini-drevet AI workspace.",
+      },
     ],
   }),
   component: IndexRoute,

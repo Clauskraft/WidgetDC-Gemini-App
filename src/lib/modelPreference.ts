@@ -20,20 +20,80 @@ export type ModelOption = {
 // (see src/lib/providers.server.ts). Keep them aligned with real model ids.
 export const MODEL_OPTIONS: ModelOption[] = [
   // OpenAI
-  { id: "openai/gpt-5",                        label: "GPT-5",                     vendor: "OpenAI",    tier: "pro",      hint: "Stærk all-rounder" },
-  { id: "openai/gpt-5-mini",                   label: "GPT-5 mini",                vendor: "OpenAI",    tier: "balanced", hint: "Billigere GPT-5" },
-  { id: "openai/gpt-5-nano",                   label: "GPT-5 nano",                vendor: "OpenAI",    tier: "fast",     hint: "Hurtig + billig" },
-  { id: "openai/gpt-5.5",                      label: "GPT-5.5",                   vendor: "OpenAI",    tier: "pro",      hint: "State-of-the-art reasoning" },
+  { id: "openai/gpt-5", label: "GPT-5", vendor: "OpenAI", tier: "pro", hint: "Stærk all-rounder" },
+  {
+    id: "openai/gpt-5-mini",
+    label: "GPT-5 mini",
+    vendor: "OpenAI",
+    tier: "balanced",
+    hint: "Billigere GPT-5",
+  },
+  {
+    id: "openai/gpt-5-nano",
+    label: "GPT-5 nano",
+    vendor: "OpenAI",
+    tier: "fast",
+    hint: "Hurtig + billig",
+  },
+  {
+    id: "openai/gpt-5.5",
+    label: "GPT-5.5",
+    vendor: "OpenAI",
+    tier: "pro",
+    hint: "State-of-the-art reasoning",
+  },
   // Anthropic
-  { id: "anthropic/claude-opus-4-1-20250805",  label: "Claude Opus 4.1",           vendor: "Anthropic", tier: "pro",      hint: "Anthropic flagship reasoning" },
-  { id: "anthropic/claude-sonnet-4-5",         label: "Claude Sonnet 4.5",         vendor: "Anthropic", tier: "balanced", hint: "Stærk + hurtig balance" },
-  { id: "anthropic/claude-haiku-4-5",          label: "Claude Haiku 4.5",          vendor: "Anthropic", tier: "fast",     hint: "Lille, hurtig Claude" },
+  {
+    id: "anthropic/claude-opus-4-1-20250805",
+    label: "Claude Opus 4.1",
+    vendor: "Anthropic",
+    tier: "pro",
+    hint: "Anthropic flagship reasoning",
+  },
+  {
+    id: "anthropic/claude-sonnet-4-5",
+    label: "Claude Sonnet 4.5",
+    vendor: "Anthropic",
+    tier: "balanced",
+    hint: "Stærk + hurtig balance",
+  },
+  {
+    id: "anthropic/claude-haiku-4-5",
+    label: "Claude Haiku 4.5",
+    vendor: "Anthropic",
+    tier: "fast",
+    hint: "Lille, hurtig Claude",
+  },
   // Google (direct Gemini API)
-  { id: "google/gemini-2.5-pro",               label: "Gemini 2.5 Pro",            vendor: "Google",    tier: "pro",      hint: "Stort kontekst, multimodal" },
-  { id: "google/gemini-2.5-flash",             label: "Gemini 2.5 Flash",          vendor: "Google",    tier: "balanced", hint: "Hurtig kode + reasoning" },
-  { id: "google/gemini-2.5-flash-lite",        label: "Gemini 2.5 Flash Lite",     vendor: "Google",    tier: "fast",     hint: "Billigst, høj volumen" },
+  {
+    id: "google/gemini-2.5-pro",
+    label: "Gemini 2.5 Pro",
+    vendor: "Google",
+    tier: "pro",
+    hint: "Stort kontekst, multimodal",
+  },
+  {
+    id: "google/gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    vendor: "Google",
+    tier: "balanced",
+    hint: "Hurtig kode + reasoning",
+  },
+  {
+    id: "google/gemini-2.5-flash-lite",
+    label: "Gemini 2.5 Flash Lite",
+    vendor: "Google",
+    tier: "fast",
+    hint: "Billigst, høj volumen",
+  },
   // WidgeTDC Platform RLM (reason_deeply auto-routes — model fixed)
-  { id: "platform/rlm",                        label: "WidgeTDC RLM (auto)",       vendor: "Platform",  tier: "default",  hint: "Platform-routet med refleksion (Deep mode)" },
+  {
+    id: "platform/rlm",
+    label: "WidgeTDC RLM (auto)",
+    vendor: "Platform",
+    tier: "default",
+    hint: "Platform-routet med refleksion (Deep mode)",
+  },
 ];
 
 export const DEFAULT_MODEL_ID = "openai/gpt-5";
@@ -44,7 +104,9 @@ export function getStoredModel(): string {
   try {
     const v = window.localStorage.getItem(KEY);
     if (v && MODEL_OPTIONS.some((m) => m.id === v)) return v;
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return DEFAULT_MODEL_ID;
 }
 
@@ -54,7 +116,9 @@ export function setStoredModel(id: string) {
   try {
     window.localStorage.setItem(KEY, id);
     window.dispatchEvent(new CustomEvent("widgetdc:model-changed", { detail: id }));
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
 }
 
 export function getModelMeta(id: string): ModelOption | undefined {
@@ -74,5 +138,11 @@ export function useModelPreference(): [string, (id: string) => void] {
       window.removeEventListener("widgetdc:model-changed", onChange as EventListener);
     };
   }, []);
-  return [model, (id: string) => { setStoredModel(id); setModel(id); }];
+  return [
+    model,
+    (id: string) => {
+      setStoredModel(id);
+      setModel(id);
+    },
+  ];
 }

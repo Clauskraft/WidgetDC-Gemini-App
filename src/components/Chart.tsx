@@ -18,6 +18,11 @@ export type LegendItem = {
   color?: string;
 };
 
+type ChartCssProperties = CSSProperties & {
+  "--legend-gap"?: string;
+  "--legend-swatch-size"?: string;
+};
+
 export function Chart({
   children,
   caption,
@@ -39,12 +44,12 @@ export function Chart({
   className?: string;
   style?: CSSProperties;
 }) {
-  const cssVars: CSSProperties = {};
+  const cssVars: ChartCssProperties = {};
   if (legendGap !== undefined) {
-    (cssVars as any)["--legend-gap"] = `${legendGap}px`;
+    cssVars["--legend-gap"] = `${legendGap}px`;
   }
   if (legendSwatchSize !== undefined) {
-    (cssVars as any)["--legend-swatch-size"] = `${legendSwatchSize}px`;
+    cssVars["--legend-swatch-size"] = `${legendSwatchSize}px`;
   }
 
   const inner = (
@@ -57,7 +62,8 @@ export function Chart({
         <div className="legend" data-legend role="list" aria-label="Forklaring">
           {legend.map((item, i) => {
             const swatch =
-              item.color ?? (item.series ? `var(--chart-${item.series})` : `var(--chart-${(i % 5) + 1})`);
+              item.color ??
+              (item.series ? `var(--chart-${item.series})` : `var(--chart-${(i % 5) + 1})`);
             return (
               <span key={i} className="legend-item" role="listitem">
                 <span className="legend-swatch" style={{ background: swatch }} />
