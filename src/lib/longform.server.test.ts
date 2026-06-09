@@ -31,6 +31,7 @@ describe("parseOutline (long-form outline parsing)", () => {
 describe("extractFolded (context_fold envelope)", () => {
   it("reads folded/compressed/summary/text/content across shapes", () => {
     expect(extractFolded({ result: { folded: "F" } })).toBe("F");
+    expect(extractFolded({ result: { folded_context: { content: "FC" } } })).toBe("FC");
     expect(extractFolded({ compressed: "C" })).toBe("C");
     expect(extractFolded({ summary: "S" })).toBe("S");
     expect(extractFolded({ text: "T" })).toBe("T");

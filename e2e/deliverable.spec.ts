@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 async function fillBrief(page: Page, text: string) {
   const brief = page.getByPlaceholder(/Beskriv hvad deliverablen/i);
   await brief.click();
-  await brief.fill("");
-  await brief.pressSequentially(text, { delay: 1 });
+  await brief.fill(text);
+  await expect(brief).toHaveValue(text);
   await expect(page.getByRole("button", { name: /Generér deliverable/i })).toBeEnabled();
 }
 
@@ -30,6 +30,7 @@ test("deliverable studio generates and renders a deliverable with PRISM badge", 
   });
 
   await page.goto("/deliverable");
+  await page.waitForLoadState("networkidle");
 
   await fillBrief(
     page,
@@ -69,6 +70,7 @@ test("deliverable studio surfaces degraded fallback outputs", async ({ page }) =
   });
 
   await page.goto("/deliverable");
+  await page.waitForLoadState("networkidle");
 
   await fillBrief(page, "Analyser governance for fallback-genererede deliverables.");
   await page.getByRole("button", { name: /Generér deliverable/i }).click();

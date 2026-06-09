@@ -1,8 +1,9 @@
 /**
  * POST /api/deliverable/export — Output Forge (Phase 1b).
  *
- * Renders a brief to a downloadable DOCX/PDF via the platform `produce_document`
- * tool and returns base64 bytes + filename + mime for client-side download.
+ * Renders a brief to a downloadable DOCX via the platform `forge.artifact.generate`
+ * tool when available. PDF and unavailable platform paths fall back to explicit
+ * degraded local rendering.
  * Server-only: keys read inside the handler.
  */
 import { createFileRoute } from "@tanstack/react-router";
@@ -141,11 +142,11 @@ export const Route = createFileRoute("/api/deliverable/export")({
                 event: "deliverable_export_success",
                 requestId: correlationId,
                 format,
-                renderer: "produce_document",
+                renderer: "forge_artifact_generate",
                 durationMs: Date.now() - started,
               });
               return json(
-                { ...platformDoc, correlationId, renderer: "produce_document" },
+                { ...platformDoc, correlationId, renderer: "forge_artifact_generate" },
                 200,
                 correlationId,
               );
@@ -155,8 +156,10 @@ export const Route = createFileRoute("/api/deliverable/export")({
               event: "deliverable_export_platform_fallback",
               requestId: correlationId,
               format,
-              renderer: "produce_document",
-              reason: "no artifact returned",
+              renderer:
+                format === "docx" ? "forge_artifact_generate" : "pdf_native_document_renderer",
+              reason:
+                format === "docx" ? "no artifact returned" : "native pdf rendering unavailable",
               durationMs: Date.now() - started,
             });
 
@@ -201,7 +204,7 @@ export const Route = createFileRoute("/api/deliverable/export")({
                 fallbackSource: source,
                 durationMs: Date.now() - started,
               });
-              void emitDeliverableDegradedEvent({
+              await emitDeliverableDegradedEvent({
                 correlationId,
                 stage: "export",
                 kind,
