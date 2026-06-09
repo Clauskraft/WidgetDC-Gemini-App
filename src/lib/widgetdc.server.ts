@@ -15,10 +15,11 @@ import { logServer } from "./server-logger";
 const DEFAULT_TIMEOUT_MS = 8000;
 const TOOL_DISCOVERY_TIMEOUT_MS = 3000;
 const TOOL_DISCOVERY_TTL_MS = 5 * 60 * 1000;
+const TOOL_DISCOVERY_FAILURE_TTL_MS = 30 * 1000;
 
 type McpTarget = "backend" | "orchestrator";
 type McpRouteConfig = { url: string; key: string; target: McpTarget };
-type McpEndpointConfig = McpRouteConfig & { toolsUrl: string };
+type McpEndpointConfig = McpRouteConfig & { toolsUrls: string[] };
 type McpToolDiscoveryCache = {
   signature: string;
   expiresAt: number;
@@ -26,6 +27,10 @@ type McpToolDiscoveryCache = {
 };
 
 let mcpToolDiscoveryCache: McpToolDiscoveryCache | null = null;
+let mcpToolDiscoveryInflight: {
+  signature: string;
+  promise: Promise<Map<string, McpRouteConfig>>;
+} | null = null;
 
 function cleanMcpBase(base: string): string {
   return base.replace(/\/+$/, "");
@@ -58,6 +63,10 @@ function mcpRouteFromEndpoint(endpoint: McpEndpointConfig): McpRouteConfig {
   return { url: endpoint.url, key: endpoint.key, target: endpoint.target };
 }
 
+function mcpToolDiscoveryUrls(base: string): string[] {
+  return [`${base}/api/mcp/tools`, `${base}/mcp/tools`];
+}
+
 function configuredMcpEndpoints(env: NodeJS.ProcessEnv = process.env): McpEndpointConfig[] {
   const endpoints: McpEndpointConfig[] = [];
   const backendBase = env.WIDGETDC_BACKEND_URL ? cleanMcpBase(env.WIDGETDC_BACKEND_URL) : "";
@@ -65,7 +74,7 @@ function configuredMcpEndpoints(env: NodeJS.ProcessEnv = process.env): McpEndpoi
   if (backendBase && backendKey) {
     endpoints.push({
       url: `${backendBase}/api/mcp/route`,
-      toolsUrl: `${backendBase}/api/mcp/tools`,
+      toolsUrls: mcpToolDiscoveryUrls(backendBase),
       key: backendKey,
       target: "backend",
     });
@@ -78,7 +87,7 @@ function configuredMcpEndpoints(env: NodeJS.ProcessEnv = process.env): McpEndpoi
   if (orchestratorBase && orchestratorKey && orchestratorBase !== backendBase) {
     endpoints.push({
       url: `${orchestratorBase}/api/mcp/route`,
-      toolsUrl: `${orchestratorBase}/api/mcp/tools`,
+      toolsUrls: mcpToolDiscoveryUrls(orchestratorBase),
       key: orchestratorKey,
       target: "orchestrator",
     });
@@ -152,7 +161,9 @@ export function buildMcpToolRouteMap(
 }
 
 function mcpDiscoverySignature(endpoints: McpEndpointConfig[]): string {
-  return endpoints.map((endpoint) => `${endpoint.target}:${endpoint.url}:key`).join("|");
+  return endpoints
+    .map((endpoint) => `${endpoint.target}:${endpoint.url}:${endpoint.toolsUrls.join(",")}:key`)
+    .join("|");
 }
 
 async function fetchMcpToolCatalog(
@@ -163,16 +174,20 @@ async function fetchMcpToolCatalog(
   const timer = setTimeout(() => controller.abort(), TOOL_DISCOVERY_TIMEOUT_MS);
   const started = Date.now();
   try {
-    const res = await fetch(endpoint.toolsUrl, {
-      method: "GET",
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${endpoint.key}`,
-        ...(opts.correlationId ? { "x-correlation-id": opts.correlationId } : {}),
-      },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
+    let lastStatus = 0;
+    for (let i = 0; i < endpoint.toolsUrls.length; i++) {
+      const res = await fetch(endpoint.toolsUrls[i], {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${endpoint.key}`,
+          ...(opts.correlationId ? { "x-correlation-id": opts.correlationId } : {}),
+        },
+        signal: controller.signal,
+      });
+      if (res.ok) return await res.json();
+      lastStatus = res.status;
+      if (res.status === 404 && i < endpoint.toolsUrls.length - 1) continue;
       logServer(res.status >= 500 ? "error" : "warn", {
         event: "mcp_tool_discovery_non_2xx",
         requestId: opts.correlationId,
@@ -182,7 +197,14 @@ async function fetchMcpToolCatalog(
       });
       return null;
     }
-    return await res.json();
+    logServer("warn", {
+      event: "mcp_tool_discovery_non_2xx",
+      requestId: opts.correlationId,
+      endpoint: endpoint.target,
+      status: lastStatus,
+      durationMs: Date.now() - started,
+    });
+    return null;
   } catch (error) {
     logServer(
       "warn",
@@ -198,6 +220,19 @@ async function fetchMcpToolCatalog(
   } finally {
     clearTimeout(timer);
   }
+}
+
+function cacheMcpToolDiscovery(
+  signature: string,
+  byTool: Map<string, McpRouteConfig>,
+  ttlMs: number,
+): Map<string, McpRouteConfig> {
+  mcpToolDiscoveryCache = {
+    signature,
+    expiresAt: Date.now() + ttlMs,
+    byTool,
+  };
+  return byTool;
 }
 
 async function discoverMcpToolRoutes(
@@ -217,6 +252,26 @@ async function discoverMcpToolRoutes(
     return mcpToolDiscoveryCache.byTool;
   }
 
+  if (mcpToolDiscoveryInflight?.signature === signature) {
+    return mcpToolDiscoveryInflight.promise;
+  }
+
+  const promise = discoverMcpToolRoutesUncached(endpoints, signature, opts);
+  mcpToolDiscoveryInflight = { signature, promise };
+  try {
+    return await promise;
+  } finally {
+    if (mcpToolDiscoveryInflight?.promise === promise) {
+      mcpToolDiscoveryInflight = null;
+    }
+  }
+}
+
+async function discoverMcpToolRoutesUncached(
+  endpoints: McpEndpointConfig[],
+  signature: string,
+  opts: { correlationId?: string } = {},
+): Promise<Map<string, McpRouteConfig>> {
   type DiscoveredMcpCatalog = { route: McpRouteConfig; catalog: unknown };
   const catalogResults = await Promise.all(
     endpoints.map(async (endpoint): Promise<DiscoveredMcpCatalog | null> => {
@@ -230,18 +285,15 @@ async function discoverMcpToolRoutes(
     endpoints.some((endpoint) => endpoint.target === "backend") &&
     !catalogs.some((entry) => entry.route.target === "backend")
   ) {
-    return new Map();
+    return cacheMcpToolDiscovery(signature, new Map(), TOOL_DISCOVERY_FAILURE_TTL_MS);
   }
 
-  if (catalogs.length === 0) return new Map();
+  if (catalogs.length === 0) {
+    return cacheMcpToolDiscovery(signature, new Map(), TOOL_DISCOVERY_FAILURE_TTL_MS);
+  }
 
   const byTool = buildMcpToolRouteMap(catalogs);
-  mcpToolDiscoveryCache = {
-    signature,
-    expiresAt: now + TOOL_DISCOVERY_TTL_MS,
-    byTool,
-  };
-  return byTool;
+  return cacheMcpToolDiscovery(signature, byTool, TOOL_DISCOVERY_TTL_MS);
 }
 
 async function resolveMcpRouteWithDiscovery(
@@ -256,6 +308,7 @@ async function resolveMcpRouteWithDiscovery(
 
 export function clearMcpToolDiscoveryCacheForTests(): void {
   mcpToolDiscoveryCache = null;
+  mcpToolDiscoveryInflight = null;
 }
 
 /**
