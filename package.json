@@ -15,8 +15,8 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:install": "playwright install --with-deps chromium",
-    "docs:bridge-errors": "tsx scripts/generate-bridge-error-docs.ts",
-    "docs:bridge-errors:check": "tsx scripts/generate-bridge-error-docs.ts --check"
+    "docs:bridge-errors": "jiti scripts/generate-bridge-error-docs.ts",
+    "docs:bridge-errors:check": "jiti scripts/generate-bridge-error-docs.ts --check"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.198",
@@ -98,7 +98,6 @@
     "jsdom": "^29.1.1",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
-    "tsx": "^4.22.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1",

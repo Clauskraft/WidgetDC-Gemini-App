@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env jiti
 /**
  * CLI til at generere `docs/mcp-bridge-error-payloads.generated.md`.
  *
