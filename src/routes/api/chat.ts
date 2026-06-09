@@ -11,9 +11,11 @@ import {
   orchestratorChat,
   councilChat,
   llmChatCompletion,
+  fetchIntentDetection,
   fetchRagGrounding,
   modelPolicyPreflight,
   storeChatMemory,
+  type ChatIntentDetection,
   type ChatMessage,
   type RagSource,
 } from "@/lib/widgetdc.server";
@@ -87,6 +89,25 @@ function* chunkText(text: string, size = 24): Generator<string> {
     }
   }
   if (buf) yield buf;
+}
+
+function formatIntentContext(intent: ChatIntentDetection): string {
+  const candidates = intent.candidates
+    .slice(0, 5)
+    .map((candidate, index) => {
+      const category = candidate.category ?? "uncategorized";
+      return `${index + 1}. ${candidate.tool} (score ${candidate.score}, matches ${candidate.matchCount}, category ${category})`;
+    })
+    .join("\n");
+
+  return [
+    "# WidgeTDC intent routing signal",
+    "The platform intent detector ranked candidate tools for the latest user request.",
+    "Use this as a routing/context signal only; do not claim that a tool was executed unless it was actually called.",
+    candidates,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -191,18 +212,32 @@ export const Route = createFileRoute("/api/chat")({
             writer.write({ type: "start", messageId });
             writer.write({ type: "start-step" });
 
-            // AUR-14 grounding lives INSIDE the stream so the client receives
+            // AUR-14 grounding and intent detection live INSIDE the stream so the client receives
             // start/start-step immediately — perceived TTFT is not blocked by
             // the up-to-~8s grounding fetch (which previously ran before the
             // response was even constructed). Build the grounded prompt +
             // sources here, then emit the sources part before the text.
             let sources: RagSource[] = [];
+            let intentDetection: ChatIntentDetection | null = null;
             let groundedSystem = system;
             if (lastUser) {
-              const grounding = await fetchRagGrounding(lastUser.content, correlationId);
+              const [intent, grounding] = await Promise.all([
+                fetchIntentDetection(lastUser.content, correlationId),
+                fetchRagGrounding(lastUser.content, correlationId),
+              ]);
+              intentDetection = intent;
+              const systemAdditions: string[] = [];
+              if (intentDetection) {
+                systemAdditions.push(formatIntentContext(intentDetection));
+              }
               if (grounding && grounding.context) {
                 sources = grounding.sources;
-                groundedSystem = `${system}\n\n# WidgeTDC knowledge context (cite as [n])\n${grounding.context}`;
+                systemAdditions.push(
+                  `# WidgeTDC knowledge context (cite as [n])\n${grounding.context}`,
+                );
+              }
+              if (systemAdditions.length > 0) {
+                groundedSystem = `${system}\n\n${systemAdditions.join("\n\n")}`;
               }
             }
             const chatMessages: ChatMessage[] = [
@@ -212,6 +247,8 @@ export const Route = createFileRoute("/api/chat")({
             if (sources.length > 0) {
               writer.write({ type: "data-sources", id: crypto.randomUUID(), data: { sources } });
             }
+
+            const topIntent = intentDetection?.candidates[0];
 
             writer.write({ type: "text-start", id: textId });
 
@@ -298,6 +335,17 @@ export const Route = createFileRoute("/api/chat")({
                 delta:
                   "⚠️ Chat-udbyderen returnerede ikke et svar (direkte udbyder fejlede og platform-RLM utilgængelig).",
               });
+            }
+
+            if (topIntent) {
+              meta = {
+                ...meta,
+                intentTool: topIntent.tool,
+                intentScore: topIntent.score,
+                intentCandidates: intentDetection?.candidates.slice(0, 5).map((c) => c.tool) ?? [
+                  topIntent.tool,
+                ],
+              };
             }
 
             writer.write({ type: "text-end", id: textId });

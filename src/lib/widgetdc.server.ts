@@ -385,11 +385,7 @@ async function callMcpToolIfCatalogued<T = unknown>(
   opts: { timeoutMs?: number; correlationId?: string; env?: NodeJS.ProcessEnv } = {},
 ): Promise<T | null> {
   const env = opts.env ?? process.env;
-  const discovered = await discoverMcpToolRoutes(
-    env,
-    { correlationId: opts.correlationId },
-    true,
-  );
+  const discovered = await discoverMcpToolRoutes(env, { correlationId: opts.correlationId }, true);
   if (discovered.size > 0 && !discovered.has(tool)) {
     logServer("info", {
       event: "mcp_tool_not_catalogued",
@@ -436,6 +432,9 @@ export type ChatReasoningMeta = {
   qualityScore?: number;
   reflectionAttempted?: boolean;
   reflectionKept?: boolean;
+  intentTool?: string;
+  intentScore?: number;
+  intentCandidates?: string[];
 };
 
 export type ChatResult = {
@@ -625,11 +624,90 @@ export type RagGrounding = {
   sources: RagSource[];
 };
 
+export type IntentCandidate = {
+  tool: string;
+  description?: string | null;
+  category?: string | null;
+  score: number;
+  matchCount: number;
+  maxSuccess: number;
+};
+
+export type ChatIntentDetection = {
+  query: string;
+  candidates: IntentCandidate[];
+  count: number;
+};
+
 function isFailedMcpEnvelope(result: unknown): boolean {
   if (!result || typeof result !== "object") return false;
   const r = result as Record<string, unknown>;
   const inner = (r.result as Record<string, unknown> | undefined) ?? r;
   return r.success === false || inner.success === false;
+}
+
+function finiteMetric(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "bigint") {
+    const asNumber = Number(value);
+    return Number.isFinite(asNumber) ? asNumber : 0;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+export function extractIntentDetection(result: unknown): ChatIntentDetection | null {
+  if (!result || typeof result !== "object") return null;
+  if (isFailedMcpEnvelope(result)) return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown> | undefined) ?? r;
+  if (typeof inner.error === "string" && inner.error.trim()) return null;
+
+  const rawCandidates = Array.isArray(inner.candidates) ? inner.candidates : [];
+  const candidates = rawCandidates
+    .map((candidate): IntentCandidate | null => {
+      if (!candidate || typeof candidate !== "object") return null;
+      const c = candidate as Record<string, unknown>;
+      if (typeof c.tool !== "string" || !c.tool.trim()) return null;
+      return {
+        tool: c.tool.trim(),
+        description: typeof c.description === "string" ? c.description : null,
+        category: typeof c.category === "string" ? c.category : null,
+        score: finiteMetric(c.score),
+        matchCount: finiteMetric(c.matchCount ?? c.match_count),
+        maxSuccess: finiteMetric(c.maxSuccess ?? c.max_success),
+      };
+    })
+    .filter((candidate): candidate is IntentCandidate => candidate !== null);
+
+  if (candidates.length === 0) return null;
+  const query = typeof inner.query === "string" ? inner.query : "";
+  return {
+    query,
+    candidates,
+    count: finiteMetric(inner.count) || candidates.length,
+  };
+}
+
+/**
+ * Platform intent routing signal for chat. The backend fix made `query` the
+ * canonical field; sending the old `input` field returns an empty error
+ * envelope, so keep this helper narrow and regression-tested.
+ */
+export async function fetchIntentDetection(
+  query: string,
+  correlationId?: string,
+): Promise<ChatIntentDetection | null> {
+  const result = await callMcpTool<unknown>(
+    "intent_detect",
+    { query },
+    { correlationId, timeoutMs: 5000 },
+  );
+  if (result == null) return null;
+  return extractIntentDetection(result);
 }
 
 /**
