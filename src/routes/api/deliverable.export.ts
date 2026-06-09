@@ -15,6 +15,7 @@ import {
   generateDeliverable,
   deliverableDraft,
   longformGenerate,
+  fallbackDeliverable,
 } from "@/lib/widgetdc.server";
 
 const BodySchema = z.object({
@@ -118,7 +119,7 @@ export const Route = createFileRoute("/api/deliverable/export")({
               durationMs: Date.now() - started,
             });
 
-            const generated =
+            const primary =
               engine === "longform"
                 ? await longformGenerate(brief, kind, {
                     correlationId,
@@ -127,6 +128,18 @@ export const Route = createFileRoute("/api/deliverable/export")({
                 : engine === "lego"
                   ? await deliverableDraft(brief, kind, { correlationId, maxSections })
                   : await generateDeliverable(brief, kind, { correlationId, maxSections });
+            let generated = primary;
+            if (!generated) {
+              logServer("warn", {
+                event: "deliverable_export_writer_fallback",
+                requestId: correlationId,
+                format,
+                kind,
+                engine,
+                durationMs: Date.now() - started,
+              });
+              generated = await fallbackDeliverable(brief, kind, { correlationId, maxSections });
+            }
             if (generated?.markdown) {
               const doc = renderMarkdownDocumentFallback(generated.markdown, format, {
                 title,
@@ -136,12 +149,16 @@ export const Route = createFileRoute("/api/deliverable/export")({
                 event: "deliverable_export_success",
                 requestId: correlationId,
                 format,
-                renderer: "local_generated_markdown",
+                renderer: primary ? "local_generated_markdown" : "local_writer_markdown",
                 markdownChars: generated.markdown.length,
                 durationMs: Date.now() - started,
               });
               return json(
-                { ...doc, correlationId, renderer: "local_generated_markdown" },
+                {
+                  ...doc,
+                  correlationId,
+                  renderer: primary ? "local_generated_markdown" : "local_writer_markdown",
+                },
                 200,
                 correlationId,
               );
@@ -154,36 +171,20 @@ export const Route = createFileRoute("/api/deliverable/export")({
             });
           }
 
-          const fallbackMarkdown = [
-            `# ${title ?? `Deliverable ${kind}`}`,
-            "",
-            "## Brief",
-            "",
-            brief,
-            "",
-            "## Status",
-            "",
-            "Platform generation/rendering was unavailable, so this export contains the submitted brief only.",
-            "",
-            "Canvas notes:",
-            "- Platform renderer did not return a document artifact.",
-            "- Use the correlationId in server logs for follow-up debugging.",
-            "- Re-run generation when the upstream document pipeline is healthy.",
-          ].join("\n");
-          const doc = renderMarkdownDocumentFallback(fallbackMarkdown, format, {
-            title,
-            filenameBase: title ?? `deliverable-${kind}`,
-          });
-          logServer("warn", {
-            event: "deliverable_export_degraded_success",
+          logServer("error", {
+            event: "deliverable_export_failed",
             requestId: correlationId,
             format,
-            renderer: "local_brief_fallback",
+            kind,
+            engine,
             durationMs: Date.now() - started,
           });
           return json(
-            { ...doc, correlationId, renderer: "local_brief_fallback" },
-            200,
+            {
+              error: "Document generation failed — see server logs for correlationId.",
+              correlationId,
+            },
+            502,
             correlationId,
           );
         } catch (error) {

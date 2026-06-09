@@ -107,11 +107,20 @@ function renderDocx(markdown: string, title: string): Buffer {
   return zipStore(files);
 }
 
-function asciiPdfText(input: string): string {
+function latin1PdfText(input: string): string {
   return stripMarkdown(input)
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\x20-\x7e]/g, "?");
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, "-")
+    .replace(/\u2026/g, "...")
+    .split("")
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || (code >= 0x20 && code <= 0xff)
+        ? char
+        : "?";
+    })
+    .join("");
 }
 
 function wrapText(input: string, width = 96): string[] {
@@ -136,11 +145,11 @@ function escapePdfString(input: string): string {
 
 function renderPdf(markdown: string, title: string): Buffer {
   const lines = markdownLines(markdown, title).flatMap((line) =>
-    line.trim() ? wrapText(asciiPdfText(line)) : [""],
+    line.trim() ? wrapText(latin1PdfText(line)) : [""],
   );
   const pages: string[][] = [];
   for (let i = 0; i < lines.length; i += 48) pages.push(lines.slice(i, i + 48));
-  if (pages.length === 0) pages.push([asciiPdfText(title)]);
+  if (pages.length === 0) pages.push([latin1PdfText(title)]);
 
   const objects: string[] = [];
   const add = (body: string) => {
@@ -163,7 +172,7 @@ function renderPdf(markdown: string, title: string): Buffer {
       "ET",
     ].join("\n");
     const contentId = add(
-      `<< /Length ${Buffer.byteLength(body, "utf8")} >>\nstream\n${body}\nendstream`,
+      `<< /Length ${Buffer.byteLength(body, "latin1")} >>\nstream\n${body}\nendstream`,
     );
     pageIds.push(
       add(
@@ -180,16 +189,16 @@ function renderPdf(markdown: string, title: string): Buffer {
   let pdf = "%PDF-1.4\n";
   const offsets = [0];
   objects.forEach((body, index) => {
-    offsets[index + 1] = Buffer.byteLength(pdf, "utf8");
+    offsets[index + 1] = Buffer.byteLength(pdf, "latin1");
     pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
   });
-  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  const xrefOffset = Buffer.byteLength(pdf, "latin1");
   pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
   for (let i = 1; i <= objects.length; i++) {
     pdf += `${offsets[i].toString().padStart(10, "0")} 00000 n \n`;
   }
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return Buffer.from(pdf, "utf8");
+  return Buffer.from(pdf, "latin1");
 }
 
 const CRC_TABLE = new Uint32Array(256).map((_, n) => {
