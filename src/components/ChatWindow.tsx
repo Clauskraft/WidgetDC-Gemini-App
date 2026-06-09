@@ -403,7 +403,7 @@ export function ChatWindow({
                   gem.accent ?? "from-primary to-primary",
                 )}
               >
-                Gem · {gem.name}
+                Widget · {gem.name}
               </div>
             ) : null}
             <span className="text-sm text-muted-foreground">via WidgeTDC</span>
