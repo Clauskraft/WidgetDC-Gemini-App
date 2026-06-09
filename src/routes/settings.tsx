@@ -7,7 +7,10 @@ export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "Indstillinger — WidgeTDC Aurora" },
-      { name: "description", content: "Tilpas dit Aurora workspace: data, udseende og udvikleropsætning." },
+      {
+        name: "description",
+        content: "Tilpas dit Aurora workspace: data, udseende og udvikleropsætning.",
+      },
     ],
   }),
   component: SettingsRoute,
@@ -82,7 +85,14 @@ function SettingsRoute() {
         </Section>
 
         <Section title="Data & samtaler" icon={<Database className="h-4 w-4" />}>
-          <Row label="Lokale samtaler" description={hydrated ? `${threads.length} tråd${threads.length === 1 ? "" : "e"} gemt lokalt` : "Indlæser…"}>
+          <Row
+            label="Lokale samtaler"
+            description={
+              hydrated
+                ? `${threads.length} tråd${threads.length === 1 ? "" : "e"} gemt lokalt`
+                : "Indlæser…"
+            }
+          >
             <span className="text-xs text-muted-foreground">
               {storageBytes != null ? `${(storageBytes / 1024).toFixed(1)} KB` : ""}
             </span>
@@ -122,7 +132,7 @@ function SettingsRoute() {
         </Section>
 
         <Section title="Om" icon={<Sparkles className="h-4 w-4" />}>
-          <Row label="WidgeTDC Aurora" description="Workspace drevet af WidgeTDC-platformen." >
+          <Row label="WidgeTDC Aurora" description="Workspace drevet af WidgeTDC-platformen.">
             <span className="text-xs text-muted-foreground">v0.1</span>
           </Row>
         </Section>
@@ -131,7 +141,15 @@ function SettingsRoute() {
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mb-6 rounded-2xl border border-border bg-card/50 shadow-soft">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -143,7 +161,15 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   );
 }
 
-function Row({ label, description, children }: { label: string; description?: string; children?: React.ReactNode }) {
+function Row({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div className="min-w-0 flex-1">

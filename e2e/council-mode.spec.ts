@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+async function waitForHydration(page: import("@playwright/test").Page) {
+  await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
+}
+
 /**
  * Phase 4 Council (Mixture-of-Agents) mode. Stubs /api/chat so the test runs
  * without platform keys, verifying the Council toggle sends `body.council=true`
@@ -15,16 +19,16 @@ test("council toggle sends body.council and is exclusive with deep", async ({ pa
   });
 
   await page.goto("/");
+  await waitForHydration(page);
 
   // Enabling Deep first, then Council, must leave only Council active.
-  await page.getByRole("button", { name: /^Deep$/ }).click();
+  const deep = page.getByRole("button", { name: /^Deep$/ });
+  await deep.click();
+  await expect(deep).toHaveAttribute("aria-pressed", "true");
   const council = page.getByRole("button", { name: /^Council$/ });
   await council.click();
   await expect(council).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: /^Deep$/ })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  await expect(deep).toHaveAttribute("aria-pressed", "false");
 
   const reqPromise = page.waitForRequest(
     (req) => req.url().endsWith("/api/chat") && req.method() === "POST",
@@ -44,6 +48,7 @@ test("with both flags stored, only Council is active on load (Council wins)", as
     localStorage.setItem("widgetdc.chat.council", "1");
   });
   await page.goto("/");
+  await waitForHydration(page);
   await expect(page.getByRole("button", { name: /^Council$/ })).toHaveAttribute(
     "aria-pressed",
     "true",

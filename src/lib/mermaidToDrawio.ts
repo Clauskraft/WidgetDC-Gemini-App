@@ -36,21 +36,30 @@ interface ParsedGraph {
 
 const ESC_RE = /["'<>&]/g;
 const ESC_MAP: Record<string, string> = {
-  '"': "&quot;", "'": "&apos;", "<": "&lt;", ">": "&gt;", "&": "&amp;",
+  '"': "&quot;",
+  "'": "&apos;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "&": "&amp;",
 };
 function esc(s: string): string {
   return s.replace(ESC_RE, (c) => ESC_MAP[c] ?? c);
 }
 
 /** Match `id[Label]`, `id(Label)`, `id((Label))`, `id{Label}`, `id[(Label)]`. */
-const NODE_DEF_RE = /([A-Za-z0-9_]+)(\[\(([^)]*)\)\]|\(\(([^)]*)\)\)|\[([^\]]*)\]|\(([^)]*)\)|\{([^}]*)\})/g;
+const NODE_DEF_RE =
+  /([A-Za-z0-9_]+)(\[\(([^)]*)\)\]|\(\(([^)]*)\)\)|\[([^\]]*)\]|\(([^)]*)\)|\{([^}]*)\})/g;
 const EDGE_RE = /([A-Za-z0-9_]+)\s*(-->|---|-\.->|==>)\s*(?:\|([^|]+)\|\s*)?([A-Za-z0-9_]+)/g;
 
 function parseFlowchart(body: string): ParsedGraph {
-  const lines = body.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("%%"));
+  const lines = body
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith("%%"));
   const header = lines[0] ?? "";
   const dirMatch = header.match(/\b(LR|RL|TB|TD|BT)\b/);
-  const direction: "LR" | "TD" = dirMatch && (dirMatch[1] === "LR" || dirMatch[1] === "RL") ? "LR" : "TD";
+  const direction: "LR" | "TD" =
+    dirMatch && (dirMatch[1] === "LR" || dirMatch[1] === "RL") ? "LR" : "TD";
 
   const nodes = new Map<string, MxNode>();
   const edges: MxEdge[] = [];
@@ -132,7 +141,8 @@ function position(graph: ParsedGraph): Map<string, { x: number; y: number; w: nu
   });
 
   const pos = new Map<string, { x: number; y: number; w: number; h: number }>();
-  const w = 160, h = 60;
+  const w = 160,
+    h = 60;
   byLayer.forEach((ids, l) => {
     ids.forEach((id, i) => {
       const x = graph.direction === "LR" ? PAD + l * COL_W : PAD + i * COL_W;
@@ -147,12 +157,17 @@ function position(graph: ParsedGraph): Map<string, { x: number; y: number; w: nu
 
 function shapeStyle(shape: MxNode["shape"]): string {
   switch (shape) {
-    case "rhombus":  return "rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;";
-    case "ellipse":  return "ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;";
-    case "stadium":  return "rounded=1;whiteSpace=wrap;html=1;arcSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;";
-    case "cylinder": return "shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#e1d5e7;strokeColor=#9673a6;";
+    case "rhombus":
+      return "rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;";
+    case "ellipse":
+      return "ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;";
+    case "stadium":
+      return "rounded=1;whiteSpace=wrap;html=1;arcSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;";
+    case "cylinder":
+      return "shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#e1d5e7;strokeColor=#9673a6;";
     case "rect":
-    default:         return "rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;";
+    default:
+      return "rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;";
   }
 }
 
@@ -165,34 +180,31 @@ function edgeStyle(dashed?: boolean): string {
 
 function emitMxGraph(graph: ParsedGraph): string {
   const pos = position(graph);
-  const cells: string[] = [
-    `<mxCell id="0"/>`,
-    `<mxCell id="1" parent="0"/>`,
-  ];
+  const cells: string[] = [`<mxCell id="0"/>`, `<mxCell id="1" parent="0"/>`];
   graph.nodes.forEach((n) => {
     const p = pos.get(n.id) ?? { x: 0, y: 0, w: 160, h: 60 };
     cells.push(
       `<mxCell id="${esc(n.id)}" value="${esc(n.label)}" style="${shapeStyle(n.shape)}" vertex="1" parent="1">` +
         `<mxGeometry x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" as="geometry"/>` +
-      `</mxCell>`,
+        `</mxCell>`,
     );
   });
   graph.edges.forEach((e, i) => {
     cells.push(
       `<mxCell id="e${i}" value="${esc(e.label ?? "")}" style="${edgeStyle(e.dashed)}" edge="1" source="${esc(e.source)}" target="${esc(e.target)}" parent="1">` +
         `<mxGeometry relative="1" as="geometry"/>` +
-      `</mxCell>`,
+        `</mxCell>`,
     );
   });
   const dx = Math.max(800, ...[...pos.values()].map((p) => p.x + p.w + PAD));
   const dy = Math.max(600, ...[...pos.values()].map((p) => p.y + p.h + PAD));
   return (
     `<mxfile host="aurora.canvas" modified="${new Date().toISOString()}" agent="aurora" version="21.0.0">` +
-      `<diagram id="aurora-diagram" name="Aurora Export">` +
-        `<mxGraphModel dx="${dx}" dy="${dy}" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">` +
-          `<root>${cells.join("")}</root>` +
-        `</mxGraphModel>` +
-      `</diagram>` +
+    `<diagram id="aurora-diagram" name="Aurora Export">` +
+    `<mxGraphModel dx="${dx}" dy="${dy}" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">` +
+    `<root>${cells.join("")}</root>` +
+    `</mxGraphModel>` +
+    `</diagram>` +
     `</mxfile>`
   );
 }
@@ -222,7 +234,9 @@ export function mermaidToDrawio(body: string): ConversionResult {
   // som node-label. Brugeren kan så manuelt re-layoute i draw.io.
   const placeholder: ParsedGraph = {
     direction: "TD",
-    nodes: [{ id: "src", label: `mermaid:${type ?? "unknown"}\n\n${body.slice(0, 400)}`, shape: "rect" }],
+    nodes: [
+      { id: "src", label: `mermaid:${type ?? "unknown"}\n\n${body.slice(0, 400)}`, shape: "rect" },
+    ],
     edges: [],
   };
   return {

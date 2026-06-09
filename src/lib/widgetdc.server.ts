@@ -602,6 +602,13 @@ export type RagGrounding = {
   sources: RagSource[];
 };
 
+function isFailedMcpEnvelope(result: unknown): boolean {
+  if (!result || typeof result !== "object") return false;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown> | undefined) ?? r;
+  return r.success === false || inner.success === false;
+}
+
 /**
  * AUR-14: NEXUS/graph grounding for a user query. Per WidgeTDC Rule R14 this
  * uses `srag.query` (hybrid semantic + graph) as the primary channel and falls
@@ -622,8 +629,10 @@ export async function fetchRagGrounding(
     { query, mode: "hybrid" },
     { correlationId, timeoutMs: 8000 },
   );
-  const fromSrag = extractSources(srag);
-  if (fromSrag.length > 0) return packGrounding(fromSrag);
+  if (!isFailedMcpEnvelope(srag)) {
+    const fromSrag = extractSources(srag);
+    if (fromSrag.length > 0) return packGrounding(fromSrag);
+  }
 
   // Fallback: adaptive rag_route.
   const rag = await callMcpTool<unknown>(
@@ -631,7 +640,7 @@ export async function fetchRagGrounding(
     { query, limit: 6 },
     { correlationId, timeoutMs: 6000 },
   );
-  if (rag == null) return null;
+  if (rag == null || isFailedMcpEnvelope(rag)) return null;
   if (typeof rag === "string") {
     const text = rag.trim().slice(0, 4000);
     return text ? { context: text, sources: [{ text }] } : null;
@@ -902,12 +911,16 @@ export async function generateDeliverable(
 ): Promise<DeliverableResult | null> {
   if (!legacyDeliverableToolsEnabled()) {
     logServer("warn", {
-      event: "deliverable_generate_legacy_tool_disabled",
+      event: "deliverable_generate_legacy_tool_disabled_using_platform_writer",
       requestId: opts.correlationId,
       tool: "generate_deliverable",
       kind,
     });
-    return null;
+    return platformWriterDeliverable(brief, kind, {
+      correlationId: opts.correlationId,
+      maxSections: opts.maxSections,
+      mode: "rag",
+    });
   }
   const result = await callMcpTool<unknown>(
     "generate_deliverable",
@@ -1051,6 +1064,78 @@ export function localTemplateDeliverable(brief: string, kind: DeliverableKind): 
   return { markdown, citations: 0 };
 }
 
+function deliverableWriterPrompt(
+  brief: string,
+  kind: DeliverableKind,
+  grounding: RagGrounding | null,
+  opts: { maxSections?: number; mode?: "rag" | "lego" },
+): string {
+  const sections = opts.maxSections ?? 5;
+  const framework =
+    kind === "roadmap"
+      ? "SCQA + MECE roadmap + OKR/RACI ownership"
+      : kind === "assessment"
+        ? "SCQA + MECE assessment + 2x2 risk/impact lens"
+        : "SCQA + MECE issue tree + Pyramid Principle";
+  const evidence = grounding?.context
+    ? `\n\nAvailable evidence context, cite as [n] when relevant:\n${grounding.context}`
+    : "";
+
+  return [
+    "Write a consulting-grade deliverable in Markdown only.",
+    `Deliverable type: ${kind}.`,
+    `Generation path: ${
+      opts.mode === "lego"
+        ? "Lego Factory style plan/retrieve/write/assemble/render"
+        : "RAG-backed consulting draft"
+    }.`,
+    `Use ${sections} substantial sections.`,
+    `Use framework signal: ${framework}.`,
+    "Requirements:",
+    "- Start with a clear H1 title.",
+    "- Include at least three H2 sections.",
+    "- Include one Mermaid flowchart or issue-tree block.",
+    "- Include concrete recommendations and risks.",
+    "- Include a final `Canvas notes:` section with at least 3 bullets.",
+    "- If evidence context is provided, cite claims with [1], [2], etc.",
+    "- Do not include meta-commentary about being an AI or about the prompt.",
+    evidence,
+    "\nBrief:",
+    brief,
+  ].join("\n");
+}
+
+async function platformWriterDeliverable(
+  brief: string,
+  kind: DeliverableKind,
+  opts: {
+    correlationId?: string;
+    maxSections?: number;
+    mode?: "rag" | "lego";
+  } = {},
+): Promise<DeliverableResult | null> {
+  const grounding = await fetchRagGrounding(brief, opts.correlationId).catch(() => null);
+  const prompt = deliverableWriterPrompt(brief, kind, grounding, {
+    maxSections: opts.maxSections,
+    mode: opts.mode,
+  });
+  const result = await orchestratorChat(
+    [
+      {
+        role: "system",
+        content:
+          "You are WidgeTDC Deliverable Writer. Return only polished Markdown that satisfies the requested deliverable contract.",
+      },
+      { role: "user", content: prompt },
+    ],
+    { correlationId: opts.correlationId, deep: opts.mode === "lego" },
+  );
+  const markdown = result?.text?.trim();
+  if (!markdown) return null;
+  const deliverable = { markdown, citations: grounding?.sources.length ?? 0 };
+  return isSubstantiveDeliverable(deliverable.markdown, brief) ? deliverable : null;
+}
+
 export async function fallbackDeliverable(
   brief: string,
   kind: DeliverableKind,
@@ -1117,12 +1202,16 @@ export async function deliverableDraft(
 ): Promise<DeliverableResult | null> {
   if (!legacyDeliverableToolsEnabled()) {
     logServer("warn", {
-      event: "deliverable_generate_legacy_tool_disabled",
+      event: "deliverable_generate_legacy_tool_disabled_using_platform_writer",
       requestId: opts.correlationId,
       tool: "deliverable_draft",
       kind,
     });
-    return null;
+    return platformWriterDeliverable(brief, kind, {
+      correlationId: opts.correlationId,
+      maxSections: opts.maxSections,
+      mode: "lego",
+    });
   }
   const result = await callMcpTool<unknown>(
     "deliverable_draft",
@@ -1476,13 +1565,20 @@ export async function fetchRuntimeSnapshot(
   return extractRuntimeSummary(result);
 }
 
-/** Fetch the Neo4j graph size via the platform `data_graph_stats` tool. */
+/** Fetch the Neo4j graph size via the legacy alias or canonical `graph.stats`. */
 export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphSnapshot | null> {
-  const result = await callMcpTool<unknown>(
+  const legacy = await callMcpTool<unknown>(
     "data_graph_stats",
     {},
     { correlationId, timeoutMs: 15000 },
   );
-  if (result == null) return null;
-  return extractGraphSnapshot(result);
+  const legacySnapshot = extractGraphSnapshot(legacy);
+  if (legacySnapshot) return legacySnapshot;
+
+  const canonical = await callMcpTool<unknown>(
+    "graph.stats",
+    {},
+    { correlationId, timeoutMs: 15000 },
+  );
+  return extractGraphSnapshot(canonical);
 }

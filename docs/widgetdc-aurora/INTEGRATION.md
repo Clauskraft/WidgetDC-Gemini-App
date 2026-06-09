@@ -2,14 +2,14 @@
 
 ## Source map
 
-| Source element | Frontend translation |
-|---|---|
+| Source element                               | Frontend translation                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Runtime app React + Express + Vite structure | Vite React app using `/api/chat`, `/api/widgetdc/route`, `/api/mcp/proxy` and `/auth/status` |
-| Server-side model-provider key posture | No browser model-provider key; chat goes through Express route |
-| Server-side MCP proxy posture | No browser MCP secret; tool calls go through BFF |
-| Stitch / Lumina design system | Dark glassmorphism, Aurora gradient, sidebar + chat/canvas layout, Mission Control panels |
-| WidgeTDC governance docs | Risk badges, plan/approval requirements, EventSpine preview and claim holds |
-| Phantom BOM pattern | BOMRun, BOMItems, WorkArtifact and PRODUCES coverage UI |
+| Server-side model-provider key posture       | No browser model-provider key; chat goes through Express route                               |
+| Server-side MCP proxy posture                | No browser MCP secret; tool calls go through BFF                                             |
+| Stitch / Lumina design system                | Dark glassmorphism, Aurora gradient, sidebar + chat/canvas layout, Mission Control panels    |
+| WidgeTDC governance docs                     | Risk badges, plan/approval requirements, EventSpine preview and claim holds                  |
+| Phantom BOM pattern                          | BOMRun, BOMItems, WorkArtifact and PRODUCES coverage UI                                      |
 
 ## Component map
 

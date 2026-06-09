@@ -46,16 +46,76 @@ export interface VisualizationStandard {
 }
 
 export const VISUALIZATION_STANDARDS: Record<VisualizationIntent, VisualizationStandard> = {
-  "business-process":        { intent: "business-process",        family: "bpmn",            mermaidType: "flowchart", drawioType: "flowchart",    label: "BPMN" },
-  "system-architecture":     { intent: "system-architecture",     family: "c4",              mermaidType: "c4",        drawioType: "c4",           label: "C4" },
-  "enterprise-architecture": { intent: "enterprise-architecture", family: "archimate",       mermaidType: "flowchart", drawioType: "architecture", label: "ArchiMate" },
-  "interaction-flow":        { intent: "interaction-flow",        family: "sequence",        mermaidType: "sequence",  drawioType: "sequence",     label: "Sequence" },
-  "data-model":              { intent: "data-model",              family: "erd",             mermaidType: "er",        drawioType: "er",           label: "ERD" },
-  "data-flow":               { intent: "data-flow",               family: "dfd",             mermaidType: "flowchart", drawioType: "data-flow",    label: "DFD" },
-  "state-lifecycle":         { intent: "state-lifecycle",         family: "state",           mermaidType: "state",     drawioType: "flowchart",    label: "State" },
-  "capability-map":          { intent: "capability-map",          family: "capability-map",  mermaidType: "mindmap",   drawioType: "mindmap",      label: "Capability" },
-  "value-stream":            { intent: "value-stream",            family: "value-stream",    mermaidType: "journey",   drawioType: "timeline",     label: "Value Stream" },
-  "decision-logic":          { intent: "decision-logic",          family: "decision-tree",   mermaidType: "flowchart", drawioType: "flowchart",    label: "Decision Tree" },
+  "business-process": {
+    intent: "business-process",
+    family: "bpmn",
+    mermaidType: "flowchart",
+    drawioType: "flowchart",
+    label: "BPMN",
+  },
+  "system-architecture": {
+    intent: "system-architecture",
+    family: "c4",
+    mermaidType: "c4",
+    drawioType: "c4",
+    label: "C4",
+  },
+  "enterprise-architecture": {
+    intent: "enterprise-architecture",
+    family: "archimate",
+    mermaidType: "flowchart",
+    drawioType: "architecture",
+    label: "ArchiMate",
+  },
+  "interaction-flow": {
+    intent: "interaction-flow",
+    family: "sequence",
+    mermaidType: "sequence",
+    drawioType: "sequence",
+    label: "Sequence",
+  },
+  "data-model": {
+    intent: "data-model",
+    family: "erd",
+    mermaidType: "er",
+    drawioType: "er",
+    label: "ERD",
+  },
+  "data-flow": {
+    intent: "data-flow",
+    family: "dfd",
+    mermaidType: "flowchart",
+    drawioType: "data-flow",
+    label: "DFD",
+  },
+  "state-lifecycle": {
+    intent: "state-lifecycle",
+    family: "state",
+    mermaidType: "state",
+    drawioType: "flowchart",
+    label: "State",
+  },
+  "capability-map": {
+    intent: "capability-map",
+    family: "capability-map",
+    mermaidType: "mindmap",
+    drawioType: "mindmap",
+    label: "Capability",
+  },
+  "value-stream": {
+    intent: "value-stream",
+    family: "value-stream",
+    mermaidType: "journey",
+    drawioType: "timeline",
+    label: "Value Stream",
+  },
+  "decision-logic": {
+    intent: "decision-logic",
+    family: "decision-tree",
+    mermaidType: "flowchart",
+    drawioType: "flowchart",
+    label: "Decision Tree",
+  },
 };
 
 /**
@@ -64,18 +124,77 @@ export const VISUALIZATION_STANDARDS: Record<VisualizationIntent, VisualizationS
  * og syntaks-tokens som `state`/`class`/`er` ikke triggerer på mermaid-headeren selv.
  */
 const KEYWORD_SIGNALS: Record<VisualizationIntent, string[]> = {
-  "business-process":        ["proces", "process", "approval", "godkend", "godkendelse", "workflow", "bpmn", "handover"],
-  "system-architecture":     ["arkitektur", "architecture", "microservice", "microservices", "c4 model", "container diagram", "component diagram"],
-  "enterprise-architecture": ["enterprise architecture", "domæne", "capability", "archimate", "portefølje", "portfolio"],
-  "interaction-flow":        ["sekvens", "sequence", "interaktion", "interaction", "round-trip", "agent-til-agent", "multi-agent", "routing"],
-  "data-model":              ["entitet", "entity", "relation", "schema", "tabel", "erd", "data model", "datamodel", "er-diagram", "er diagram"],
-  "data-flow":               ["dataflow", "data flow", "pipeline", "etl", "ingest", "dfd"],
-  "state-lifecycle":         ["tilstand", "lifecycle", "livscyklus", "transition", "fsm", "state machine", "statemachine"],
-  "capability-map":          ["mindmap", "mind map", "capability map", "kompetence"],
-  "value-stream":            ["value stream", "værdistrøm", "journey", "kunderejse", "rejse", "timeline", "tidslinje"],
-  "decision-logic":          ["beslutning", "decision", "if-then", "decision tree", "beslutningstræ"],
+  "business-process": [
+    "proces",
+    "process",
+    "approval",
+    "godkend",
+    "godkendelse",
+    "workflow",
+    "bpmn",
+    "handover",
+  ],
+  "system-architecture": [
+    "arkitektur",
+    "architecture",
+    "microservice",
+    "microservices",
+    "c4 model",
+    "container diagram",
+    "component diagram",
+  ],
+  "enterprise-architecture": [
+    "enterprise architecture",
+    "domæne",
+    "capability",
+    "archimate",
+    "portefølje",
+    "portfolio",
+  ],
+  "interaction-flow": [
+    "sekvens",
+    "sequence",
+    "interaktion",
+    "interaction",
+    "round-trip",
+    "agent-til-agent",
+    "multi-agent",
+    "routing",
+  ],
+  "data-model": [
+    "entitet",
+    "entity",
+    "relation",
+    "schema",
+    "tabel",
+    "erd",
+    "data model",
+    "datamodel",
+    "er-diagram",
+    "er diagram",
+  ],
+  "data-flow": ["dataflow", "data flow", "pipeline", "etl", "ingest", "dfd"],
+  "state-lifecycle": [
+    "tilstand",
+    "lifecycle",
+    "livscyklus",
+    "transition",
+    "fsm",
+    "state machine",
+    "statemachine",
+  ],
+  "capability-map": ["mindmap", "mind map", "capability map", "kompetence"],
+  "value-stream": [
+    "value stream",
+    "værdistrøm",
+    "journey",
+    "kunderejse",
+    "rejse",
+    "timeline",
+    "tidslinje",
+  ],
+  "decision-logic": ["beslutning", "decision", "if-then", "decision tree", "beslutningstræ"],
 };
-
 
 /** Node-type → preferred intent (subset af NODE_BINDINGS §3). +1 boost. */
 const NODE_TYPE_BIAS: Record<string, VisualizationIntent> = {
@@ -121,11 +240,14 @@ export interface IntentDetectionResult {
  */
 function stripMermaidSyntax(s: string): string {
   return s
-    .replace(/%%\{[\s\S]*?\}%%/g, " ")                       // init-block
-    .replace(/^\s*(flowchart|graph|sequencediagram|erdiagram|statediagram(-v2)?|classdiagram|journey|mindmap|gantt|c4(context|container|component|dynamic|deployment)?)\b.*$/gim, " ")
+    .replace(/%%\{[\s\S]*?\}%%/g, " ") // init-block
+    .replace(
+      /^\s*(flowchart|graph|sequencediagram|erdiagram|statediagram(-v2)?|classdiagram|journey|mindmap|gantt|c4(context|container|component|dynamic|deployment)?)\b.*$/gim,
+      " ",
+    )
     .replace(/^\s*(classdef|style|linkstyle|class)\s+.*$/gim, " ")
     .replace(/[-=.]{1,2}>{1,2}|<[-=.]{1,2}|\|\|--o\{|\}o--\|\||--/g, " ") // arrows / er-relations
-    .replace(/[\[\](){}|]/g, " ")                            // node-brackets
+    .replace(/[()[\]{}|]/g, " ") // node-brackets
     .replace(/\s+/g, " ");
 }
 
@@ -139,16 +261,21 @@ function matchKeyword(text: string, kw: string): boolean {
 
 /** Detect intent fra fri brief + valgfri liste af node-typer. */
 export function detectIntent(brief: string, nodeTypes: string[] = []): IntentDetectionResult {
-
   const text = stripMermaidSyntax((brief ?? "").toLowerCase());
   const scores = Object.fromEntries(
     (Object.keys(VISUALIZATION_STANDARDS) as VisualizationIntent[]).map((k) => [k, 0]),
   ) as Record<VisualizationIntent, number>;
   const signalsByIntent = Object.fromEntries(
-    (Object.keys(VISUALIZATION_STANDARDS) as VisualizationIntent[]).map((k) => [k, [] as IntentSignal[]]),
+    (Object.keys(VISUALIZATION_STANDARDS) as VisualizationIntent[]).map((k) => [
+      k,
+      [] as IntentSignal[],
+    ]),
   ) as Record<VisualizationIntent, IntentSignal[]>;
 
-  for (const [intent, keywords] of Object.entries(KEYWORD_SIGNALS) as [VisualizationIntent, string[]][]) {
+  for (const [intent, keywords] of Object.entries(KEYWORD_SIGNALS) as [
+    VisualizationIntent,
+    string[],
+  ][]) {
     for (const kw of keywords) {
       if (matchKeyword(text, kw)) {
         scores[intent] += 2;
@@ -217,7 +344,10 @@ export function detectMermaidType(body: string): string | null {
 }
 
 /** Sammenlign detekteret intent med faktisk mermaid-type → kontrakt-mismatch? */
-export function isMermaidMismatch(intent: VisualizationIntent, actualMermaidType: string | null): boolean {
+export function isMermaidMismatch(
+  intent: VisualizationIntent,
+  actualMermaidType: string | null,
+): boolean {
   if (!actualMermaidType) return false;
   const expected = VISUALIZATION_STANDARDS[intent].mermaidType.toLowerCase();
   // flowchart accepterer både "flowchart" og "graph" → er allerede normaliseret.

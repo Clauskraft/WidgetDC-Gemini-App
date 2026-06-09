@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build --mode production",
+    "build": "node scripts/build-production.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
@@ -15,8 +15,8 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:install": "playwright install --with-deps chromium",
-    "docs:bridge-errors": "bun run scripts/generate-bridge-error-docs.ts",
-    "docs:bridge-errors:check": "bun run scripts/generate-bridge-error-docs.ts --check"
+    "docs:bridge-errors": "jiti scripts/generate-bridge-error-docs.ts",
+    "docs:bridge-errors:check": "jiti scripts/generate-bridge-error-docs.ts --check"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.198",

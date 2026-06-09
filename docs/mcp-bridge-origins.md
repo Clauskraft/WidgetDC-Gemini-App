@@ -6,12 +6,12 @@
 
 Canvas-embed ( `/embed/canvas/:canvasId` ) kommunikerer med host via `window.postMessage`. Af sikkerhedsmæssige årsager validerer broen **både** origin **og** kontrakt-schema før beskeder accepteres.
 
-| Regel | Implementering |
-|-------|----------------|
-| **Origin allow-list** | `allowedOrigins` parameter på `useCanvasBridge` — uden match → `canvas:error { code: "origin_not_allowed" }` |
-| **Contract-version** | Kun `"widgetdc.bridge.v1"` accepteres — ellers → `canvas:error { code: "wrong_contract_version" }` |
+| Regel                 | Implementering                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Origin allow-list** | `allowedOrigins` parameter på `useCanvasBridge` — uden match → `canvas:error { code: "origin_not_allowed" }`               |
+| **Contract-version**  | Kun `"widgetdc.bridge.v1"` accepteres — ellers → `canvas:error { code: "wrong_contract_version" }`                         |
 | **Schema-validering** | Zod `BridgeMessageSchema` (v, contract, canvas_id, type, payload, ts) — ellers → `canvas:error { code: "invalid_schema" }` |
-| **Canvas ID match** | `canvas_id` i besked skal matche embed'ets eget ID — ellers → `canvas:error { code: "canvas_id_mismatch" }` |
+| **Canvas ID match**   | `canvas_id` i besked skal matche embed'ets eget ID — ellers → `canvas:error { code: "canvas_id_mismatch" }`                |
 
 ## Tilladte origins
 
@@ -19,30 +19,30 @@ Allow-listen parses med `new URL(a).origin === new URL(origin).origin` — dvs. 
 
 ### Eksempler: tilladt
 
-| Allow-list | Host origin | Resultat |
-|------------|-------------|----------|
-| `["https://host.example"]` | `https://host.example` | ✅ Tilladt |
-| `["https://host.example"]` | `https://host.example:443` | ✅ Tilladt (standardport implicit) |
-| `["https://host.example:8443"]` | `https://host.example:8443` | ✅ Tilladt |
-| `["*"]` | `https://evil.com` | ✅ Tilladt (wildcard — kun eksplicit) |
-| `["https://localhost:3000"]` | `https://localhost:3000` | ✅ Tilladt (dev / lokal testing) |
-| `["http://localhost:3000", "https://app.widgetdc.io"]` | `http://localhost:3000` | ✅ Tilladt (multi-origin allow-list) |
+| Allow-list                                                 | Host origin                 | Resultat                              |
+| ---------------------------------------------------------- | --------------------------- | ------------------------------------- |
+| `["https://host.example"]`                                 | `https://host.example`      | ✅ Tilladt                            |
+| `["https://host.example"]`                                 | `https://host.example:443`  | ✅ Tilladt (standardport implicit)    |
+| `["https://host.example:8443"]`                            | `https://host.example:8443` | ✅ Tilladt                            |
+| `["*"]`                                                    | `https://evil.com`          | ✅ Tilladt (wildcard — kun eksplicit) |
+| `["https://localhost:3000"]`                               | `https://localhost:3000`    | ✅ Tilladt (dev / lokal testing)      |
+| `["http://localhost:3000", "https://app.widgetdc.io"]`     | `http://localhost:3000`     | ✅ Tilladt (multi-origin allow-list)  |
 | `["https://app.widgetdc.io", "https://admin.widgetdc.io"]` | `https://admin.widgetdc.io` | ✅ Tilladt (subdomæne matcher eksakt) |
 
 ### Eksempler: afvist
 
-| Allow-list | Host origin | Resultat |
-|------------|-------------|----------|
-| `["https://host.example"]` | `https://attacker.example` | ❌ `origin_not_allowed` |
-| `["https://host.example"]` | `https://sub.host.example` | ❌ `origin_not_allowed` (suffix-trick) |
-| `["https://host.example"]` | `http://host.example` | ❌ `origin_not_allowed` (forkert protokol) |
-| `["https://host.example:8443"]` | `https://host.example:443` | ❌ `origin_not_allowed` (forkert port) |
-| `["https://host.example"]` | `"null"` | ❌ `origin_not_allowed` (opaque origin, fx `file://`) |
-| `["https://host.example"]` | `""` / `undefined` | ❌ `origin_not_allowed` |
-| `["https://host.example"]` | `https://host.example:8080` | ❌ `origin_not_allowed` (eksplicit port mismatch) |
-| `["https://host.example"]` | `https://Host.Example` | ❌ `origin_not_allowed` (case-sensitiv host — `Host.Example` ≠ `host.example`) |
-| `["https://host.example"]` | `https://host.example/` | ❌ `origin_not_allowed` (`new URL(...).origin` stripper path, men hvis origin-feltet indeholder trailing slash i nogle browsere kan det variere — hold dig til ren `protocol://host:port`) |
-| `["https://127.0.0.1:3000"]` | `https://localhost:3000` | ❌ `origin_not_allowed` (IP ≠ hostname) |
+| Allow-list                      | Host origin                 | Resultat                                                                                                                                                                                   |
+| ------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `["https://host.example"]`      | `https://attacker.example`  | ❌ `origin_not_allowed`                                                                                                                                                                    |
+| `["https://host.example"]`      | `https://sub.host.example`  | ❌ `origin_not_allowed` (suffix-trick)                                                                                                                                                     |
+| `["https://host.example"]`      | `http://host.example`       | ❌ `origin_not_allowed` (forkert protokol)                                                                                                                                                 |
+| `["https://host.example:8443"]` | `https://host.example:443`  | ❌ `origin_not_allowed` (forkert port)                                                                                                                                                     |
+| `["https://host.example"]`      | `"null"`                    | ❌ `origin_not_allowed` (opaque origin, fx `file://`)                                                                                                                                      |
+| `["https://host.example"]`      | `""` / `undefined`          | ❌ `origin_not_allowed`                                                                                                                                                                    |
+| `["https://host.example"]`      | `https://host.example:8080` | ❌ `origin_not_allowed` (eksplicit port mismatch)                                                                                                                                          |
+| `["https://host.example"]`      | `https://Host.Example`      | ❌ `origin_not_allowed` (case-sensitiv host — `Host.Example` ≠ `host.example`)                                                                                                             |
+| `["https://host.example"]`      | `https://host.example/`     | ❌ `origin_not_allowed` (`new URL(...).origin` stripper path, men hvis origin-feltet indeholder trailing slash i nogle browsere kan det variere — hold dig til ren `protocol://host:port`) |
+| `["https://127.0.0.1:3000"]`    | `https://localhost:3000`    | ❌ `origin_not_allowed` (IP ≠ hostname)                                                                                                                                                    |
 
 > **Prioritet:** Origin-check kører **før** schema-validering. En besked fra forkert origin afvises med `origin_not_allowed` uanset payload — host lækker aldrig detaljer om schema-fejl til en uautoriseret afsender.
 
@@ -61,6 +61,7 @@ Allow-listen parses med `new URL(a).origin === new URL(origin).origin` — dvs. 
 ```
 
 Embed svarer med:
+
 ```json
 {
   "v": 1,
@@ -118,11 +119,15 @@ Embed svarer med:
 ```json
 null
 ```
+
 eller
+
 ```json
 42
 ```
+
 eller
+
 ```json
 {
   "v": 1,
@@ -228,7 +233,9 @@ Nedenstående er fulde JSON-beskeder embed sender tilbage til host — klar til 
     "code": "invalid_schema",
     "message": "Bridge-payload matcher ikke widgetdc.bridge.v1-schemaet (1 fejl): type: Invalid enum value. Expected 'host:hello' | 'host:update_spec' | 'host:set_viewport' | 'canvas:ready' | 'canvas:error' | 'canvas:select_node' | 'canvas:viewport_changed', received 'rogue:type'",
     "detail": {
-      "issues": ["type: Invalid enum value. Expected 'host:hello' | 'host:update_spec' | 'host:set_viewport' | 'canvas:ready' | 'canvas:error' | 'canvas:select_node' | 'canvas:viewport_changed', received 'rogue:type'"]
+      "issues": [
+        "type: Invalid enum value. Expected 'host:hello' | 'host:update_spec' | 'host:set_viewport' | 'canvas:ready' | 'canvas:error' | 'canvas:select_node' | 'canvas:viewport_changed', received 'rogue:type'"
+      ]
     }
   },
   "ts": 1717584000009
@@ -272,7 +279,7 @@ Eksempel: en besked fra `https://attacker.example` med `contract: "widgetdc.brid
 
 ```tsx
 useCanvasBridge(payload, {
-  allowedOrigins: ["https://host.example", "https://app.widgetdc.io"]
+  allowedOrigins: ["https://host.example", "https://app.widgetdc.io"],
 });
 ```
 
@@ -280,16 +287,16 @@ Hvis udeladt: ingen origin-check (legacy/dev-tilstand).
 
 ## Endpoints
 
-| Endpoint | Formål |
-|----------|--------|
-| `POST /api/mrp/canvas/resolve` | Host kalder for at få `embed_url` + signeret token |
+| Endpoint                                | Formål                                             |
+| --------------------------------------- | -------------------------------------------------- |
+| `POST /api/mrp/canvas/resolve`          | Host kalder for at få `embed_url` + signeret token |
 | `GET /embed/canvas/:canvasId?t=<token>` | iframe target — verificerer token, rehydrerer spec |
 
 ## Fejlkoder
 
-| Kode | Årsag | Handlingsanvisning |
-|------|-------|-------------------|
-| `origin_not_allowed` | Afsender-origin ikke på allow-list | Verificér `allowedOrigins` konfiguration |
-| `wrong_contract_version` | `contract` felt ≠ `"widgetdc.bridge.v1"` | Opgrader host til nyeste kontrakt-version |
-| `invalid_schema` | Payload fejler Zod-validering | Check at alle påkrævede felter er tilstede og har korrekte typer |
-| `canvas_id_mismatch` | `canvas_id` i besked ≠ embed'ets ID | Sikr at host sender til den korrekte iframe |
+| Kode                     | Årsag                                    | Handlingsanvisning                                               |
+| ------------------------ | ---------------------------------------- | ---------------------------------------------------------------- |
+| `origin_not_allowed`     | Afsender-origin ikke på allow-list       | Verificér `allowedOrigins` konfiguration                         |
+| `wrong_contract_version` | `contract` felt ≠ `"widgetdc.bridge.v1"` | Opgrader host til nyeste kontrakt-version                        |
+| `invalid_schema`         | Payload fejler Zod-validering            | Check at alle påkrævede felter er tilstede og har korrekte typer |
+| `canvas_id_mismatch`     | `canvas_id` i besked ≠ embed'ets ID      | Sikr at host sender til den korrekte iframe                      |

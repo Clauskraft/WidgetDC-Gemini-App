@@ -49,10 +49,7 @@ export function verifyCanvasToken(token: string): CanvasTokenPayload | null {
 }
 
 export function deriveCanvasId(brief: string, intent: string): string {
-  return createHash("sha256")
-    .update(`${intent}::${brief.trim()}`)
-    .digest("hex")
-    .slice(0, 16);
+  return createHash("sha256").update(`${intent}::${brief.trim()}`).digest("hex").slice(0, 16);
 }
 
 export function ttlSeconds(): number {

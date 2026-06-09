@@ -10,7 +10,9 @@ const searchSchema = z.object({ requestId: z.string().optional() });
 
 export const Route = createFileRoute("/debug/logs")({
   validateSearch: (search) => searchSchema.parse(search),
-  head: () => ({ meta: [{ title: "Debug — Server logs" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Debug — Server logs" }, { name: "robots", content: "noindex" }],
+  }),
   component: DebugLogsPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">Kunne ikke indlæse: {error.message}</div>
@@ -41,8 +43,8 @@ function DebugLogsPage() {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Server-log opslag</h1>
         <p className="text-sm text-muted-foreground">
-          Indsæt et <code className="rounded bg-muted px-1">requestId</code> for at se den strukturerede log.
-          Logs gemmes i 7 dage.
+          Indsæt et <code className="rounded bg-muted px-1">requestId</code> for at se den
+          strukturerede log. Logs gemmes i 7 dage.
         </p>
       </header>
 

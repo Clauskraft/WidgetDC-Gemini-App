@@ -12,7 +12,7 @@ describe("mermaidToDrawio", () => {
     expect(xml).toContain("<mxfile");
     expect(xml).toContain('value="Start"');
     expect(xml).toContain("rhombus"); // Decision
-    expect(xml).toContain("ellipse");  // End
+    expect(xml).toContain("ellipse"); // End
     expect(xml).toContain("dashed=1"); // -.-> edge
     expect(xml).toContain('value="yes"'); // edge label
   });
@@ -24,9 +24,7 @@ describe("mermaidToDrawio", () => {
   });
 
   it("eksporterer placeholder for ikke-flowchart-typer med advarsel", () => {
-    const { xml, warning, nodeCount } = mermaidToDrawio(
-      `sequenceDiagram\nAlice->>Bob: hej`,
-    );
+    const { xml, warning, nodeCount } = mermaidToDrawio(`sequenceDiagram\nAlice->>Bob: hej`);
     expect(warning).toMatch(/sequence/);
     expect(nodeCount).toBe(1);
     expect(xml).toContain("<mxfile");

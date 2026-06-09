@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import DOMPurify from "dompurify";
 
@@ -50,7 +50,15 @@ import { KnowledgeGraphBlock } from "@/components/KnowledgeGraphBlock";
 import { GraphErrorBlock } from "@/components/GraphErrorBlock";
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
-  const { kind, data, series = [], xKey = "label", legendPosition = "bottom", caption, height = 240 } = spec;
+  const {
+    kind,
+    data,
+    series = [],
+    xKey = "label",
+    legendPosition = "bottom",
+    caption,
+    height = 240,
+  } = spec;
   const legend = series.map((s, i) => ({
     label: s.label ?? s.key,
     series: ((i % 5) + 1) as 1 | 2 | 3 | 4 | 5,
@@ -76,8 +84,15 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
       <ResponsiveContainer width="100%" height={height}>
         <Wrapper data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--figure-grid)" vertical={false} />
-          <XAxis dataKey={xKey} stroke="var(--figure-axis)" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
-          <YAxis stroke="var(--figure-axis)" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+          <XAxis
+            dataKey={xKey}
+            stroke="var(--figure-axis)"
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
+          <YAxis
+            stroke="var(--figure-axis)"
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+          />
           <Tooltip
             contentStyle={{
               background: "var(--popover)",
@@ -89,11 +104,31 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
           <Legend />
           {series.map((s, i) =>
             kind === "line" ? (
-              <Line key={s.key} dataKey={s.key} name={s.label ?? s.key} stroke={CHART_SERIES_VARS[i % 5]} strokeWidth={2} dot={false} />
+              <Line
+                key={s.key}
+                dataKey={s.key}
+                name={s.label ?? s.key}
+                stroke={CHART_SERIES_VARS[i % 5]}
+                strokeWidth={2}
+                dot={false}
+              />
             ) : kind === "area" ? (
-              <Area key={s.key} dataKey={s.key} name={s.label ?? s.key} stroke={CHART_SERIES_VARS[i % 5]} fill={CHART_SERIES_VARS[i % 5]} fillOpacity={0.25} />
+              <Area
+                key={s.key}
+                dataKey={s.key}
+                name={s.label ?? s.key}
+                stroke={CHART_SERIES_VARS[i % 5]}
+                fill={CHART_SERIES_VARS[i % 5]}
+                fillOpacity={0.25}
+              />
             ) : (
-              <Bar key={s.key} dataKey={s.key} name={s.label ?? s.key} fill={CHART_SERIES_VARS[i % 5]} radius={[4, 4, 0, 0]} />
+              <Bar
+                key={s.key}
+                dataKey={s.key}
+                name={s.label ?? s.key}
+                fill={CHART_SERIES_VARS[i % 5]}
+                radius={[4, 4, 0, 0]}
+              />
             ),
           )}
         </Wrapper>
@@ -110,7 +145,6 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
 
 // FlowFigure lever i src/components/FlowFigure.tsx
 
-
 function SvgBlock({ content }: { content: string }) {
   const clean = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -125,26 +159,41 @@ function SvgBlock({ content }: { content: string }) {
   );
 }
 
-const markdownTableComponents: Record<string, React.FC<any>> = {
+const markdownTableComponents: Components = {
   table: ({ children, ...props }) => (
     <div className="overflow-x-auto rounded-lg border border-border shadow-soft">
-      <table className="w-full text-sm" {...props}>{children}</table>
+      <table className="w-full text-sm" {...props}>
+        {children}
+      </table>
     </div>
   ),
   thead: ({ children, ...props }) => (
-    <thead className="bg-muted" {...props}>{children}</thead>
+    <thead className="bg-muted" {...props}>
+      {children}
+    </thead>
   ),
   th: ({ children, ...props }) => (
-    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border" {...props}>{children}</th>
+    <th
+      className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border"
+      {...props}
+    >
+      {children}
+    </th>
   ),
   td: ({ children, ...props }) => (
-    <td className="px-3 py-2 border-b border-border/60 text-foreground" {...props}>{children}</td>
+    <td className="px-3 py-2 border-b border-border/60 text-foreground" {...props}>
+      {children}
+    </td>
   ),
   tr: ({ children, ...props }) => (
-    <tr className="transition-colors hover:bg-accent/30" {...props}>{children}</tr>
+    <tr className="transition-colors hover:bg-accent/30" {...props}>
+      {children}
+    </tr>
   ),
   tbody: ({ children, ...props }) => (
-    <tbody className="divide-y divide-border/40" {...props}>{children}</tbody>
+    <tbody className="divide-y divide-border/40" {...props}>
+      {children}
+    </tbody>
   ),
 };
 
@@ -182,7 +231,13 @@ function TextBlock({ content }: { content: string }) {
               {asChart ? "Vis som tabel" : "Vis som diagram"}
             </button>
           </div>
-          {asChart ? <ChartBlock spec={spec} /> : <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={markdownTableComponents}>{tableMatch[1]}</ReactMarkdown>}
+          {asChart ? (
+            <ChartBlock spec={spec} />
+          ) : (
+            <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={markdownTableComponents}>
+              {tableMatch[1]}
+            </ReactMarkdown>
+          )}
         </div>
         {after && <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>{after}</ReactMarkdown>}
       </div>
@@ -196,13 +251,27 @@ function TextBlock({ content }: { content: string }) {
   );
 }
 
-export function MessageContent({ text, layout = "stack" }: { text: string; layout?: "stack" | "canvas" }) {
+export function MessageContent({
+  text,
+  layout = "stack",
+}: {
+  text: string;
+  layout?: "stack" | "canvas";
+}) {
   const blocks = useMemo(() => parseBlocks(text), [text]);
   const isCanvas = layout === "canvas";
   const containerCls = isCanvas ? "aurora-canvas" : "flex flex-col gap-3";
   const spanFor = (t: Block["type"]): string | undefined => {
     if (!isCanvas) return undefined;
-    if (t === "chart" || t === "flow" || t === "mermaid" || t === "svg" || t === "graph" || t === "knowledge-graph") return "wide";
+    if (
+      t === "chart" ||
+      t === "flow" ||
+      t === "mermaid" ||
+      t === "svg" ||
+      t === "graph" ||
+      t === "knowledge-graph"
+    )
+      return "wide";
     if (t === "figure") return "tall";
     return "full"; // text fylder hele bredden så det ikke overlapper grafik
   };
@@ -212,7 +281,9 @@ export function MessageContent({ text, layout = "stack" }: { text: string; layou
         const span = spanFor(b.type);
         const wrap = (node: React.ReactNode) =>
           isCanvas ? (
-            <div key={i} data-span={span}>{node}</div>
+            <div key={i} data-span={span}>
+              {node}
+            </div>
           ) : (
             <div key={i}>{node}</div>
           );

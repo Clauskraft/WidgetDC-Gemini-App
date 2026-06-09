@@ -38,14 +38,14 @@ Do not dispatch two workers to the same files at the same time.
 
 ## Pattern Map
 
-| Pattern | Purpose | Owned By |
-|---|---|---|
-| `harvest-to-pattern-library` | Convert observed gaps into reusable output patterns | Gap/Pattern Agent |
-| `visualization-system-loop` | Improve canvas usability, resize, zoom, overview | UX Workspace Agent |
-| `consulting-structure-layer` | Add SCR, issue tree, options, recommendation logic | Consulting Framework Agent |
-| `trust-ready-to-share-gate` | Translate faithfulness into user value | Trust/Evidence Agent |
-| `data-reproducibility-layer` | Add dataset/transform/eval placeholders | Data Science Agent |
-| `adoption-flywheel` | Capture successful chains for future suggestions | Adoption Agent |
+| Pattern                      | Purpose                                             | Owned By                   |
+| ---------------------------- | --------------------------------------------------- | -------------------------- |
+| `harvest-to-pattern-library` | Convert observed gaps into reusable output patterns | Gap/Pattern Agent          |
+| `visualization-system-loop`  | Improve canvas usability, resize, zoom, overview    | UX Workspace Agent         |
+| `consulting-structure-layer` | Add SCR, issue tree, options, recommendation logic  | Consulting Framework Agent |
+| `trust-ready-to-share-gate`  | Translate faithfulness into user value              | Trust/Evidence Agent       |
+| `data-reproducibility-layer` | Add dataset/transform/eval placeholders             | Data Science Agent         |
+| `adoption-flywheel`          | Capture successful chains for future suggestions    | Adoption Agent             |
 
 ---
 
@@ -86,6 +86,7 @@ Do not modify:
 **Subagent:** Gap/Pattern Agent  
 **Pattern:** `harvest-to-pattern-library`  
 **Files:**
+
 - Create: `scripts/smoke/output_forge_gap_smoke.cjs`
 
 - [ ] **Step 1: Create failing smoke test**
@@ -98,7 +99,8 @@ const base = process.argv[2] || "http://127.0.0.1:3022";
 const flows = [
   {
     name: "gap_report",
-    query: "Generate Output Forge Gap Report using symptom principle complaint moat acceptance test",
+    query:
+      "Generate Output Forge Gap Report using symptom principle complaint moat acceptance test",
     expectedTarget: "output_forge.gap",
     expectedStatus: "Grounded",
     expectedType: "Gap Report",
@@ -151,13 +153,19 @@ for (const flow of flows) {
   const text = `${result.json.intent || ""}\n${result.json._canvas_content || ""}`;
   if (!result.ok) failures.push(`${flow.name}: HTTP ${result.status}`);
   if (result.json._target_tool !== flow.expectedTarget) {
-    failures.push(`${flow.name}: expected target ${flow.expectedTarget}, got ${result.json._target_tool}`);
+    failures.push(
+      `${flow.name}: expected target ${flow.expectedTarget}, got ${result.json._target_tool}`,
+    );
   }
   if (result.json._output_status !== flow.expectedStatus) {
-    failures.push(`${flow.name}: expected status ${flow.expectedStatus}, got ${result.json._output_status}`);
+    failures.push(
+      `${flow.name}: expected status ${flow.expectedStatus}, got ${result.json._output_status}`,
+    );
   }
   if (result.json._output_type !== flow.expectedType) {
-    failures.push(`${flow.name}: expected type ${flow.expectedType}, got ${result.json._output_type}`);
+    failures.push(
+      `${flow.name}: expected type ${flow.expectedType}, got ${result.json._output_type}`,
+    );
   }
   if (!result.json._canvas_content) failures.push(`${flow.name}: missing _canvas_content`);
   for (const expected of flow.expectedText) {
@@ -166,7 +174,10 @@ for (const flow of flows) {
 }
 
 const noModel = await postJson("/api/chat", { contents: "hello" });
-if (noModel.status !== 401 && !String(noModel.json.text || "").includes("No runtime model is configured")) {
+if (
+  noModel.status !== 401 &&
+  !String(noModel.json.text || "").includes("No runtime model is configured")
+) {
   failures.push("chat_no_model: expected 401 unauthenticated or no-runtime-model text");
 }
 
@@ -209,6 +220,7 @@ git commit -m "test: add output forge gap smoke contract"
 **Subagent:** Output Contract Agent  
 **Pattern:** `standard-to-implementation`  
 **Files:**
+
 - Modify: `server.ts`
 - Modify: `src/App.tsx`
 
@@ -259,9 +271,12 @@ Inside `detectOutputForgeType`, after `const normalized = query.toLowerCase();`,
 
 ```ts
 if (/\b(gap|gaps|best.practice|complaint|moat)\b/.test(normalized)) return "Gap Report";
-if (/\b(trust|ready.to.share|faithfulness|source.check|confidence)\b/.test(normalized)) return "Trust Check";
-if (/\b(scr|mece|issue.tree|consulting.structure|recommendation)\b/.test(normalized)) return "Consulting Structure";
-if (/\b(reproducibility|notebook|dataset|transform|eval)\b/.test(normalized)) return "Reproducibility Pack";
+if (/\b(trust|ready.to.share|faithfulness|source.check|confidence)\b/.test(normalized))
+  return "Trust Check";
+if (/\b(scr|mece|issue.tree|consulting.structure|recommendation)\b/.test(normalized))
+  return "Consulting Structure";
+if (/\b(reproducibility|notebook|dataset|transform|eval)\b/.test(normalized))
+  return "Reproducibility Pack";
 if (/\b(riec|risk)\b/.test(normalized)) return "Risk";
 if (/\b(deck|slides?|pptx)\b/.test(normalized)) return "Deck";
 if (/\b(dashboard|metrics|summary)\b/.test(normalized)) return "Dashboard";
@@ -414,6 +429,7 @@ git commit -m "feat: add output forge gap and trust contracts"
 **Best practices:** User-controlled layout allocation, zoom-to-fit, reversible workspace changes, no modal output.
 
 **Files:**
+
 - Modify: `src/components/Canvas.tsx`
 - Modify: `src/App.tsx`
 
@@ -463,24 +479,26 @@ import { Maximize2, Minimize2, PanelRightClose } from "lucide-react";
 Add buttons before Copy:
 
 ```tsx
-{onSizeChange && (
-  <>
-    <button
-      onClick={() => onSizeChange(size === "wide" ? "default" : "wide")}
-      className="p-1.5 hover:bg-[#2A2B32] rounded-md transition-colors text-[#A1A1A8]"
-      title={size === "wide" ? "Restore Canvas Width" : "Widen Canvas"}
-    >
-      {size === "wide" ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-    </button>
-    <button
-      onClick={() => onSizeChange(size === "focus" ? "default" : "focus")}
-      className="p-1.5 hover:bg-[#2A2B32] rounded-md transition-colors text-[#A1A1A8]"
-      title={size === "focus" ? "Restore Workspace" : "Focus Canvas"}
-    >
-      <PanelRightClose className="w-4 h-4" />
-    </button>
-  </>
-)}
+{
+  onSizeChange && (
+    <>
+      <button
+        onClick={() => onSizeChange(size === "wide" ? "default" : "wide")}
+        className="p-1.5 hover:bg-[#2A2B32] rounded-md transition-colors text-[#A1A1A8]"
+        title={size === "wide" ? "Restore Canvas Width" : "Widen Canvas"}
+      >
+        {size === "wide" ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+      </button>
+      <button
+        onClick={() => onSizeChange(size === "focus" ? "default" : "focus")}
+        className="p-1.5 hover:bg-[#2A2B32] rounded-md transition-colors text-[#A1A1A8]"
+        title={size === "focus" ? "Restore Workspace" : "Focus Canvas"}
+      >
+        <PanelRightClose className="w-4 h-4" />
+      </button>
+    </>
+  );
+}
 ```
 
 - [ ] **Step 4: Wire App state**
@@ -543,6 +561,7 @@ git commit -m "feat: add canvas workspace controls"
 **Subagent:** UX Workspace Agent  
 **Pattern:** `visualization-system-loop`  
 **Files:**
+
 - Modify: `src/components/Canvas.tsx`
 
 - [ ] **Step 1: Add zoom and layer state**
@@ -579,7 +598,9 @@ Add a compact layer strip below header:
       onClick={() => setVisibleLayers((current) => ({ ...current, [layer]: !enabled }))}
       className={cn(
         "text-[10px] px-2 py-1 rounded-full border capitalize",
-        enabled ? "text-cyan-300 border-cyan-500/30 bg-cyan-500/10" : "text-[#8e8e93] border-[#2a2b30]"
+        enabled
+          ? "text-cyan-300 border-cyan-500/30 bg-cyan-500/10"
+          : "text-[#8e8e93] border-[#2a2b30]",
       )}
     >
       {layer}
@@ -630,6 +651,7 @@ git commit -m "feat: add canvas zoom and layer controls"
 **Subagent:** Consulting Framework Agent  
 **Pattern:** `consulting-structure-layer`  
 **Files:**
+
 - Modify: `server.ts`
 - Modify: `WidgeTDC_Improvements.md`
 
@@ -684,6 +706,7 @@ git commit -m "feat: add consulting framework output layer"
 **Subagent:** Trust/Evidence Agent  
 **Pattern:** `trust-ready-to-share-gate`  
 **Files:**
+
 - Modify: `server.ts`
 - Modify: `src/App.tsx`
 
@@ -747,6 +770,7 @@ git commit -m "feat: translate trust gate into user-facing language"
 **Subagent:** Data Science Agent  
 **Pattern:** `data-reproducibility-layer`  
 **Files:**
+
 - Modify: `server.ts`
 - Modify: `WidgeTDC_Improvements.md`
 
@@ -799,6 +823,7 @@ git commit -m "feat: add reproducibility output layer"
 **Subagent:** Adoption Agent  
 **Pattern:** `adoption-flywheel`  
 **Files:**
+
 - Modify: `server.ts`
 - Modify: `src/App.tsx`
 
@@ -819,7 +844,8 @@ adoption_candidate: {
 In `src/App.tsx`, when `data.result?.adoption_candidate?.can_save_pattern` is true, append to assistant text:
 
 ```ts
-assistantText += "\n\n**Next action:** Save this successful chain as a reusable pattern candidate after review.";
+assistantText +=
+  "\n\n**Next action:** Save this successful chain as a reusable pattern candidate after review.";
 ```
 
 - [ ] **Step 3: Verify**

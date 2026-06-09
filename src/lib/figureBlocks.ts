@@ -117,9 +117,11 @@ export function validateGraphLikeSpec(value: unknown): string[] {
     }
     const { source, target } = e as Record<string, unknown>;
     if (typeof source !== "string" || !source) errors.push(`Edge[${i}] mangler 'source' (string).`);
-    else if (ids.size > 0 && !ids.has(source)) errors.push(`Edge[${i}].source '${source}' findes ikke i nodes.`);
+    else if (ids.size > 0 && !ids.has(source))
+      errors.push(`Edge[${i}].source '${source}' findes ikke i nodes.`);
     if (typeof target !== "string" || !target) errors.push(`Edge[${i}] mangler 'target' (string).`);
-    else if (ids.size > 0 && !ids.has(target)) errors.push(`Edge[${i}].target '${target}' findes ikke i nodes.`);
+    else if (ids.size > 0 && !ids.has(target))
+      errors.push(`Edge[${i}].target '${target}' findes ikke i nodes.`);
   });
 
   return errors;
@@ -141,7 +143,8 @@ function normalizeGraphLikeSpec<T extends GraphSpec | KnowledgeGraphSpec>(value:
   return { ...obj, edges } as T;
 }
 
-const FENCE_RE = /^([ \t]*)```(chart|flow|mermaid|clak|ckak|svg|figure|graph|knowledge-graph|kg)\b[^\n]*\n([\s\S]*?)\n\1```/gim;
+const FENCE_RE =
+  /^([ \t]*)```(chart|flow|mermaid|clak|ckak|svg|figure|graph|knowledge-graph|kg)\b[^\n]*\n([\s\S]*?)\n\1```/gim;
 
 export function parseBlocks(text: string): Block[] {
   if (!text) return [];
@@ -231,7 +234,10 @@ export function parseBlocks(text: string): Block[] {
  * Returnerer null hvis tabellen ikke er numerisk eller har upassende dimensioner.
  */
 export function tableToChartSpec(markdownTable: string): ChartSpec | null {
-  const lines = markdownTable.trim().split("\n").filter((l) => l.trim().startsWith("|"));
+  const lines = markdownTable
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim().startsWith("|"));
   if (lines.length < 3) return null;
   const parseRow = (l: string) =>
     l

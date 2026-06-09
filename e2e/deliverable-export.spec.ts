@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+async function waitForHydration(page: import("@playwright/test").Page) {
+  await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
+}
+
 /**
  * Phase 1b Output Forge export. Stubs /api/deliverable/export so the test runs
  * without platform keys, verifying the DOCX export button decodes the base64
@@ -17,12 +21,15 @@ test("deliverable studio exports a DOCX via Output Forge", async ({ page }) => {
   });
 
   await page.goto("/deliverable");
+  await waitForHydration(page);
   await page
     .getByPlaceholder(/Beskriv hvad deliverablen/i)
     .fill("Analyser hvordan en chat-frontend bør eksponere en knowledge-graph-platform.");
 
+  const docx = page.getByRole("button", { name: /^DOCX$/ });
+  await expect(docx).toBeEnabled();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /^DOCX$/ }).click();
+  await docx.click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("test-brief.docx");
 });

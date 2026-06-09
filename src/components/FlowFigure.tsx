@@ -18,12 +18,40 @@
  *     "edges": [{ "from": "u", "to": "q", "label": "asks", "kind": "TARGETS" }]
  *   }
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { z } from "zod";
 import {
-  ChevronRight, Bot, Wrench, FileText, ShieldAlert, AlertTriangle, GitBranch, Package,
-  Database, Sparkles, Server, Plug, Lightbulb, FileSearch, FileCode, BrainCircuit,
-  Terminal, BookOpen, Fingerprint, Shield, ArrowLeftRight, Route as RouteIcon, Layers,
+  ChevronRight,
+  Bot,
+  Wrench,
+  FileText,
+  ShieldAlert,
+  AlertTriangle,
+  GitBranch,
+  Package,
+  Database,
+  Sparkles,
+  Server,
+  Plug,
+  Lightbulb,
+  FileSearch,
+  FileCode,
+  BrainCircuit,
+  Terminal,
+  BookOpen,
+  Fingerprint,
+  Shield,
+  ArrowLeftRight,
+  Route as RouteIcon,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,21 +61,47 @@ import { cn } from "@/lib/utils";
  * ────────────────────────────────────────────────────────────────────────── */
 
 const CANONICAL_NODE_TYPES = [
-  "Agent", "Artifact", "Claim", "CodeImplementation", "ComplianceGap", "Decision",
-  "Entity", "Evidence", "GuardrailRule", "Insight", "KnowledgePattern", "MCPTool",
-  "Memory", "StrategicInsight", "StrategicLeverage", "Tool", "Track",
-  "combo", "query",
+  "Agent",
+  "Artifact",
+  "Claim",
+  "CodeImplementation",
+  "ComplianceGap",
+  "Decision",
+  "Entity",
+  "Evidence",
+  "GuardrailRule",
+  "Insight",
+  "KnowledgePattern",
+  "MCPTool",
+  "Memory",
+  "StrategicInsight",
+  "StrategicLeverage",
+  "Tool",
+  "Track",
+  "combo",
+  "query",
 ] as const;
 export type CanvasNodeType = (typeof CANONICAL_NODE_TYPES)[number];
 
 /** §4.2 Legacy aliases — normalized on input. */
 const LEGACY_NODE_TYPE_MAP: Record<string, CanvasNodeType> = {
-  agent: "Agent", tool: "Tool", claim: "Claim", thought: "Claim",
-  evidence: "Evidence", risk: "GuardrailRule", gap: "ComplianceGap",
-  decision: "Decision", artifact: "Artifact", system: "CodeImplementation",
-  pattern: "KnowledgePattern", server: "CodeImplementation",
-  endpoint: "MCPTool", pipeline: "Track", entity: "Entity",
-  insight: "Insight", memory: "Memory",
+  agent: "Agent",
+  tool: "Tool",
+  claim: "Claim",
+  thought: "Claim",
+  evidence: "Evidence",
+  risk: "GuardrailRule",
+  gap: "ComplianceGap",
+  decision: "Decision",
+  artifact: "Artifact",
+  system: "CodeImplementation",
+  pattern: "KnowledgePattern",
+  server: "CodeImplementation",
+  endpoint: "MCPTool",
+  pipeline: "Track",
+  entity: "Entity",
+  insight: "Insight",
+  memory: "Memory",
 };
 
 function normalizeCanvasNodeType(raw: unknown): CanvasNodeType {
@@ -59,20 +113,36 @@ function normalizeCanvasNodeType(raw: unknown): CanvasNodeType {
 
 /** §4.3 Families (10) — presentation grouping. */
 type Family =
-  | "knowledge" | "evidence" | "artifact" | "foundry" | "reasoning"
-  | "capability" | "orchestration" | "memory" | "query" | "meta";
+  | "knowledge"
+  | "evidence"
+  | "artifact"
+  | "foundry"
+  | "reasoning"
+  | "capability"
+  | "orchestration"
+  | "memory"
+  | "query"
+  | "meta";
 
 const FAMILY_MAP: Record<CanvasNodeType, Family> = {
-  Agent: "orchestration", Track: "orchestration",
-  Entity: "knowledge", Insight: "knowledge", StrategicInsight: "knowledge",
+  Agent: "orchestration",
+  Track: "orchestration",
+  Entity: "knowledge",
+  Insight: "knowledge",
+  StrategicInsight: "knowledge",
   Evidence: "evidence",
   Artifact: "artifact",
   Claim: "reasoning",
-  Tool: "capability", MCPTool: "capability", CodeImplementation: "capability",
+  Tool: "capability",
+  MCPTool: "capability",
+  CodeImplementation: "capability",
   Memory: "memory",
   query: "query",
-  StrategicLeverage: "foundry", KnowledgePattern: "foundry", GuardrailRule: "foundry",
-  Decision: "foundry", ComplianceGap: "foundry",
+  StrategicLeverage: "foundry",
+  KnowledgePattern: "foundry",
+  GuardrailRule: "foundry",
+  Decision: "foundry",
+  ComplianceGap: "foundry",
   combo: "meta",
 };
 
@@ -87,41 +157,43 @@ interface NodeConfig {
 }
 
 const NODE_CONFIG: Record<CanvasNodeType, NodeConfig> = {
-  CodeImplementation: { color: "#64748b", icon: Server,         layer: "INFRA",         variant: "base" },
-  MCPTool:            { color: "#14b8a6", icon: Plug,           layer: "INFRA",         variant: "base" },
-  Tool:               { color: "#667eea", icon: Wrench,         layer: "CAPABILITY",    variant: "base" },
-  Track:              { color: "#06b6d4", icon: GitBranch,      layer: "ORCHESTRATION", variant: "base" },
-  Agent:              { color: "#e20074", icon: Bot,            layer: "ORCHESTRATION", variant: "base" },
-  Entity:             { color: "#f4bb00", icon: Database,       layer: "INTELLIGENCE",  variant: "base" },
-  Insight:            { color: "#22c55e", icon: Lightbulb,      layer: "INTELLIGENCE",  variant: "base" },
-  Evidence:           { color: "#f97316", icon: FileSearch,     layer: "INTELLIGENCE",  variant: "base" },
-  Artifact:           { color: "#ec4899", icon: FileCode,       layer: "INTELLIGENCE",  variant: "artifact" },
-  Claim:              { color: "#8b5cf6", icon: BrainCircuit,   layer: "REASONING",     variant: "thought" },
-  query:              { color: "#a855f7", icon: Terminal,       layer: "SANDBOX",       variant: "query" },
-  StrategicLeverage:  { color: "#0ea5e9", icon: BookOpen,       layer: "FOUNDRY",       variant: "foundry" },
-  KnowledgePattern:   { color: "#6366f1", icon: Fingerprint,    layer: "FOUNDRY",       variant: "foundry" },
-  GuardrailRule:      { color: "#ef4444", icon: Shield,         layer: "FOUNDRY",       variant: "foundry" },
-  Decision:           { color: "#06b6d4", icon: ArrowLeftRight, layer: "FOUNDRY",       variant: "foundry" },
-  ComplianceGap:      { color: "#f59e0b", icon: RouteIcon,      layer: "FOUNDRY",       variant: "foundry" },
-  StrategicInsight:   { color: "#22c55e", icon: Sparkles,       layer: "INTELLIGENCE",  variant: "base" },
-  Memory:             { color: "#8b5cf6", icon: BrainCircuit,   layer: "MEMORY",        variant: "thought" },
-  combo:              { color: "#6b7280", icon: Layers,         layer: "META",          variant: "combo" },
+  CodeImplementation: { color: "#64748b", icon: Server, layer: "INFRA", variant: "base" },
+  MCPTool: { color: "#14b8a6", icon: Plug, layer: "INFRA", variant: "base" },
+  Tool: { color: "#667eea", icon: Wrench, layer: "CAPABILITY", variant: "base" },
+  Track: { color: "#06b6d4", icon: GitBranch, layer: "ORCHESTRATION", variant: "base" },
+  Agent: { color: "#e20074", icon: Bot, layer: "ORCHESTRATION", variant: "base" },
+  Entity: { color: "#f4bb00", icon: Database, layer: "INTELLIGENCE", variant: "base" },
+  Insight: { color: "#22c55e", icon: Lightbulb, layer: "INTELLIGENCE", variant: "base" },
+  Evidence: { color: "#f97316", icon: FileSearch, layer: "INTELLIGENCE", variant: "base" },
+  Artifact: { color: "#ec4899", icon: FileCode, layer: "INTELLIGENCE", variant: "artifact" },
+  Claim: { color: "#8b5cf6", icon: BrainCircuit, layer: "REASONING", variant: "thought" },
+  query: { color: "#a855f7", icon: Terminal, layer: "SANDBOX", variant: "query" },
+  StrategicLeverage: { color: "#0ea5e9", icon: BookOpen, layer: "FOUNDRY", variant: "foundry" },
+  KnowledgePattern: { color: "#6366f1", icon: Fingerprint, layer: "FOUNDRY", variant: "foundry" },
+  GuardrailRule: { color: "#ef4444", icon: Shield, layer: "FOUNDRY", variant: "foundry" },
+  Decision: { color: "#06b6d4", icon: ArrowLeftRight, layer: "FOUNDRY", variant: "foundry" },
+  ComplianceGap: { color: "#f59e0b", icon: RouteIcon, layer: "FOUNDRY", variant: "foundry" },
+  StrategicInsight: { color: "#22c55e", icon: Sparkles, layer: "INTELLIGENCE", variant: "base" },
+  Memory: { color: "#8b5cf6", icon: BrainCircuit, layer: "MEMORY", variant: "thought" },
+  combo: { color: "#6b7280", icon: Layers, layer: "META", variant: "combo" },
 };
 
 /** §5.3 Provenance badges. */
 const PROVENANCE_BADGE: Record<string, { icon: string; label: string }> = {
-  query:    { icon: "🔍", label: "Query" },
-  ai:       { icon: "🤖", label: "AI" },
-  expand:   { icon: "🔗", label: "Expand" },
-  tool:     { icon: "🛠", label: "Tool" },
-  manual:   { icon: "✋", label: "Manual" },
-  harvest:  { icon: "🌐", label: "Harvest" },
-  pipeline: { icon: "⚙",  label: "Pipeline" },
+  query: { icon: "🔍", label: "Query" },
+  ai: { icon: "🤖", label: "AI" },
+  expand: { icon: "🔗", label: "Expand" },
+  tool: { icon: "🛠", label: "Tool" },
+  manual: { icon: "✋", label: "Manual" },
+  harvest: { icon: "🌐", label: "Harvest" },
+  pipeline: { icon: "⚙", label: "Pipeline" },
 };
 
 /** §4.7 Regulatory levels. */
 const REGULATORY_COLOR: Record<string, string> = {
-  strict: "#f4bb00", guideline: "#3b82f6", info: "#6b7280",
+  strict: "#f4bb00",
+  guideline: "#3b82f6",
+  info: "#6b7280",
 };
 function normalizeRegulatoryLevel(raw: string): keyof typeof REGULATORY_COLOR {
   const l = raw.toLowerCase();
@@ -148,20 +220,42 @@ function complianceColor(s: number): string {
 
 /** §8 Swimlane columns (subset of ENGAGEMENT_COLUMNS — colors only). */
 const LANE_COLORS: Record<string, string> = {
-  VISION: "#f4bb00", PILLARS: "#22c55e", MARKET: "#3b82f6", GAPS: "#f97316",
-  H5_MIDPOINT: "#8b5cf6", H3_MOMENTUM: "#a855f7", H1_LAUNCH: "#ec4899",
-  RISKS: "#ef4444", FINANCE: "#14b8a6", ACTION_PLAN: "#06b6d4",
-  BRIEF: "#64748b", HYPOTHESES: "#8b5cf6", EVIDENCE: "#f97316",
-  ANALYSIS: "#22c55e", RECOMMENDATIONS: "#0047bb", DELIVERABLES: "#ec4899",
+  VISION: "#f4bb00",
+  PILLARS: "#22c55e",
+  MARKET: "#3b82f6",
+  GAPS: "#f97316",
+  H5_MIDPOINT: "#8b5cf6",
+  H3_MOMENTUM: "#a855f7",
+  H1_LAUNCH: "#ec4899",
+  RISKS: "#ef4444",
+  FINANCE: "#14b8a6",
+  ACTION_PLAN: "#06b6d4",
+  BRIEF: "#64748b",
+  HYPOTHESES: "#8b5cf6",
+  EVIDENCE: "#f97316",
+  ANALYSIS: "#22c55e",
+  RECOMMENDATIONS: "#0047bb",
+  DELIVERABLES: "#ec4899",
 };
 
 /** §8 Canonical lane order — lanes not in this list are appended alphabetically. */
 const LANE_ORDER: string[] = [
-  "VISION", "PILLARS", "MARKET", "GAPS",
-  "H5_MIDPOINT", "H3_MOMENTUM", "H1_LAUNCH",
-  "RISKS", "FINANCE", "ACTION_PLAN",
-  "BRIEF", "HYPOTHESES", "EVIDENCE",
-  "ANALYSIS", "RECOMMENDATIONS", "DELIVERABLES",
+  "VISION",
+  "PILLARS",
+  "MARKET",
+  "GAPS",
+  "H5_MIDPOINT",
+  "H3_MOMENTUM",
+  "H1_LAUNCH",
+  "RISKS",
+  "FINANCE",
+  "ACTION_PLAN",
+  "BRIEF",
+  "HYPOTHESES",
+  "EVIDENCE",
+  "ANALYSIS",
+  "RECOMMENDATIONS",
+  "DELIVERABLES",
 ];
 const FALLBACK_LANE_COLOR = "#64748b";
 function laneRank(key: string): number {
@@ -171,7 +265,12 @@ function laneRank(key: string): number {
 
 /** §6.2 Canonical relationship types. */
 const RELATIONSHIP_TYPES = [
-  "CONSTRAINS", "IMPLEMENTS", "LEVERAGES", "RELATED_TO", "REMEDIATES", "TARGETS",
+  "CONSTRAINS",
+  "IMPLEMENTS",
+  "LEVERAGES",
+  "RELATED_TO",
+  "REMEDIATES",
+  "TARGETS",
 ] as const;
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -179,8 +278,21 @@ const RELATIONSHIP_TYPES = [
  * ────────────────────────────────────────────────────────────────────────── */
 
 const FlowNodeMode = z.enum([
-  "card", "outline", "canvas_block", "stepper", "checklist", "code", "document",
-  "slides", "diagram", "graph", "split", "inspector", "timeline", "risk_overlay", "diff",
+  "card",
+  "outline",
+  "canvas_block",
+  "stepper",
+  "checklist",
+  "code",
+  "document",
+  "slides",
+  "diagram",
+  "graph",
+  "split",
+  "inspector",
+  "timeline",
+  "risk_overlay",
+  "diff",
 ]);
 
 const ProvenanceObject = z.object({
@@ -363,16 +475,19 @@ function NodeCard({
   const family = FAMILY_MAP[type];
   const Icon = cfg.icon;
   const propEntries = node.properties ? Object.entries(node.properties) : [];
-  const conf = confidenceStyle(node.confidence ?? (typeof node.provenance === "object" ? node.provenance.confidence : undefined));
-  const provKey = typeof node.provenance === "string"
-    ? node.provenance
-    : node.provenance?.source;
+  const conf = confidenceStyle(
+    node.confidence ??
+      (typeof node.provenance === "object" ? node.provenance.confidence : undefined),
+  );
+  const provKey = typeof node.provenance === "string" ? node.provenance : node.provenance?.source;
   const prov = provKey ? PROVENANCE_BADGE[provKey.toLowerCase()] : undefined;
-  const provConfidence = typeof node.provenance === "object" ? node.provenance.confidence : undefined;
+  const provConfidence =
+    typeof node.provenance === "object" ? node.provenance.confidence : undefined;
   const effectiveConfidence = node.confidence ?? provConfidence;
   const reg = node.regulatoryLevel ? normalizeRegulatoryLevel(node.regulatoryLevel) : undefined;
   const regColor = reg ? REGULATORY_COLOR[reg] : undefined;
-  const compColor = node.complianceScore !== undefined ? complianceColor(node.complianceScore) : undefined;
+  const compColor =
+    node.complianceScore !== undefined ? complianceColor(node.complianceScore) : undefined;
 
   const style: CSSProperties = {
     ["--flow-color" as string]: cfg.color,
@@ -394,12 +509,18 @@ function NodeCard({
       title={`${type} · ${cfg.layer}`}
     >
       {cfg.variant === "foundry" && (
-        <span className="flow-foundry-pill" aria-hidden>FOUNDRY</span>
+        <span className="flow-foundry-pill" aria-hidden>
+          FOUNDRY
+        </span>
       )}
       {(prov || regColor) && (
         <span className="flow-overlay-row">
           {prov && (
-            <span className="flow-provenance" title={`Provenance: ${prov.label}`} aria-label={prov.label}>
+            <span
+              className="flow-provenance"
+              title={`Provenance: ${prov.label}`}
+              aria-label={prov.label}
+            >
               {prov.icon}
             </span>
           )}
@@ -430,7 +551,9 @@ function NodeCard({
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium">{node.label}</span>
           {node.subtitle && (
-            <span className="truncate text-[11px] font-medium text-muted-foreground/90">{node.subtitle}</span>
+            <span className="truncate text-[11px] font-medium text-muted-foreground/90">
+              {node.subtitle}
+            </span>
           )}
           {node.summary && !expanded && !node.subtitle && (
             <span className="truncate text-xs text-muted-foreground">{node.summary}</span>
@@ -474,13 +597,20 @@ function NodeCard({
           <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
             <span>Type: {type}</span>
             <span>Family: {family}</span>
-            {node.confidence !== undefined && <span>Confidence: {Math.round(node.confidence * 100)}%</span>}
+            {node.confidence !== undefined && (
+              <span>Confidence: {Math.round(node.confidence * 100)}%</span>
+            )}
           </div>
         </div>
       )}
       {compColor !== undefined && node.complianceScore !== undefined && (
-        <div className="flow-compliance-bar" aria-label={`Compliance ${Math.round(node.complianceScore * 100)}%`}>
-          <span style={{ width: `${Math.max(4, node.complianceScore * 100)}%`, background: compColor }} />
+        <div
+          className="flow-compliance-bar"
+          aria-label={`Compliance ${Math.round(node.complianceScore * 100)}%`}
+        >
+          <span
+            style={{ width: `${Math.max(4, node.complianceScore * 100)}%`, background: compColor }}
+          />
         </div>
       )}
     </div>
@@ -518,7 +648,9 @@ export function FlowFigure({ content }: { content: string }) {
     setRects(next);
   }, []);
 
-  useLayoutEffect(() => { measure(); }, [measure, expanded, spec]);
+  useLayoutEffect(() => {
+    measure();
+  }, [measure, expanded, spec]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -533,7 +665,10 @@ export function FlowFigure({ content }: { content: string }) {
   }, [measure, spec]);
 
   const layers = useMemo(() => (spec ? assignLayers(spec) : new Map<string, number>()), [spec]);
-  const centrality = useMemo(() => (spec ? computeEigenvectorScores(spec) : new Map<string, number>()), [spec]);
+  const centrality = useMemo(
+    () => (spec ? computeEigenvectorScores(spec) : new Map<string, number>()),
+    [spec],
+  );
   const sortByCentrality = useCallback(
     (a: FlowNode, b: FlowNode) => (centrality.get(b.id) ?? 0) - (centrality.get(a.id) ?? 0),
     [centrality],
@@ -541,7 +676,11 @@ export function FlowFigure({ content }: { content: string }) {
 
   /** Group by lane if any node has lane, otherwise by topological layer. */
   const { groups, lanesUsed } = useMemo(() => {
-    if (!spec) return { groups: [] as { key: string; color?: string; nodes: FlowNode[] }[], lanesUsed: false };
+    if (!spec)
+      return {
+        groups: [] as { key: string; color?: string; nodes: FlowNode[] }[],
+        lanesUsed: false,
+      };
     const hasLanes = spec.nodes.some((n) => n.lane);
     if (hasLanes) {
       const map = new Map<string, FlowNode[]>();
@@ -554,7 +693,11 @@ export function FlowFigure({ content }: { content: string }) {
         lanesUsed: true,
         groups: [...map.entries()]
           .sort(([a], [b]) => laneRank(a) - laneRank(b) || a.localeCompare(b))
-          .map(([k, ns]) => ({ key: k, color: LANE_COLORS[k] ?? FALLBACK_LANE_COLOR, nodes: [...ns].sort(sortByCentrality) })),
+          .map(([k, ns]) => ({
+            key: k,
+            color: LANE_COLORS[k] ?? FALLBACK_LANE_COLOR,
+            nodes: [...ns].sort(sortByCentrality),
+          })),
       };
     }
     const map = new Map<number, FlowNode[]>();
@@ -567,9 +710,12 @@ export function FlowFigure({ content }: { content: string }) {
       lanesUsed: false,
       groups: [...map.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([l, ns]) => ({ key: `L${l}`, color: undefined as string | undefined, nodes: [...ns].sort(sortByCentrality) })),
+        .map(([l, ns]) => ({
+          key: `L${l}`,
+          color: undefined as string | undefined,
+          nodes: [...ns].sort(sortByCentrality),
+        })),
     };
-
   }, [spec, layers, sortByCentrality]);
 
   if (!spec) {
@@ -608,8 +754,15 @@ export function FlowFigure({ content }: { content: string }) {
           aria-hidden
         >
           <defs>
-            <marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5"
-              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <marker
+              id="flow-arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
             </marker>
           </defs>
@@ -651,8 +804,12 @@ export function FlowFigure({ content }: { content: string }) {
                         fill="#0f1d32"
                         fillOpacity={0.85}
                       />
-                      <text x={labelX} y={labelY + 1} textAnchor="middle"
-                        className="fill-[#94a3b8] text-[10px] font-medium">
+                      <text
+                        x={labelX}
+                        y={labelY + 1}
+                        textAnchor="middle"
+                        className="fill-[#94a3b8] text-[10px] font-medium"
+                      >
                         {e.label}
                       </text>
                     </g>
