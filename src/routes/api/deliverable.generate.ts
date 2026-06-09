@@ -143,7 +143,7 @@ export const Route = createFileRoute("/api/deliverable/generate")({
               fallbackSource: "writer_fallback",
               durationMs: Date.now() - started,
             });
-            void emitDeliverableDegradedEvent({
+            await emitDeliverableDegradedEvent({
               correlationId,
               stage: "generate",
               kind,

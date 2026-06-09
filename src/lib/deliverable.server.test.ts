@@ -72,11 +72,31 @@ describe("extractProducedDocument (Output Forge)", () => {
       mediaType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
   });
+
+  it("unwraps canonical forge artifact fields", () => {
+    expect(
+      extractProducedDocument(
+        {
+          result: {
+            file_base64: "UEsDBA==",
+            filename: "forge-report.docx",
+            mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          },
+        },
+        "docx",
+        "Forge Report",
+      ),
+    ).toEqual({
+      base64: "UEsDBA==",
+      filename: "forge-report.docx",
+      mediaType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+  });
 });
 
 describe("resolveMcpRoute", () => {
-  it("routes deliverable tools to the orchestrator when configured", () => {
-    const route = resolveMcpRoute("produce_document", {
+  it("routes canonical forge artifacts to backend even when orchestrator is configured", () => {
+    const route = resolveMcpRoute("forge.artifact.generate", {
       WIDGETDC_BACKEND_URL: "https://backend.example",
       WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example/",
       WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
@@ -84,9 +104,9 @@ describe("resolveMcpRoute", () => {
     });
 
     expect(route).toEqual({
-      url: "https://orchestrator.example/api/mcp/route",
-      key: "orch-key",
-      target: "orchestrator",
+      url: "https://backend.example/api/mcp/route",
+      key: "backend-key",
+      target: "backend",
     });
   });
 

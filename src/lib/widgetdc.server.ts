@@ -14,13 +14,7 @@ import { logServer } from "./server-logger";
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
-const ORCHESTRATOR_TOOL_NAMES = new Set([
-  "generate_deliverable",
-  "deliverable_draft",
-  "produce_document",
-  "judge_response",
-  "context_fold",
-]);
+const ORCHESTRATOR_TOOL_NAMES = new Set<string>();
 
 type McpRouteConfig = { url: string; key: string; target: "backend" | "orchestrator" };
 
@@ -56,7 +50,7 @@ export function resolveMcpRoute(
 
 export function isPlatformConfigured(): boolean {
   return (
-    resolveMcpRoute("reason_deeply") !== null || resolveMcpRoute("generate_deliverable") !== null
+    resolveMcpRoute("reason_deeply") !== null || resolveMcpRoute("forge.artifact.generate") !== null
   );
 }
 
@@ -583,9 +577,10 @@ export async function queryGraph(
 
 // ───────────────────────────────────────────────────────────────────────────
 // Deliverable Studio (Phase 1) — turn a chat brief into a consulting artifact.
-// Surfaces the platform `assembly` tool family the frontend never used:
-// `generate_deliverable` (RAG-backed, citation-bearing markdown) gated by an
-// optional `judge_response` PRISM quality pass.
+// Current production backend no longer registers the legacy
+// `generate_deliverable` / `deliverable_draft` aliases. Markdown generation
+// therefore falls through to the explicit degraded writer fallback unless a
+// future deployment opts back into the legacy aliases.
 // ───────────────────────────────────────────────────────────────────────────
 
 /** The three deliverable kinds the platform `generate_deliverable` accepts. */
@@ -596,6 +591,10 @@ export type DeliverableResult = { markdown: string; citations: number };
 
 /** PRISM quality verdict (0–10 aggregate + per-dimension breakdown). */
 export type DeliverableQuality = { score: number; dimensions?: Record<string, number> };
+
+function legacyDeliverableToolsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return /^(1|true|yes)$/i.test(env.WIDGETDC_ENABLE_LEGACY_DELIVERABLE_TOOLS ?? "");
+}
 
 /**
  * Extract markdown + citation count from the varied `generate_deliverable`
@@ -642,6 +641,15 @@ export async function generateDeliverable(
   kind: DeliverableKind,
   opts: { correlationId?: string; maxSections?: number } = {},
 ): Promise<DeliverableResult | null> {
+  if (!legacyDeliverableToolsEnabled()) {
+    logServer("warn", {
+      event: "deliverable_generate_legacy_tool_disabled",
+      requestId: opts.correlationId,
+      tool: "generate_deliverable",
+      kind,
+    });
+    return null;
+  }
   const result = await callMcpTool<unknown>(
     "generate_deliverable",
     {
@@ -700,39 +708,6 @@ export function isSubstantiveDeliverable(markdown: string, brief: string): boole
   return true;
 }
 
-function normalizeFallbackDeliverable(text: string, brief: string, kind: DeliverableKind): string {
-  let markdown = text.trim();
-  const fenced = markdown.match(/^```(?:markdown|md)?\s*([\s\S]*?)```\s*$/i);
-  if (fenced?.[1]?.trim()) markdown = fenced[1].trim();
-
-  const title = `# Deliverable ${deliverableKindLabel(kind)}`;
-  if (!/^#\s+/m.test(markdown)) markdown = `${title}\n\n${markdown}`;
-  if (!/Canvas notes:/i.test(markdown)) {
-    markdown = `${markdown.trim()}\n\nCanvas notes:\n- Deliverablen er genereret fra briefet, ikke kun eksporteret som rå input.\n- Brug anbefalingerne som arbejdsudkast og valider tal, kilder og scope før ekstern deling.\n- Briefets hovedspørgsmål: ${brief.slice(0, 140)}`;
-  }
-  return markdown.trim();
-}
-
-function fallbackDeliverablePrompt(brief: string, kind: DeliverableKind, sections: number): string {
-  const languageInstruction = /[æøåÆØÅ]/.test(brief)
-    ? "The brief is Danish. Write the entire deliverable in Danish, except code identifiers."
-    : "Write in the same language as the brief.";
-  return [
-    `Generate a complete ${deliverableKindLabel(kind)} consulting deliverable in Markdown.`,
-    `${languageInstruction} Produce ${sections} concise sections with headings.`,
-    "Use SCQA, MECE, and Pyramid Principle where relevant.",
-    "Include concrete recommendations and decision-ready analysis.",
-    "Include at least one mermaid or flow code block.",
-    "Include a final `Canvas notes:` section with at least 3 bullets.",
-    "Do not use emoji. Do not add meta commentary.",
-    "Do not say that generation failed. Do not return the brief only.",
-    "If code is useful, avoid CREATE, DELETE, REMOVE, and DROP examples; use read-only or MERGE-safe examples.",
-    "",
-    "Brief:",
-    brief,
-  ].join("\n");
-}
-
 function briefExcerpt(brief: string, max = 180): string {
   const cleaned = brief.replace(/\s+/g, " ").trim();
   return cleaned.length > max ? `${cleaned.slice(0, max - 1).trim()}...` : cleaned;
@@ -749,9 +724,9 @@ export function localTemplateDeliverable(brief: string, kind: DeliverableKind): 
         "## SCQA",
         `**Situation:** Briefet peger på et beslutningsområde, hvor relationer, kontekst og sporbarhed er afgørende: ${subject}`,
         "",
-        "**Komplikation:** En ren vektorbaseret tilgang kan finde semantisk lignende tekst, men den mister ofte forbindelserne mellem aktører, evidens, beslutninger og afhængigheder. Det gør svaret sværere at auditere og svagere som ledelsesgrundlag.",
+        "**Komplikation:** Uden en struktureret analyse bliver scope, evidens, risici og ejerskab let blandet sammen. Det gør output sværere at auditere og svagere som beslutningsgrundlag.",
         "",
-        "**Spørgsmål:** Hvor bør GraphRAG med Neo4j bruges, og hvilke kontroller skal være på plads for at gøre output beslutningsklart?",
+        "**Spørgsmål:** Hvilke beslutninger, risici og næste skridt skal afklares for at gøre arbejdet beslutningsklart?",
         "",
         "## MECE issue tree",
         "```mermaid",
@@ -759,24 +734,24 @@ export function localTemplateDeliverable(brief: string, kind: DeliverableKind): 
         'A["Beslutning"] --> B["Relationel kompleksitet"]',
         'A --> C["Evidens og provenance"]',
         'A --> D["Operationel anvendelse"]',
-        'B --> B1["Entiteter og afhængigheder"]',
-        'C --> C1["Kilder, citationsspor og audit"]',
-        'D --> D1["Workflow, ejerskab og validering"]',
+        'B --> B1["Aktører, afhængigheder og antagelser"]',
+        'C --> C1["Kilder, kvalitet og auditspor"]',
+        'D --> D1["Handlinger, ejerskab og validering"]',
         "```",
         "",
         "## Anbefalet handlingsplan",
-        "1. Afgræns de vigtigste entiteter, relationstyper og beslutningsspørgsmål før ny ingestion skaleres.",
-        "2. Brug vektorsøg som recall-lag, men lad Neo4j-grafen stå for relationel ekspansion, kildebinding og multi-hop ræsonnement.",
-        "3. Indfør en kvalitetsgate, hvor hvert deliverable skal have tydelige claims, evidensspor, Canvas notes og en kendt usikkerhedsprofil.",
-        "4. Start med et smalt use case, mål svartid, citationsdækning og fejltyper, og udvid først når ontologien viser stabil adfærd.",
+        "1. Afgræns beslutningen, målgruppen og de vigtigste succeskriterier før analysen udvides.",
+        "2. Adskil fakta, antagelser og anbefalinger, så hvert claim kan spores til en kilde eller et eksplicit forbehold.",
+        "3. Indfør en kvalitetsgate med tydelige risici, Canvas notes og næste handling før ekstern deling.",
+        "4. Start med et smalt use case, mål svartid, evidensdækning og fejltyper, og udvid først når output er stabilt.",
         "",
         "## Risici og validering",
-        "De primære risici er ufuldstændig ontologi, for brede prompts, manglende kildeprovenance og uklare ejerskaber for datakvalitet. Valideringen bør derfor måle om svarene kan spores tilbage til konkrete kilder, om relationerne er korrekte, og om brugeren kan handle på anbefalingerne uden at gætte på forudsætninger.",
+        "De primære risici er for bredt scope, uklare datakilder, manglende provenance og svage ejerskaber for validering. Output bør derfor kontrolleres mod konkrete kilder, beslutningsspørgsmål og de handlinger brugeren faktisk skal kunne tage.",
         "",
         "Canvas notes:",
-        "- Brug GraphRAG når relationer og audit betyder mere end ren semantisk lighed.",
-        "- Hold første scope smalt: entiteter, relationer, claims og evidensspor.",
-        "- Gør Canvas-panelet til kvalitetssikring: beslutning, risici, næste handling.",
+        "- Hold første scope smalt: beslutning, aktører, claims og evidensspor.",
+        "- Brug Canvas-panelet til kvalitetssikring: risici, forbehold og næste handling.",
+        "- Behandl output som degraded arbejdsudkast indtil native pipeline og kildevalidering er grøn.",
       ].join("\n")
     : [
         `# ${title}`,
@@ -784,9 +759,9 @@ export function localTemplateDeliverable(brief: string, kind: DeliverableKind): 
         "## SCQA",
         `**Situation:** The brief identifies a decision area where relationships, context, and traceability matter: ${subject}`,
         "",
-        "**Complication:** A vector-only approach can retrieve similar text, but often loses the links between actors, evidence, decisions, and dependencies. That weakens auditability and makes the output less useful for leadership decisions.",
+        "**Complication:** Without a structured analysis, scope, evidence, risks, and ownership blur together. That weakens auditability and makes the output less useful for decisions.",
         "",
-        "**Question:** Where should GraphRAG with Neo4j be used, and what controls make the output decision-ready?",
+        "**Question:** Which decisions, risks, and next steps must be clarified to make the work decision-ready?",
         "",
         "## MECE issue tree",
         "```mermaid",
@@ -794,37 +769,26 @@ export function localTemplateDeliverable(brief: string, kind: DeliverableKind): 
         'A["Decision"] --> B["Relationship complexity"]',
         'A --> C["Evidence and provenance"]',
         'A --> D["Operational use"]',
-        'B --> B1["Entities and dependencies"]',
-        'C --> C1["Sources, citations, and audit"]',
-        'D --> D1["Workflow, ownership, and validation"]',
+        'B --> B1["Actors, dependencies, and assumptions"]',
+        'C --> C1["Sources, quality, and audit trail"]',
+        'D --> D1["Actions, ownership, and validation"]',
         "```",
         "",
         "## Recommended action plan",
-        "1. Define the critical entities, relationship types, and decision questions before scaling ingestion.",
-        "2. Use vector search as the recall layer, then use Neo4j for graph expansion, evidence binding, and multi-hop reasoning.",
-        "3. Add a quality gate requiring clear claims, evidence trails, Canvas notes, and an explicit uncertainty profile.",
-        "4. Start with one narrow use case, measure latency, citation coverage, and error types, then expand only when the ontology is stable.",
+        "1. Define the decision, audience, and success criteria before expanding the analysis.",
+        "2. Separate facts, assumptions, and recommendations so each claim has a source or explicit caveat.",
+        "3. Add a quality gate requiring clear risks, Canvas notes, and a next action before external sharing.",
+        "4. Start with one narrow use case, measure latency, evidence coverage, and error types, then expand only when output is stable.",
         "",
         "## Risks and validation",
-        "The main risks are incomplete ontology, overly broad prompts, missing source provenance, and unclear ownership for data quality. Validate whether answers trace back to concrete sources, whether relationships are correct, and whether users can act without guessing the assumptions.",
+        "The main risks are broad scope, unclear data sources, missing provenance, and weak ownership for validation. Check the output against concrete sources, the decision question, and the actions the user must be able to take.",
         "",
         "Canvas notes:",
-        "- Use GraphRAG when relationships and auditability matter more than semantic similarity alone.",
-        "- Keep first scope narrow: entities, relationships, claims, and evidence trails.",
-        "- Use the Canvas panel as the quality surface: decision, risks, next action.",
+        "- Keep first scope narrow: decision, actors, claims, and evidence trail.",
+        "- Use the Canvas panel as the quality surface: risks, caveats, and next action.",
+        "- Treat the output as a degraded working draft until the native pipeline and source validation are green.",
       ].join("\n");
 
-  return { markdown, citations: 0 };
-}
-
-function extractFallbackDeliverable(
-  result: unknown,
-  brief: string,
-  kind: DeliverableKind,
-): DeliverableResult | null {
-  const extracted = extractChatResult(result);
-  const markdown = normalizeFallbackDeliverable(extracted?.text ?? "", brief, kind);
-  if (!isSubstantiveDeliverable(markdown, brief)) return null;
   return { markdown, citations: 0 };
 }
 
@@ -833,30 +797,6 @@ export async function fallbackDeliverable(
   kind: DeliverableKind,
   opts: { correlationId?: string; maxSections?: number } = {},
 ): Promise<DeliverableResult | null> {
-  const sections = opts.maxSections ?? 5;
-  const task = fallbackDeliverablePrompt(brief, kind, sections);
-  const llmResult = await callMcpTool<unknown>(
-    "llm.generate",
-    {
-      prompt: task,
-      max_tokens: Math.max(900, Math.min(1400, sections * 450)),
-    },
-    { correlationId: opts.correlationId, timeoutMs: 90000 },
-  );
-  const llmDeliverable = extractFallbackDeliverable(llmResult, brief, kind);
-  if (llmDeliverable) return llmDeliverable;
-
-  const reasonedResult = await callMcpTool<unknown>(
-    "reason_deeply",
-    {
-      mode: "reason",
-      task,
-    },
-    { correlationId: opts.correlationId, timeoutMs: 90000 },
-  );
-  const reasonedDeliverable = extractFallbackDeliverable(reasonedResult, brief, kind);
-  if (reasonedDeliverable) return reasonedDeliverable;
-
   const templateDeliverable = localTemplateDeliverable(brief, kind);
   return isSubstantiveDeliverable(templateDeliverable.markdown, brief) ? templateDeliverable : null;
 }
@@ -888,6 +828,14 @@ export async function judgeDeliverable(
   markdown: string,
   correlationId?: string,
 ): Promise<DeliverableQuality | null> {
+  if (!legacyDeliverableToolsEnabled()) {
+    logServer("warn", {
+      event: "deliverable_judge_legacy_tool_disabled",
+      requestId: correlationId,
+      tool: "judge_response",
+    });
+    return null;
+  }
   const result = await callMcpTool<unknown>(
     "judge_response",
     { query: brief, response: markdown },
@@ -908,6 +856,15 @@ export async function deliverableDraft(
   kind: DeliverableKind,
   opts: { correlationId?: string; maxSections?: number; engagementId?: string } = {},
 ): Promise<DeliverableResult | null> {
+  if (!legacyDeliverableToolsEnabled()) {
+    logServer("warn", {
+      event: "deliverable_generate_legacy_tool_disabled",
+      requestId: opts.correlationId,
+      tool: "deliverable_draft",
+      kind,
+    });
+    return null;
+  }
   const result = await callMcpTool<unknown>(
     "deliverable_draft",
     {
@@ -944,6 +901,8 @@ export function extractProducedDocument(
   const inner = (r.result as Record<string, unknown>) ?? r;
   const base64 =
     (typeof inner.artifact === "string" && inner.artifact) ||
+    (typeof inner.file_base64 === "string" && inner.file_base64) ||
+    (typeof inner.artifact_base64 === "string" && inner.artifact_base64) ||
     (typeof inner.base64 === "string" && inner.base64) ||
     (typeof inner.bytes === "string" && inner.bytes) ||
     (typeof inner.data === "string" && inner.data) ||
@@ -955,28 +914,47 @@ export function extractProducedDocument(
     `${(title || "deliverable").replace(/[^a-z0-9-_]+/gi, "-").slice(0, 60)}.${format}`;
   const mediaType =
     (typeof inner.media_type === "string" && inner.media_type) ||
+    (typeof inner.mime_type === "string" && inner.mime_type) ||
     (typeof inner.mime === "string" && inner.mime) ||
     DOCUMENT_MIME[format];
   return { base64, filename, mediaType };
 }
 
+function documentTitle(title?: string): string {
+  const trimmed = title?.trim();
+  return trimmed ? trimmed.slice(0, 120) : "Deliverable";
+}
+
+function documentFilename(title: string, format: Extract<DocumentFormat, "docx">): string {
+  const base = title
+    .replace(/[^a-z0-9-_]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `${base || "deliverable"}.${format}`;
+}
+
 /**
- * Output Forge (Phase 1b): render a brief to a downloadable DOCX/PDF via the
- * platform `produce_document` tool. Returns base64 bytes + filename + mime, or
- * null on failure.
+ * Output Forge (Phase 1b): render a brief to a downloadable DOCX via the
+ * canonical platform `forge.artifact.generate` tool. PDF is not a supported
+ * forge artifact type on the current backend, so callers intentionally fall
+ * back to local PDF rendering and mark it degraded.
  */
 export async function produceDocument(
   brief: string,
   format: DocumentFormat,
   opts: { correlationId?: string; title?: string } = {},
 ): Promise<ProducedDocument | null> {
+  if (format !== "docx") return null;
+  const title = documentTitle(opts.title);
   const result = await callMcpTool<unknown>(
-    "produce_document",
+    "forge.artifact.generate",
     {
-      brief,
-      format,
-      product_type: "document",
-      ...(opts.title ? { title: opts.title } : {}),
+      artifact_type: "docx",
+      title,
+      blueprint_markdown: `# ${title}\n\n${brief}`,
+      output_filename: documentFilename(title, "docx"),
+      require_live: false,
+      graph_rag_query: title,
     },
     { correlationId: opts.correlationId, timeoutMs: 120000 },
   );
@@ -994,11 +972,26 @@ export async function emitDeliverableDegradedEvent(event: {
   fallbackType: string;
 }): Promise<void> {
   const payload = {
-    event_type: "deliverable_generation_degraded",
+    event_type: "tool_failed",
     source: "widgetdc-gemini-frontend",
     correlation_id: event.correlationId,
-    severity: "WARN",
-    payload: event,
+    tenant_id: "tenant:widgetdc-internal",
+    outcome: "failure",
+    payload: {
+      logical_event_type: "deliverable_generation_degraded",
+      tool:
+        event.stage === "export"
+          ? event.format === "docx"
+            ? "forge.artifact.generate"
+            : "pdf_native_document_renderer"
+          : "deliverable_native_markdown_pipeline",
+      stage: event.stage,
+      kind: event.kind,
+      engine: event.engine,
+      format: event.format,
+      fallback_reason: event.reason,
+      fallback_type: event.fallbackType,
+    },
   };
   await callMcpTool<unknown>("governance.emit_spine_event", payload, {
     correlationId: event.correlationId,
@@ -1038,6 +1031,11 @@ export function extractFolded(result: unknown): string | null {
   if (!result || typeof result !== "object") return null;
   const r = result as Record<string, unknown>;
   const inner = (r.result as Record<string, unknown>) ?? r;
+  const foldedContext = inner.folded_context;
+  if (foldedContext && typeof foldedContext === "object") {
+    const content = (foldedContext as Record<string, unknown>).content;
+    if (typeof content === "string" && content.trim()) return content.trim();
+  }
   const t =
     (typeof inner.folded === "string" && inner.folded) ||
     (typeof inner.compressed === "string" && inner.compressed) ||
@@ -1056,7 +1054,7 @@ export async function foldContext(
   opts: { correlationId?: string; budget?: number } = {},
 ): Promise<string | null> {
   const result = await callMcpTool<unknown>(
-    "context_fold",
+    "context.fold",
     { text, query, budget: opts.budget ?? 1500 },
     { correlationId: opts.correlationId, timeoutMs: 30000 },
   );
