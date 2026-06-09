@@ -4,6 +4,7 @@ import {
   extractDeliverable,
   extractProducedDocument,
   extractQuality,
+  isSubstantiveDeliverable,
   resolveMcpRoute,
 } from "./widgetdc.server";
 
@@ -119,5 +120,97 @@ describe("renderMarkdownDocumentFallback", () => {
     expect(doc.filename).toBe("Title.pdf");
     expect(doc.mediaType).toBe("application/pdf");
     expect(bytes.subarray(0, 4).toString("utf8")).toBe("%PDF");
+  });
+
+  it("preserves Danish Latin-1 characters in local PDFs", () => {
+    const doc = renderMarkdownDocumentFallback(
+      "# Ræsonnement\n\nnår kræver sammenhænge afgørende\n\nCanvas notes:\n- æøå\n- ÆØÅ\n- ok",
+      "pdf",
+      { title: "Ræsonnement" },
+    );
+    const pdf = Buffer.from(doc.base64, "base64").toString("latin1");
+
+    expect(pdf).toContain("Ræsonnement");
+    expect(pdf).toContain("når kræver sammenhænge afgørende");
+    expect(pdf).toContain("æøå");
+    expect(pdf).not.toContain("R?sonnement");
+  });
+});
+
+describe("isSubstantiveDeliverable", () => {
+  const brief =
+    "GraphRAG med Neo4j tilbyder en overlegen tilgang til informationshentning og ræsonnement.";
+
+  it("rejects the prior brief-only export fallback", () => {
+    const markdown = [
+      "# Deliverable analysis",
+      "",
+      "## Brief",
+      "",
+      brief,
+      "",
+      "## Status",
+      "",
+      "Platform generation/rendering was unavailable, so this export contains the submitted brief only.",
+      "",
+      "Canvas notes:",
+      "- Platform renderer did not return a document artifact.",
+      "- Re-run generation when the upstream document pipeline is healthy.",
+      "- Use server logs.",
+    ].join("\n");
+
+    expect(isSubstantiveDeliverable(markdown, brief)).toBe(false);
+  });
+
+  it("rejects brief-only content", () => {
+    expect(isSubstantiveDeliverable(brief, brief)).toBe(false);
+  });
+
+  it("rejects code-and-canvas-only content", () => {
+    const markdown = [
+      "# Deliverable Analysis",
+      "",
+      "```mermaid",
+      "graph TD",
+      "A[Input] --> B[Output]",
+      "```",
+      "",
+      "Canvas notes:",
+      "- Deliverablen er genereret fra briefet, ikke kun eksporteret som rå input.",
+      "- Brug anbefalingerne som arbejdsudkast.",
+      "- Briefets hovedspørgsmål er GraphRAG.",
+    ].join("\n");
+
+    expect(isSubstantiveDeliverable(markdown, brief)).toBe(false);
+  });
+
+  it("accepts a real multi-section deliverable draft", () => {
+    const markdown = [
+      "# Deliverable Analysis",
+      "",
+      "## SCQA",
+      "GraphRAG with Neo4j should be used when the question depends on relationships, provenance, and auditable reasoning across entities. The core decision is not whether vectors are useful, but where graph structure reduces ambiguity and improves explainability.",
+      "",
+      "## MECE Issue Tree",
+      "```mermaid",
+      "flowchart TD",
+      "A[Decision] --> B[Relationship complexity]",
+      "A --> C[Evidence traceability]",
+      "A --> D[Operational constraints]",
+      "```",
+      "",
+      "## Recommendations",
+      "Start with high-value entity classes, bind each answer to evidence, and use vector retrieval only as an entry point into graph expansion. This gives users a clearer answer path and lets reviewers audit why a claim was made.",
+      "",
+      "## Implementation",
+      "Define node kinds, relationship rules, retrieval thresholds, citation capture, and validation gates before scaling ingestion. Instrument failed lookups so ontology gaps become backlog items instead of hidden answer drift.",
+      "",
+      "Canvas notes:",
+      "- Pin GraphRAG to relationship-heavy workflows.",
+      "- Track evidence and provenance before expanding scope.",
+      "- Separate vector recall from graph-based reasoning.",
+    ].join("\n");
+
+    expect(isSubstantiveDeliverable(markdown, brief)).toBe(true);
   });
 });

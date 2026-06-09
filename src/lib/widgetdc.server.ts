@@ -656,6 +656,123 @@ export async function generateDeliverable(
   return extractDeliverable(result);
 }
 
+function deliverableKindLabel(kind: DeliverableKind): string {
+  switch (kind) {
+    case "roadmap":
+      return "Roadmap";
+    case "assessment":
+      return "Assessment";
+    case "analysis":
+    default:
+      return "Analysis";
+  }
+}
+
+function normalizeForComparison(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]+/gu, "")
+    .trim();
+}
+
+export function isSubstantiveDeliverable(markdown: string, brief: string): boolean {
+  const body = markdown.trim();
+  if (body.length < 300) return false;
+  const headings = body.match(/^#{1,3}\s+\S.+$/gm) ?? [];
+  if (headings.length < 3) return false;
+  if (!/Canvas notes:/i.test(body)) return false;
+  const normalizedBody = normalizeForComparison(body);
+  const normalizedBrief = normalizeForComparison(brief);
+  if (!normalizedBody || normalizedBody === normalizedBrief) return false;
+  if (normalizedBrief.length > 30 && normalizedBody.length < normalizedBrief.length * 1.4) {
+    return false;
+  }
+  const rejected = [
+    "platform generation/rendering was unavailable",
+    "this export contains the submitted brief only",
+    "platform renderer did not return a document artifact",
+    "re-run generation when the upstream document pipeline is healthy",
+  ];
+  if (rejected.some((phrase) => normalizedBody.includes(normalizeForComparison(phrase)))) {
+    return false;
+  }
+  return true;
+}
+
+function normalizeFallbackDeliverable(text: string, brief: string, kind: DeliverableKind): string {
+  let markdown = text.trim();
+  const fenced = markdown.match(/^```(?:markdown|md)?\s*([\s\S]*?)```\s*$/i);
+  if (fenced?.[1]?.trim()) markdown = fenced[1].trim();
+
+  const title = `# Deliverable ${deliverableKindLabel(kind)}`;
+  if (!/^#\s+/m.test(markdown)) markdown = `${title}\n\n${markdown}`;
+  if (!/Canvas notes:/i.test(markdown)) {
+    markdown = `${markdown.trim()}\n\nCanvas notes:\n- Deliverablen er genereret fra briefet, ikke kun eksporteret som rå input.\n- Brug anbefalingerne som arbejdsudkast og valider tal, kilder og scope før ekstern deling.\n- Briefets hovedspørgsmål: ${brief.slice(0, 140)}`;
+  }
+  return markdown.trim();
+}
+
+function fallbackDeliverablePrompt(brief: string, kind: DeliverableKind, sections: number): string {
+  const languageInstruction = /[æøåÆØÅ]/.test(brief)
+    ? "The brief is Danish. Write the entire deliverable in Danish, except code identifiers."
+    : "Write in the same language as the brief.";
+  return [
+    `Generate a complete ${deliverableKindLabel(kind)} consulting deliverable in Markdown.`,
+    `${languageInstruction} Produce ${sections} clear sections with headings.`,
+    "Use SCQA, MECE, and Pyramid Principle where relevant.",
+    "Include concrete recommendations and decision-ready analysis.",
+    "Include at least one mermaid or flow code block.",
+    "Include a final `Canvas notes:` section with at least 3 bullets.",
+    "Do not use emoji. Do not add meta commentary.",
+    "Do not say that generation failed. Do not return the brief only.",
+    "If code is useful, avoid CREATE, DELETE, REMOVE, and DROP examples; use read-only or MERGE-safe examples.",
+    "",
+    "Brief:",
+    brief,
+  ].join("\n");
+}
+
+function extractFallbackDeliverable(
+  result: unknown,
+  brief: string,
+  kind: DeliverableKind,
+): DeliverableResult | null {
+  const extracted = extractChatResult(result);
+  const markdown = normalizeFallbackDeliverable(extracted?.text ?? "", brief, kind);
+  if (!isSubstantiveDeliverable(markdown, brief)) return null;
+  return { markdown, citations: 0 };
+}
+
+export async function fallbackDeliverable(
+  brief: string,
+  kind: DeliverableKind,
+  opts: { correlationId?: string; maxSections?: number } = {},
+): Promise<DeliverableResult | null> {
+  const sections = opts.maxSections ?? 5;
+  const task = fallbackDeliverablePrompt(brief, kind, sections);
+  const llmResult = await callMcpTool<unknown>(
+    "llm.generate",
+    {
+      prompt: task,
+      max_tokens: 2200,
+    },
+    { correlationId: opts.correlationId, timeoutMs: 90000 },
+  );
+  const llmDeliverable = extractFallbackDeliverable(llmResult, brief, kind);
+  if (llmDeliverable) return llmDeliverable;
+
+  const reasonedResult = await callMcpTool<unknown>(
+    "reason_deeply",
+    {
+      mode: "reason",
+      task,
+    },
+    { correlationId: opts.correlationId, timeoutMs: 90000 },
+  );
+  return extractFallbackDeliverable(reasonedResult, brief, kind);
+}
+
 /** Extract the PRISM aggregate + dimensions from a `judge_response` envelope. */
 export function extractQuality(result: unknown): DeliverableQuality | null {
   if (!result || typeof result !== "object") return null;

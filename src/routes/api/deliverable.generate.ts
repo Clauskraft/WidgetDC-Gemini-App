@@ -13,6 +13,7 @@ import {
   generateDeliverable,
   deliverableDraft,
   longformGenerate,
+  fallbackDeliverable,
   judgeDeliverable,
 } from "@/lib/widgetdc.server";
 import { logServer, summarizeError } from "@/lib/server-logger";
@@ -80,12 +81,23 @@ export const Route = createFileRoute("/api/deliverable/generate")({
         });
 
         try {
-          const deliverable =
+          const primary =
             engine === "longform"
               ? await longformGenerate(brief, kind, { correlationId, targetSections: maxSections })
               : engine === "lego"
                 ? await deliverableDraft(brief, kind, { correlationId, maxSections })
                 : await generateDeliverable(brief, kind, { correlationId, maxSections });
+          let deliverable = primary;
+          if (!deliverable) {
+            logServer("warn", {
+              event: "deliverable_generate_writer_fallback",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+            });
+            deliverable = await fallbackDeliverable(brief, kind, { correlationId, maxSections });
+          }
           if (!deliverable) {
             logServer("error", {
               event: "deliverable_generate_failed",
@@ -103,6 +115,7 @@ export const Route = createFileRoute("/api/deliverable/generate")({
               correlationId,
             );
           }
+          const source = primary ? (engine ?? "rag") : "writer_fallback";
 
           // Best-effort PRISM gate (default on); never blocks the deliverable.
           const quality =
@@ -115,12 +128,13 @@ export const Route = createFileRoute("/api/deliverable/generate")({
             requestId: correlationId,
             kind,
             engine: engine ?? "rag",
+            source,
             citations: deliverable.citations,
             markdownChars: deliverable.markdown.length,
             durationMs: Date.now() - started,
           });
           return json(
-            { ...deliverable, kind, engine: engine ?? "rag", quality, correlationId },
+            { ...deliverable, kind, engine: engine ?? "rag", source, quality, correlationId },
             200,
             correlationId,
           );
