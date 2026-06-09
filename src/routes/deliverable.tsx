@@ -28,7 +28,7 @@ export const Route = createFileRoute("/deliverable")({
 });
 
 type Kind = "analysis" | "roadmap" | "assessment";
-type Engine = "rag" | "lego";
+type Engine = "rag" | "lego" | "longform";
 type DocFormat = "docx" | "pdf";
 
 type DeliverablePayload = {
@@ -48,6 +48,7 @@ const KINDS: { id: Kind; label: string; hint: string }[] = [
 const ENGINES: { id: Engine; label: string; hint: string }[] = [
   { id: "rag", label: "RAG draft", hint: "Hurtig, citationsbaseret" },
   { id: "lego", label: "Lego Factory", hint: "Plan→Retrieve→Write→Assemble→Render" },
+  { id: "longform", label: "Long-form", hint: "Iterativ RLM + folding (meget langt)" },
 ];
 
 function base64ToBlob(b64: string, mime: string): Blob {

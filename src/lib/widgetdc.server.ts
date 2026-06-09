@@ -702,10 +702,140 @@ export async function produceDocument(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Observability Monitor (Phase 3) — surface the platform's live runtime health
-// (fleet success-rate + per-tool error rates) and graph size to the operator.
-// Uses `runtime_summary` + `data_graph_stats`, whose shapes are stable.
+// Long-form "Dreamscape" generator — ports the RLM writer pipeline: iterative
+// per-section generation with `context_fold` (CaaS Mercury, LIN-568) compressing
+// the running context between passes, so the output can grow far past a single
+// call's limit while staying coherent.
 // ───────────────────────────────────────────────────────────────────────────
+
+/** Parse an outline LLM response into clean section titles (pure, testable). */
+export function parseOutline(text: string, max = 10): string[] {
+  const titles: string[] = [];
+  for (const rawLine of text.split("\n")) {
+    const stripped = rawLine
+      .trim()
+      .replace(/^#{1,6}\s*/, "") // markdown heading
+      .replace(/^[-*]\s+/, "") // bullet
+      .replace(/^\d+[.)]\s+/, "") // 1. / 1)
+      .replace(/^\*\*(.*)\*\*$/, "$1") // bold-only line
+      .trim();
+    if (!stripped || stripped.length > 200) continue;
+    if (/^(outline|sektioner?|sections?|here('|’)?s|title)\b/i.test(stripped)) continue;
+    titles.push(stripped);
+    if (titles.length >= max) break;
+  }
+  return titles;
+}
+
+/** Extract the compressed text from a context_fold envelope (pure, testable). */
+export function extractFolded(result: unknown): string | null {
+  if (typeof result === "string") return result.trim() || null;
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const t =
+    (typeof inner.folded === "string" && inner.folded) ||
+    (typeof inner.compressed === "string" && inner.compressed) ||
+    (typeof inner.summary === "string" && inner.summary) ||
+    (typeof inner.text === "string" && inner.text) ||
+    (typeof inner.content === "string" && inner.content) ||
+    "";
+  const s = typeof t === "string" ? t.trim() : "";
+  return s || null;
+}
+
+/** Compress text via the platform `context_fold` tool (RLM /fold/context). */
+export async function foldContext(
+  text: string,
+  query: string,
+  opts: { correlationId?: string; budget?: number } = {},
+): Promise<string | null> {
+  const result = await callMcpTool<unknown>(
+    "context_fold",
+    { text, query, budget: opts.budget ?? 1500 },
+    { correlationId: opts.correlationId, timeoutMs: 30000 },
+  );
+  if (result == null) return null;
+  return extractFolded(result);
+}
+
+/**
+ * Generate an extremely long deliverable by iterating section-by-section through
+ * an outline, feeding each section a FOLDED summary of the prior sections as
+ * context (the writer/dreamscape pattern). Sequential for coherence; folds
+ * lazily (only when the running text exceeds the budget) to respect the
+ * context_fold rate limit; resilient to a single section failing.
+ */
+export async function longformGenerate(
+  brief: string,
+  kind: DeliverableKind,
+  opts: { correlationId?: string; targetSections?: number; model?: string } = {},
+): Promise<DeliverableResult | null> {
+  const cid = opts.correlationId;
+  const n = Math.min(10, Math.max(3, opts.targetSections ?? 6));
+
+  // 1. Outline — one call returns the section titles.
+  const outline = await llmChatCompletion(
+    [
+      {
+        role: "system",
+        content:
+          "You are a precise consulting writer. Output ONLY a numbered outline — one short, specific section title per line. No prose, no preamble.",
+      },
+      {
+        role: "user",
+        content: `Create a ${n}-section outline for a long-form ${kind} on:\n\n${brief}`,
+      },
+    ],
+    { correlationId: cid, model: opts.model },
+  );
+  const titles = outline ? parseOutline(outline.text, n) : [];
+  if (titles.length === 0) return null;
+
+  // 2. Sequential section loop with lazy folding of the running context.
+  const sections: string[] = [];
+  let folded = "";
+  for (let i = 0; i < titles.length; i++) {
+    const title = titles[i];
+    const ctx = folded ? `Story so far (compressed, for continuity):\n${folded}\n\n` : "";
+    const sec = await llmChatCompletion(
+      [
+        {
+          role: "system",
+          content:
+            "You are a consultant-grade writer (MECE, Pyramid Principle). Write ONE thorough, multi-paragraph section in Markdown, starting with a `## ` heading. Be detailed and specific; do NOT summarize the whole document or repeat earlier sections.",
+        },
+        {
+          role: "user",
+          content: `${ctx}Brief: ${brief}\n\nWrite the full section "${title}" (section ${i + 1} of ${titles.length}).`,
+        },
+      ],
+      { correlationId: cid, model: opts.model },
+    );
+    const body = sec?.text?.trim();
+    sections.push(
+      body
+        ? body.startsWith("#")
+          ? body
+          : `## ${title}\n\n${body}`
+        : `## ${title}\n\n_(denne sektion kunne ikke genereres — fortsætter)_`,
+    );
+
+    // 3. Re-fold the running output (lazily) for the next section's context.
+    const running = sections.join("\n\n");
+    if (i < titles.length - 1) {
+      if (running.length > 4000) {
+        const f = await foldContext(running, titles[i + 1] ?? brief, { correlationId: cid });
+        folded = f ?? running.slice(-3000);
+      } else {
+        folded = running;
+      }
+    }
+  }
+
+  const markdown = sections.join("\n\n").trim();
+  return markdown ? { markdown, citations: 0 } : null;
+}
 
 /** Per-tool health row derived from runtime_summary.top_tools. */
 export type ToolHealth = {

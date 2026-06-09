@@ -12,6 +12,7 @@ import {
   isPlatformConfigured,
   generateDeliverable,
   deliverableDraft,
+  longformGenerate,
   judgeDeliverable,
 } from "@/lib/widgetdc.server";
 
@@ -21,8 +22,8 @@ const BodySchema = z.object({
   maxSections: z.number().int().min(2).max(8).optional(),
   validate: z.boolean().optional(),
   // "rag" = generate_deliverable (fast); "lego" = deliverable_draft Lego Factory
-  // pipeline (Plan→Retrieve→Write→Assemble→Render, citation-backed).
-  engine: z.enum(["rag", "lego"]).optional(),
+  // pipeline; "longform" = iterative RLM + context_fold (extremely long output).
+  engine: z.enum(["rag", "lego", "longform"]).optional(),
 });
 
 function json(body: unknown, status: number, correlationId: string): Response {
@@ -67,9 +68,11 @@ export const Route = createFileRoute("/api/deliverable/generate")({
 
         const { brief, kind, maxSections, validate, engine } = parsed.data;
         const deliverable =
-          engine === "lego"
-            ? await deliverableDraft(brief, kind, { correlationId, maxSections })
-            : await generateDeliverable(brief, kind, { correlationId, maxSections });
+          engine === "longform"
+            ? await longformGenerate(brief, kind, { correlationId, targetSections: maxSections })
+            : engine === "lego"
+              ? await deliverableDraft(brief, kind, { correlationId, maxSections })
+              : await generateDeliverable(brief, kind, { correlationId, maxSections });
         if (!deliverable) {
           return json(
             { error: "Deliverable generation failed or timed out — try a tighter brief." },
