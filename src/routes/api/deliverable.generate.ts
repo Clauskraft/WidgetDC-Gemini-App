@@ -15,6 +15,7 @@ import {
   longformGenerate,
   fallbackDeliverable,
   judgeDeliverable,
+  emitDeliverableDegradedEvent,
 } from "@/lib/widgetdc.server";
 import { logServer, summarizeError } from "@/lib/server-logger";
 
@@ -28,12 +29,27 @@ const BodySchema = z.object({
   engine: z.enum(["rag", "lego", "longform"]).optional(),
 });
 
-function json(body: unknown, status: number, correlationId: string): Response {
+function json(
+  body: unknown,
+  status: number,
+  correlationId: string,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "x-correlation-id": correlationId },
+    headers: {
+      "content-type": "application/json",
+      "x-correlation-id": correlationId,
+      ...extraHeaders,
+    },
   });
 }
+
+const DEGRADED_HEADERS = {
+  "X-WidgeTDC-Degraded": "true",
+  "X-WidgeTDC-Fallback-Reason": "platform_pipeline_unavailable",
+  "X-WidgeTDC-Fallback-Source": "writer_fallback",
+};
 
 export const Route = createFileRoute("/api/deliverable/generate")({
   server: {
@@ -116,6 +132,26 @@ export const Route = createFileRoute("/api/deliverable/generate")({
             );
           }
           const source = primary ? (engine ?? "rag") : "writer_fallback";
+          const degraded = !primary;
+          if (degraded) {
+            logServer("warn", {
+              event: "deliverable_generation_degraded",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              fallbackReason: "platform_pipeline_unavailable",
+              fallbackSource: "writer_fallback",
+              durationMs: Date.now() - started,
+            });
+            void emitDeliverableDegradedEvent({
+              correlationId,
+              stage: "generate",
+              kind,
+              engine: engine ?? "rag",
+              reason: "platform_pipeline_unavailable",
+              fallbackType: "writer_fallback",
+            });
+          }
 
           // Best-effort PRISM gate (default on); never blocks the deliverable.
           const quality =
@@ -134,9 +170,20 @@ export const Route = createFileRoute("/api/deliverable/generate")({
             durationMs: Date.now() - started,
           });
           return json(
-            { ...deliverable, kind, engine: engine ?? "rag", source, quality, correlationId },
+            {
+              ...deliverable,
+              kind,
+              engine: engine ?? "rag",
+              source,
+              degraded,
+              fallbackReason: degraded ? "platform_pipeline_unavailable" : undefined,
+              fallbackSource: degraded ? "writer_fallback" : undefined,
+              quality,
+              correlationId,
+            },
             200,
             correlationId,
+            degraded ? DEGRADED_HEADERS : {},
           );
         } catch (error) {
           logServer(

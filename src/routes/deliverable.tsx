@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Boxes,
   FileDown,
+  AlertTriangle,
 } from "lucide-react";
 import { MessageContent } from "@/components/MessageContent";
 
@@ -36,7 +37,18 @@ type DeliverablePayload = {
   citations: number;
   kind: Kind;
   engine?: Engine;
+  source?: Engine | "writer_fallback";
+  degraded?: boolean;
+  fallbackReason?: string;
+  fallbackSource?: string;
+  correlationId?: string;
   quality?: { score: number; dimensions?: Record<string, number> } | null;
+};
+
+type DegradationNotice = {
+  reason: string;
+  source?: string;
+  correlationId?: string;
 };
 
 const KINDS: { id: Kind; label: string; hint: string }[] = [
@@ -77,6 +89,7 @@ function DeliverableRoute() {
   const [exporting, setExporting] = useState<DocFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeliverablePayload | null>(null);
+  const [degradation, setDegradation] = useState<DegradationNotice | null>(null);
   const [copied, setCopied] = useState(false);
 
   const briefReady = brief.trim().length >= 10;
@@ -88,6 +101,7 @@ function DeliverableRoute() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setDegradation(null);
     try {
       const res = await fetch("/api/deliverable/generate", {
         method: "POST",
@@ -96,7 +110,21 @@ function DeliverableRoute() {
       });
       const data = (await res.json()) as DeliverablePayload & { error?: string };
       if (!res.ok) setError(data.error ?? `Fejl (${res.status})`);
-      else setResult(data);
+      else {
+        setResult(data);
+        const degraded = data.degraded || res.headers.get("X-WidgeTDC-Degraded") === "true";
+        if (degraded) {
+          setDegradation({
+            reason:
+              data.fallbackReason ??
+              res.headers.get("X-WidgeTDC-Fallback-Reason") ??
+              "platform_pipeline_unavailable",
+            source:
+              data.fallbackSource ?? res.headers.get("X-WidgeTDC-Fallback-Source") ?? data.source,
+            correlationId: data.correlationId ?? res.headers.get("x-correlation-id") ?? undefined,
+          });
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Netværksfejl");
     } finally {
@@ -119,12 +147,19 @@ function DeliverableRoute() {
           engine,
           maxSections,
           markdown: result?.markdown,
+          degraded: result?.degraded,
+          fallbackReason: result?.fallbackReason,
+          fallbackSource: result?.fallbackSource ?? result?.source,
         }),
       });
       const data = (await res.json()) as {
         base64?: string;
         filename?: string;
         mediaType?: string;
+        degraded?: boolean;
+        fallbackReason?: string;
+        fallbackSource?: string;
+        correlationId?: string;
         error?: string;
       };
       if (!res.ok || !data.base64) {
@@ -135,6 +170,17 @@ function DeliverableRoute() {
         base64ToBlob(data.base64, data.mediaType ?? "application/octet-stream"),
         data.filename ?? `deliverable.${format}`,
       );
+      const degraded = data.degraded || res.headers.get("X-WidgeTDC-Degraded") === "true";
+      if (degraded) {
+        setDegradation({
+          reason:
+            data.fallbackReason ??
+            res.headers.get("X-WidgeTDC-Fallback-Reason") ??
+            "platform_pipeline_unavailable",
+          source: data.fallbackSource ?? res.headers.get("X-WidgeTDC-Fallback-Source") ?? undefined,
+          correlationId: data.correlationId ?? res.headers.get("x-correlation-id") ?? undefined,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Netværksfejl");
     } finally {
@@ -302,6 +348,27 @@ function DeliverableRoute() {
         {error && (
           <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {degradation && (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+              <div>
+                <div className="font-medium">Safe-mode output</div>
+                <div>
+                  Den fulde platform pipeline var utilgængelig, så resultatet er markeret som
+                  degraderet ({degradation.reason}
+                  {degradation.source ? ` / ${degradation.source}` : ""}).
+                </div>
+                {degradation.correlationId && (
+                  <div className="mt-1 text-xs opacity-80">
+                    CorrelationId: {degradation.correlationId}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
