@@ -208,7 +208,48 @@ describe("MCP tool discovery routing", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("falls back to backend when backend discovery is unavailable", async () => {
+  it("falls back to /mcp/tools when /api/mcp/tools is not found", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["backend.only"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ error: "not found" }, { status: 404 });
+      }
+      if (url === "https://orchestrator.example/mcp/tools") {
+        return Response.json({ tools: ["orchestrator.only"] });
+      }
+      if (url === "https://orchestrator.example/api/mcp/route") {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          tool: "orchestrator.only",
+          payload: { ok: true },
+        });
+        return Response.json({ result: "ok" });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await callMcpTool(
+      "orchestrator.only",
+      { ok: true },
+      {
+        env: {
+          WIDGETDC_BACKEND_URL: "https://backend.example",
+          WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
+          WIDGETDC_API_KEY: "backend-key",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+        },
+      },
+    );
+
+    expect(result).toEqual({ result: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("caches backend fallback when backend discovery is unavailable", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "https://backend.example/api/mcp/tools") {
@@ -219,10 +260,7 @@ describe("MCP tool discovery routing", () => {
       }
       if (url === "https://backend.example/api/mcp/route") {
         expect(init?.method).toBe("POST");
-        expect(JSON.parse(String(init?.body))).toEqual({
-          tool: "llm_chat",
-          payload: { prompt: "x" },
-        });
+        expect(JSON.parse(String(init?.body)).tool).toBe("llm_chat");
         return Response.json({ result: "backend" });
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
@@ -241,9 +279,28 @@ describe("MCP tool discovery routing", () => {
         },
       },
     );
+    const second = await callMcpTool(
+      "llm_chat",
+      { prompt: "y" },
+      {
+        env: {
+          WIDGETDC_BACKEND_URL: "https://backend.example",
+          WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
+          WIDGETDC_API_KEY: "backend-key",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+        },
+      },
+    );
 
     expect(result).toEqual({ result: "backend" });
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(second).toEqual({ result: "backend" });
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/mcp/tools")),
+    ).toHaveLength(2);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/mcp/route")),
+    ).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 });
 
