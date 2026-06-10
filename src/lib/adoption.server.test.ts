@@ -115,7 +115,7 @@ describe("adoption.server — getIntentStats", () => {
             success: true,
             result: {
               toolCount: { low: 389, high: 0 },
-              patternCount: { low: 1381, high: 0 },
+              intentPatternCount: { low: 1381, high: 0 },
               edgeCount: { low: 3773, high: 0 },
             },
           }),
