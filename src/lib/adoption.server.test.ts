@@ -90,7 +90,7 @@ describe("adoption.server — getIntentStats", () => {
         new Response(
           JSON.stringify({
             success: true,
-            result: { tool_count: 410, pattern_count: 72, avg_confidence: 0.86 },
+            result: { tool_count: 410, pattern_count: 72, edge_count: 900, avg_confidence: 0.86 },
           }),
           { status: 200 },
         ),
@@ -102,7 +102,34 @@ describe("adoption.server — getIntentStats", () => {
     if (!r.ok) return;
     expect(r.data.toolCount).toBe(410);
     expect(r.data.patternCount).toBe(72);
+    expect(r.data.edgeCount).toBe(900);
     expect(r.data.avgConfidence).toBeCloseTo(0.86);
+  });
+
+  it("parses Neo4j Integer-shaped intent stats", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: {
+              toolCount: { low: 389, high: 0 },
+              patternCount: { low: 1381, high: 0 },
+              edgeCount: { low: 3773, high: 0 },
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    const { getIntentStats } = await importHelpers();
+    const r = await getIntentStats();
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.toolCount).toBe(389);
+    expect(r.data.patternCount).toBe(1381);
+    expect(r.data.edgeCount).toBe(3773);
   });
 
   it("returns ok: false on 5xx", async () => {
@@ -194,6 +221,21 @@ describe("adoption.server — getA2AReconcile", () => {
     expect(r.data.status).toBe("DEGRADED");
   });
 
+  it("maps A2A_CLEAR verdict to OK", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ success: true, result: { verdict: "A2A_CLEAR" } }), {
+          status: 200,
+        }),
+      ),
+    );
+    const { getA2AReconcile } = await importHelpers();
+    const r = await getA2AReconcile();
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.data.status).toBe("OK");
+  });
+
   it("returns ok: false on 5xx", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 504 })));
     const { getA2AReconcile } = await importHelpers();
@@ -233,6 +275,32 @@ describe("adoption.server — getWonderStatus", () => {
     expect(r.data.status).toBe("OK");
     expect(r.data.a2aBridge).toBe("DEGRADED");
     expect(r.data.detail).toBe("running");
+  });
+
+  it("maps read-only wonder success with nested completed a2a result to OK", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            result: {
+              success: true,
+              a2a_result: {
+                success: true,
+                status: { state: "completed" },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    const { getWonderStatus } = await importHelpers();
+    const r = await getWonderStatus();
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.data.status).toBe("OK");
+    expect(r.data.a2aBridge).toBe("OK");
   });
 
   it("returns ok: false on 5xx", async () => {
