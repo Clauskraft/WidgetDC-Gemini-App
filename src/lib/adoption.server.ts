@@ -69,6 +69,21 @@ function pickNumber(o: Record<string, unknown> | undefined, ...keys: string[]): 
   for (const k of keys) {
     const v = o[k];
     if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "bigint") {
+      const asNumber = Number(v);
+      if (Number.isFinite(asNumber)) return asNumber;
+    }
+    if (typeof v === "string" && v.trim()) {
+      const parsed = Number(v);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    if (v && typeof v === "object") {
+      const neo = v as Record<string, unknown>;
+      const low = typeof neo.low === "number" ? neo.low : null;
+      const high = typeof neo.high === "number" ? neo.high : null;
+      if (low != null && high != null) return high * 0x100000000 + low;
+      if (low != null) return low;
+    }
   }
   return 0;
 }
@@ -134,6 +149,7 @@ export async function getAdoptionMetrics(): Promise<Result<AdoptionMetrics>> {
 export interface IntentStats {
   toolCount: number;
   patternCount: number;
+  edgeCount: number;
   avgConfidence: number;
   raw?: unknown;
 }
@@ -152,6 +168,7 @@ export async function getIntentStats(): Promise<Result<IntentStats>> {
   return ok<IntentStats>({
     toolCount: pickNumber(inner, "toolCount", "tool_count", "tools"),
     patternCount: pickNumber(inner, "patternCount", "pattern_count", "patterns"),
+    edgeCount: pickNumber(inner, "edgeCount", "edge_count", "edges"),
     avgConfidence: pickNumber(inner, "avgConfidence", "avg_confidence", "average_confidence"),
     raw: inner,
   });
@@ -200,9 +217,18 @@ export interface A2AReconcile {
 }
 
 function normalizeA2aStatus(value: unknown): A2AReconcile["status"] {
+  if (value === true) return "OK";
   if (typeof value !== "string") return "UNKNOWN";
   const v = value.toUpperCase();
-  if (v.includes("OK") || v === "HEALTHY" || v === "GREEN") return "OK";
+  if (
+    v.includes("OK") ||
+    v.includes("CLEAR") ||
+    v === "HEALTHY" ||
+    v === "GREEN" ||
+    v === "COMPLETED" ||
+    v === "COMPLETE"
+  )
+    return "OK";
   if (v.includes("DEGRAD") || v === "YELLOW" || v === "WARN") return "DEGRADED";
   if (v.includes("BLOCK") || v === "RED" || v === "ERROR" || v === "FAIL") return "BLOCKED";
   return "UNKNOWN";
@@ -220,7 +246,11 @@ export async function getA2AReconcile(): Promise<Result<A2AReconcile>> {
     return err("malformed_response");
   }
   const statusRaw =
-    inner.status ?? inner.state ?? inner.health ?? (inner.ok === true ? "OK" : undefined);
+    inner.status ??
+    inner.state ??
+    inner.health ??
+    inner.verdict ??
+    (inner.success === true || inner.ok === true ? true : undefined);
   const detail =
     (typeof inner.detail === "string" && inner.detail) ||
     (typeof inner.summary === "string" && inner.summary) ||
@@ -256,10 +286,20 @@ export async function getWonderStatus(): Promise<Result<WonderStatus>> {
     (inner.a2a_bridge as Record<string, unknown> | undefined) ??
     (inner.a2aBridge as Record<string, unknown> | undefined) ??
     (inner.bridge as Record<string, unknown> | undefined);
+  const result = inner.result as Record<string, unknown> | undefined;
+  const nestedA2a =
+    (inner.a2a_result as Record<string, unknown> | undefined) ??
+    (result?.a2a_result as Record<string, unknown> | undefined);
+  const nestedStatus = nestedA2a?.status as Record<string, unknown> | undefined;
   return ok<WonderStatus>({
-    status: normalizeA2aStatus(inner.status ?? inner.state),
+    status: normalizeA2aStatus(
+      inner.status ?? inner.state ?? inner.verdict ?? (inner.success === true ? true : undefined),
+    ),
     a2aBridge: normalizeA2aStatus(
-      (bridge && (bridge.status ?? bridge.state ?? bridge.health)) ?? inner.a2a_status,
+      (bridge && (bridge.status ?? bridge.state ?? bridge.health)) ??
+        inner.a2a_status ??
+        nestedStatus?.state ??
+        (nestedA2a?.success === true ? true : undefined),
     ),
     detail:
       (typeof inner.summary === "string" && inner.summary) ||
