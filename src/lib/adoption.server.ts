@@ -167,7 +167,14 @@ export async function getIntentStats(): Promise<Result<IntentStats>> {
   }
   return ok<IntentStats>({
     toolCount: pickNumber(inner, "toolCount", "tool_count", "tools"),
-    patternCount: pickNumber(inner, "patternCount", "pattern_count", "patterns"),
+    patternCount: pickNumber(
+      inner,
+      "patternCount",
+      "intentPatternCount",
+      "pattern_count",
+      "intent_pattern_count",
+      "patterns",
+    ),
     edgeCount: pickNumber(inner, "edgeCount", "edge_count", "edges"),
     avgConfidence: pickNumber(inner, "avgConfidence", "avg_confidence", "average_confidence"),
     raw: inner,
