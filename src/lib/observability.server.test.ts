@@ -123,7 +123,7 @@ describe("extractRuntimeSummary (Phase 3 Observability)", () => {
 
   it("uses catalogued runtime fallback tools instead of calling missing runtime_summary", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
-    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -182,11 +182,11 @@ describe("extractGraphSnapshot", () => {
     expect(extractGraphSnapshot(null)).toBeNull();
   });
 
-  it("falls back to graph.stats when the legacy data_graph_stats alias returns a failed envelope", async () => {
+  it("uses canonical graph.stats without calling the retired data_graph_stats alias", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
     vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
-    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
-    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "fixture-orchestrator-auth");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -198,17 +198,13 @@ describe("extractGraphSnapshot", () => {
       }
       if (url === "https://backend.example/api/mcp/route") {
         const body = JSON.parse(String(init?.body)) as { tool: string };
-        if (body.tool === "data_graph_stats") {
-          return Response.json({ success: false, error: "Tool Not Found: data_graph_stats" });
-        }
-        if (body.tool === "graph.stats") {
-          return Response.json({
-            success: true,
-            nodes: 1632144,
-            relationships: 3621595,
-            status: "online",
-          });
-        }
+        expect(body.tool).toBe("graph.stats");
+        return Response.json({
+          success: true,
+          nodes: 1632144,
+          relationships: 3621595,
+          status: "online",
+        });
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
@@ -222,6 +218,6 @@ describe("extractGraphSnapshot", () => {
     const postedTools = fetchMock.mock.calls
       .filter(([, init]) => init?.method === "POST")
       .map(([, init]) => JSON.parse(String(init?.body)).tool);
-    expect(postedTools).toEqual(["data_graph_stats", "graph.stats"]);
+    expect(postedTools).toEqual(["graph.stats"]);
   });
 });

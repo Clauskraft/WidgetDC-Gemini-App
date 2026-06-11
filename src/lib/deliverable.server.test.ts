@@ -116,22 +116,22 @@ describe("resolveMcpRoute", () => {
     const route = resolveMcpRoute("forge.artifact.generate", {
       WIDGETDC_BACKEND_URL: "https://backend.example",
       WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example/",
-      WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
-      WIDGETDC_API_KEY: "backend-key",
+      WIDGETDC_ORCHESTRATOR_API_KEY: "fixture-orchestrator-auth",
+      WIDGETDC_API_KEY: "fixture-backend-auth",
     });
 
     expect(route).toEqual({
       url: "https://backend.example/api/mcp/route",
-      key: "backend-key",
+      key: "fixture-backend-auth",
       target: "backend",
     });
   });
 
   it("keeps non-deliverable tools on the backend route", () => {
-    const route = resolveMcpRoute("llm_chat", {
+    const route = resolveMcpRoute("llm.generate", {
       WIDGETDC_BACKEND_URL: "https://backend.example",
       WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
-      WIDGETDC_API_KEY: "backend-key",
+      WIDGETDC_API_KEY: "fixture-backend-auth",
     });
 
     expect(route?.url).toBe("https://backend.example/api/mcp/route");
@@ -145,22 +145,22 @@ describe("MCP tool discovery routing", () => {
       extractMcpToolNames({
         success: true,
         data: {
-          tools: ["llm_chat", "forge.artifact.generate"],
+          tools: ["llm.generate", "forge.artifact.generate"],
           definitions: [{ name: "context.fold" }, { canonical_tool: "graph.read_cypher" }],
         },
       }),
-    ).toEqual(["llm_chat", "forge.artifact.generate", "context.fold", "graph.read_cypher"]);
+    ).toEqual(["llm.generate", "forge.artifact.generate", "context.fold", "graph.read_cypher"]);
   });
 
   it("keeps duplicate tools on backend and routes orchestrator-only tools there", () => {
     const backend = {
       url: "https://backend.example/api/mcp/route",
-      key: "backend-key",
+      key: "fixture-backend-auth",
       target: "backend" as const,
     };
     const orchestrator = {
       url: "https://orchestrator.example/api/mcp/route",
-      key: "orch-key",
+      key: "fixture-orchestrator-auth",
       target: "orchestrator" as const,
     };
 
@@ -202,8 +202,8 @@ describe("MCP tool discovery routing", () => {
         env: {
           WIDGETDC_BACKEND_URL: "https://backend.example",
           WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
-          WIDGETDC_API_KEY: "backend-key",
-          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+          WIDGETDC_API_KEY: "fixture-backend-auth",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "fixture-orchestrator-auth",
         },
       },
     );
@@ -243,8 +243,8 @@ describe("MCP tool discovery routing", () => {
         env: {
           WIDGETDC_BACKEND_URL: "https://backend.example",
           WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
-          WIDGETDC_API_KEY: "backend-key",
-          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+          WIDGETDC_API_KEY: "fixture-backend-auth",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "fixture-orchestrator-auth",
         },
       },
     );
@@ -260,11 +260,11 @@ describe("MCP tool discovery routing", () => {
         return Response.json({ error: "unavailable" }, { status: 503 });
       }
       if (url === "https://orchestrator.example/api/mcp/tools") {
-        return Response.json({ tools: ["llm_chat"] });
+        return Response.json({ tools: ["llm.generate"] });
       }
       if (url === "https://backend.example/api/mcp/route") {
         expect(init?.method).toBe("POST");
-        expect(JSON.parse(String(init?.body)).tool).toBe("llm_chat");
+        expect(JSON.parse(String(init?.body)).tool).toBe("llm.generate");
         return Response.json({ result: "backend" });
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
@@ -272,26 +272,26 @@ describe("MCP tool discovery routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await callMcpTool(
-      "llm_chat",
+      "llm.generate",
       { prompt: "x" },
       {
         env: {
           WIDGETDC_BACKEND_URL: "https://backend.example",
           WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
-          WIDGETDC_API_KEY: "backend-key",
-          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+          WIDGETDC_API_KEY: "fixture-backend-auth",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "fixture-orchestrator-auth",
         },
       },
     );
     const second = await callMcpTool(
-      "llm_chat",
+      "llm.generate",
       { prompt: "y" },
       {
         env: {
           WIDGETDC_BACKEND_URL: "https://backend.example",
           WIDGETDC_ORCHESTRATOR_URL: "https://orchestrator.example",
-          WIDGETDC_API_KEY: "backend-key",
-          WIDGETDC_ORCHESTRATOR_API_KEY: "orch-key",
+          WIDGETDC_API_KEY: "fixture-backend-auth",
+          WIDGETDC_ORCHESTRATOR_API_KEY: "fixture-orchestrator-auth",
         },
       },
     );
@@ -348,8 +348,8 @@ describe("intent_detect chat routing signal", () => {
   it("posts intent_detect with payload.query through discovered MCP routing", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
     vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
-    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
-    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "fixture-orchestrator-auth");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -404,8 +404,8 @@ describe("platform deliverable writer fallback", () => {
   it("uses the live platform writer path when legacy deliverable aliases are disabled", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
     vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
-    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
-    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "fixture-orchestrator-auth");
     vi.stubEnv("WIDGETDC_ENABLE_LEGACY_DELIVERABLE_TOOLS", "");
 
     const writerMarkdown = [
@@ -479,11 +479,11 @@ describe("platform deliverable writer fallback", () => {
     expect(postedTools).toEqual(["srag.query", "reason_deeply"]);
   });
 
-  it("does not treat failed MCP envelopes as grounding context", async () => {
+  it("uses srag response text as grounding context without legacy rag_route fallback", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
     vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
-    vi.stubEnv("WIDGETDC_API_KEY", "backend-key");
-    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "orch-key");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "fixture-orchestrator-auth");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -495,7 +495,48 @@ describe("platform deliverable writer fallback", () => {
       }
       if (url === "https://backend.example/api/mcp/route") {
         const body = JSON.parse(String(init?.body)) as { tool: string };
-        expect(["srag.query", "rag_route"]).toContain(body.tool);
+        expect(body.tool).toBe("srag.query");
+        return Response.json({
+          result: {
+            response:
+              "GraphRAG combines graph relationships, semantic retrieval and auditable evidence.",
+          },
+        });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchRagGrounding(brief, "rag-response")).resolves.toMatchObject({
+      sources: [
+        {
+          text: "GraphRAG combines graph relationships, semantic retrieval and auditable evidence.",
+        },
+      ],
+    });
+    const postedTools = fetchMock.mock.calls
+      .filter(([, init]) => init?.method === "POST")
+      .map(([, init]) => JSON.parse(String(init?.body)).tool);
+    expect(postedTools).toEqual(["srag.query"]);
+  });
+
+  it("does not treat failed MCP envelopes as grounding context", async () => {
+    vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
+    vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
+    vi.stubEnv("WIDGETDC_ORCHESTRATOR_API_KEY", "fixture-orchestrator-auth");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://backend.example/api/mcp/tools") {
+        return Response.json({ data: { tools: ["srag.query"] } });
+      }
+      if (url === "https://orchestrator.example/api/mcp/tools") {
+        return Response.json({ tools: [] });
+      }
+      if (url === "https://backend.example/api/mcp/route") {
+        const body = JSON.parse(String(init?.body)) as { tool: string };
+        expect(body.tool).toBe("srag.query");
         return Response.json({ success: false, error: `Tool Not Found: ${body.tool}` });
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
@@ -506,7 +547,7 @@ describe("platform deliverable writer fallback", () => {
     const postedTools = fetchMock.mock.calls
       .filter(([, init]) => init?.method === "POST")
       .map(([, init]) => JSON.parse(String(init?.body)).tool);
-    expect(postedTools).toEqual(["srag.query", "rag_route"]);
+    expect(postedTools).toEqual(["srag.query"]);
   });
 });
 
