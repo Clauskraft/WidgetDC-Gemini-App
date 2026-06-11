@@ -15,6 +15,8 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:e2e:install": "playwright install --with-deps chromium",
+    "a2a:peer-signoff:check": "node scripts/check-a2a-peer-signoff.mjs",
+    "a2a:peer-signoff:test": "node scripts/check-a2a-peer-signoff.mjs --self-test",
     "docs:bridge-errors": "jiti scripts/generate-bridge-error-docs.ts",
     "docs:bridge-errors:check": "jiti scripts/generate-bridge-error-docs.ts --check"
   },
