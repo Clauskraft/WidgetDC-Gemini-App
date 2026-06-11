@@ -1,0 +1,40 @@
+name: A2A Peer Signoff
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  peer-signoff:
+    name: Claude/Codex peer signoff
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        contains(github.event.pull_request.body, '## Peer Review') ||
+        (
+          github.event.pull_request.user.type != 'Bot' &&
+          (
+            startsWith(github.head_ref, 'codex/') ||
+            startsWith(github.head_ref, 'claude/')
+          )
+        )
+      }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate A2A peer signoff
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: node scripts/check-a2a-peer-signoff.mjs
