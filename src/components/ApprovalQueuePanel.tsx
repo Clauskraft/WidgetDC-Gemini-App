@@ -43,6 +43,27 @@ function classNames(...xs: Array<string | false | null | undefined>): string {
   return xs.filter(Boolean).join(" ");
 }
 
+function stringifyDetails(details: unknown): string | null {
+  if (!details) return null;
+  if (typeof details === "string") return details;
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch {
+    return String(details);
+  }
+}
+
+function formatBackendFailure(status: number, json: { error?: string; details?: unknown }): string {
+  const details = stringifyDetails(json.details);
+  return [
+    `Failed: ${json.error ?? `HTTP ${status}`}`,
+    `HTTP ${status}`,
+    details ? `Details: ${details}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function ApprovalQueuePanel({
   approverIdentity = "operator",
 }: {
@@ -133,14 +154,25 @@ function BackendTab({ approverIdentity }: { approverIdentity: string }) {
 
   const act = useCallback(
     async (requestId: string, action: "approve" | "reject") => {
+      const normalizedRequestId = requestId.trim();
+      const actor = approverIdentity.trim() || "operator";
+      if (!normalizedRequestId) {
+        setErr("approval_payload_invalid: requestId is required before backend approval POST.");
+        return;
+      }
+      if (!actor) {
+        setErr("approval_payload_invalid: approvedBy/rejectedBy is required.");
+        return;
+      }
       const reason = action === "reject" ? window.prompt("Reason for reject?") : null;
       if (action === "reject" && !reason) return;
-      setBusyId(requestId);
+      setErr(null);
+      setBusyId(normalizedRequestId);
       try {
         const body =
           action === "approve"
-            ? { action, requestId, approvedBy: approverIdentity }
-            : { action, requestId, rejectedBy: approverIdentity, reason };
+            ? { action, requestId: normalizedRequestId, approvedBy: actor }
+            : { action, requestId: normalizedRequestId, rejectedBy: actor, reason };
         const res = await fetch("/api/approvals/backend", {
           method: "POST",
           headers: { "content-type": "application/json", accept: "application/json" },
@@ -152,6 +184,7 @@ function BackendTab({ approverIdentity }: { approverIdentity: string }) {
           code?: string;
           current_status?: string;
           hint?: string;
+          details?: unknown;
         };
         if (!res.ok || !json.ok) {
           // Issue #14: backend now returns structured codes when the request
@@ -164,7 +197,7 @@ function BackendTab({ approverIdentity }: { approverIdentity: string }) {
             const status = json.current_status ? ` (now ${json.current_status})` : "";
             window.alert(`Request already processed${status}. ${json.hint ?? "Queue refreshed."}`);
           } else {
-            window.alert(`Failed: ${json.error ?? `HTTP ${res.status}`}`);
+            window.alert(formatBackendFailure(res.status, json));
           }
         } else {
           await load();
