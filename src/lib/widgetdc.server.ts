@@ -713,8 +713,8 @@ export async function fetchIntentDetection(
 /**
  * AUR-14: NEXUS/graph grounding for a user query. Per WidgeTDC Rule R14 this
  * uses `srag.query` (hybrid semantic + graph) as the primary channel and falls
- * back to `rag_route` only if SRAG is unavailable. Returns a compact context
- * block plus structured sources, or null if the platform yields nothing.
+ * back to catalogued RAG aliases only if SRAG is unavailable. Returns a compact
+ * context block plus structured sources, or null if the platform yields nothing.
  *
  * This is the function the chat handler MUST call before completion — without
  * it the chat answers ungrounded (the pre-AUR-14 defect: `fetchRagGrounding`
@@ -735,29 +735,43 @@ export async function fetchRagGrounding(
     if (fromSrag.length > 0) return packGrounding(fromSrag);
   }
 
-  // Fallback: adaptive rag_route.
-  const rag = await callMcpTool<unknown>(
-    "rag_route",
+  // Fallback: catalogued RAG aliases. Keep this canonical-first so live
+  // deployments do not emit 404s for retired names such as `rag_route`.
+  const rag = await callMcpToolIfCatalogued<unknown>(
+    "rag.query",
     { query, limit: 6 },
     { correlationId, timeoutMs: 6000 },
   );
-  if (rag == null || isFailedMcpEnvelope(rag)) return null;
-  if (typeof rag === "string") {
-    const text = rag.trim().slice(0, 4000);
+  if (rag != null && !isFailedMcpEnvelope(rag)) {
+    if (typeof rag === "string") {
+      const text = rag.trim().slice(0, 4000);
+      return text ? { context: text, sources: [{ text }] } : null;
+    }
+    const fromRag = extractSources(rag);
+    if (fromRag.length > 0) return packGrounding(fromRag);
+  }
+
+  const kg = await callMcpToolIfCatalogued<unknown>(
+    "kg_rag.query",
+    { question: query, max_evidence: 6 },
+    { correlationId, timeoutMs: 8000 },
+  );
+  if (kg == null || isFailedMcpEnvelope(kg)) return null;
+  if (typeof kg === "string") {
+    const text = kg.trim().slice(0, 4000);
     return text ? { context: text, sources: [{ text }] } : null;
   }
-  const fromRag = extractSources(rag);
-  if (fromRag.length > 0) return packGrounding(fromRag);
-  try {
-    const text = JSON.stringify(rag).slice(0, 4000);
-    return { context: text, sources: [{ text }] };
-  } catch {
-    return null;
-  }
+  const fromKg = extractSources(kg);
+  if (fromKg.length > 0) return packGrounding(fromKg);
+  return null;
 }
 
 /** Pull a best-effort list of {text, source} snippets from a varied envelope. */
 function extractSources(result: unknown): RagSource[] {
+  if (typeof result === "string") {
+    const text = result.trim().slice(0, 4000);
+    return text ? [{ text }] : [];
+  }
   if (!result || typeof result !== "object") return [];
   const r = result as Record<string, unknown>;
   const inner = (r.result as Record<string, unknown>) ?? r;
@@ -788,6 +802,18 @@ function extractSources(result: unknown): RagSource[] {
     });
     if (out.length >= 6) break;
   }
+  if (out.length === 0) {
+    const text =
+      (typeof inner.response === "string" && inner.response) ||
+      (typeof inner.answer === "string" && inner.answer) ||
+      (typeof inner.context === "string" && inner.context) ||
+      (typeof inner.text === "string" && inner.text) ||
+      (typeof r.response === "string" && r.response) ||
+      (typeof r.answer === "string" && r.answer) ||
+      "";
+    const trimmed = text.trim();
+    if (trimmed) out.push({ text: trimmed.slice(0, 4000) });
+  }
   return out;
 }
 
@@ -799,8 +825,8 @@ function packGrounding(sources: RagSource[]): RagGrounding {
 }
 
 /**
- * Map a UI model id (`vendor/model`) to an `llm_chat` provider + bare model.
- * `llm_chat` REQUIRES a `provider` (deepseek|qwen|openai|gemini|claude); unknown
+ * Map a UI model id (`vendor/model`) to a platform provider + bare model.
+ * `llm.generate` accepts provider/model hints; unknown
  * or platform models route to gemini (the platform's healthy default).
  */
 export function llmChatProvider(model?: string): { provider: string; model?: string } {
@@ -821,9 +847,9 @@ export function llmChatProvider(model?: string): { provider: string; model?: str
 }
 
 /**
- * Completion via the platform `llm_chat` tool — the correct chat primitive (vs.
- * `reason_deeply`, a reasoning tool). Passes the required `provider` (derived
- * from the model id) and a generous `max_tokens` so answers are full-length.
+ * Completion via the platform `llm.generate` tool — the catalogued chat
+ * primitive on the backend MCP route. Passes provider/model hints (derived from
+ * the model id) and a generous `max_tokens` so answers are full-length.
  * Returns the assistant text + light meta, or null on failure.
  */
 export async function llmChatCompletion(
@@ -832,10 +858,10 @@ export async function llmChatCompletion(
 ): Promise<ChatResult | null> {
   const { provider, model } = llmChatProvider(opts.model);
   const result = await callMcpTool<unknown>(
-    "llm_chat",
+    "llm.generate",
     {
+      prompt: flattenConversation(messages),
       provider,
-      messages,
       max_tokens: opts.maxTokens ?? 4096,
       ...(model ? { model } : {}),
     },
@@ -847,7 +873,11 @@ export async function llmChatCompletion(
   // Surface which provider/model actually answered (reasoning panel).
   return {
     text: extracted.text,
-    meta: { provider: `platform:${provider}`, ...(model ? { model } : {}), ...extracted.meta },
+    meta: {
+      provider: `platform:llm.generate:${provider}`,
+      ...(model ? { model } : {}),
+      ...extracted.meta,
+    },
   };
 }
 
@@ -1752,7 +1782,7 @@ export function extractGraphSnapshot(result: unknown): GraphSnapshot | null {
 export async function fetchRuntimeSnapshot(
   correlationId?: string,
 ): Promise<RuntimeSnapshot | null> {
-  for (const tool of ["runtime_summary", "audit.adoption_metrics", "intent.stats"]) {
+  for (const tool of ["audit.adoption_metrics", "intent.stats", "runtime_summary"]) {
     const result = await callMcpToolIfCatalogued<unknown>(
       tool,
       {},
@@ -1765,20 +1795,20 @@ export async function fetchRuntimeSnapshot(
   return null;
 }
 
-/** Fetch the Neo4j graph size via the legacy alias or canonical `graph.stats`. */
+/** Fetch the Neo4j graph size via canonical `graph.stats`, then quiet legacy fallback. */
 export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphSnapshot | null> {
-  const legacy = await callMcpTool<unknown>(
-    "data_graph_stats",
-    {},
-    { correlationId, timeoutMs: 15000 },
-  );
-  const legacySnapshot = extractGraphSnapshot(legacy);
-  if (legacySnapshot) return legacySnapshot;
-
   const canonical = await callMcpTool<unknown>(
     "graph.stats",
     {},
     { correlationId, timeoutMs: 15000 },
   );
-  return extractGraphSnapshot(canonical);
+  const canonicalSnapshot = extractGraphSnapshot(canonical);
+  if (canonicalSnapshot) return canonicalSnapshot;
+
+  const legacy = await callMcpToolIfCatalogued<unknown>(
+    "data_graph_stats",
+    {},
+    { correlationId, timeoutMs: 15000 },
+  );
+  return extractGraphSnapshot(legacy);
 }
