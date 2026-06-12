@@ -2,9 +2,9 @@
  * POST /api/deliverable/generate — Deliverable Studio (Phase 1).
  *
  * Turns a free-form brief into a consulting deliverable (analysis / roadmap /
- * assessment) via the platform `generate_deliverable` tool (RAG-backed,
- * citation-bearing markdown), with an optional `judge_response` PRISM quality
- * pass. Server-only: keys live in process.env, read inside the handler.
+ * assessment) via the platform writer path (RAG-backed, citation-bearing
+ * markdown), with an optional `judge_response` PRISM quality pass.
+ * Server-only: keys live in process.env, read inside the handler.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";

@@ -1031,9 +1031,9 @@ export function extractDeliverable(result: unknown): DeliverableResult | null {
 
 /**
  * Generate a consulting deliverable (analysis / roadmap / assessment) from a
- * brief via the platform `generate_deliverable` tool. RAG-backed and
- * multi-section, so the timeout is generous (>60s observed). Returns null on
- * any failure so the caller can surface a clean error.
+ * brief. Live deployments use the catalogued platform writer path; legacy
+ * `generate_deliverable` can still be enabled explicitly for compatibility.
+ * Returns null on any failure so the caller can surface a clean error.
  */
 export async function generateDeliverable(
   brief: string,
@@ -1227,13 +1227,49 @@ function deliverableWriterPrompt(
     "- Include at least three H2 sections.",
     "- Include one Mermaid flowchart or issue-tree block.",
     "- Include concrete recommendations and risks.",
-    "- Include a final `Canvas notes:` section with at least 3 bullets.",
+    '- Include a final section named exactly "Canvas notes:" with at least 3 bullets.',
     "- If evidence context is provided, cite claims with [1], [2], etc.",
     "- Do not include meta-commentary about being an AI or about the prompt.",
     evidence,
     "\nBrief:",
     brief,
   ].join("\n");
+}
+
+function deliverableWriterProvider(env: NodeJS.ProcessEnv = process.env): string {
+  return env.WIDGETDC_DELIVERABLE_WRITER_PROVIDER?.trim() || "deepseek";
+}
+
+function deliverableWriterModel(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return env.WIDGETDC_DELIVERABLE_WRITER_MODEL?.trim() || undefined;
+}
+
+function deliverableWriterMaxTokens(env: NodeJS.ProcessEnv = process.env): number {
+  const configured = Number(env.WIDGETDC_DELIVERABLE_WRITER_MAX_TOKENS);
+  if (Number.isFinite(configured) && configured >= 600) {
+    return Math.min(Math.floor(configured), 3000);
+  }
+  return 1600;
+}
+
+async function generateDeliverableMarkdown(
+  prompt: string,
+  opts: { correlationId?: string } = {},
+): Promise<string | null> {
+  const model = deliverableWriterModel();
+  const result = await callMcpToolIfCatalogued<unknown>(
+    "llm.generate",
+    {
+      provider: deliverableWriterProvider(),
+      prompt,
+      max_tokens: deliverableWriterMaxTokens(),
+      ...(model ? { model } : {}),
+    },
+    { correlationId: opts.correlationId, timeoutMs: 65000 },
+  );
+  const extracted = extractChatResult(result);
+  const markdown = extracted?.text?.trim() ?? "";
+  return markdown || null;
 }
 
 async function platformWriterDeliverable(
@@ -1250,18 +1286,9 @@ async function platformWriterDeliverable(
     maxSections: opts.maxSections,
     mode: opts.mode,
   });
-  const result = await orchestratorChat(
-    [
-      {
-        role: "system",
-        content:
-          "You are WidgeTDC Deliverable Writer. Return only polished Markdown that satisfies the requested deliverable contract.",
-      },
-      { role: "user", content: prompt },
-    ],
-    { correlationId: opts.correlationId, deep: opts.mode === "lego" },
-  );
-  const markdown = result?.text?.trim();
+  const markdown = await generateDeliverableMarkdown(prompt, {
+    correlationId: opts.correlationId,
+  });
   if (!markdown) return null;
   const deliverable = { markdown, citations: grounding?.sources.length ?? 0 };
   return isSubstantiveDeliverable(deliverable.markdown, brief) ? deliverable : null;
