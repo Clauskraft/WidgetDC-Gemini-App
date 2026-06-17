@@ -9,6 +9,7 @@ import {
   Network,
   FileText,
   Activity,
+  BookOpen,
 } from "lucide-react";
 import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,14 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         >
           <Activity className="h-4 w-4" />
           {!collapsed && <span>Observability</span>}
+        </Link>
+        <Link
+          to="/patterns"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
+        >
+          <BookOpen className="h-4 w-4" />
+          {!collapsed && <span>Patterns</span>}
         </Link>
       </nav>
 

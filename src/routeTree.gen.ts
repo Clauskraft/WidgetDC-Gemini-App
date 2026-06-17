@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
@@ -22,6 +23,7 @@ import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
+import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
@@ -35,6 +37,11 @@ import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatternsRoute = PatternsRouteImport.update({
+  id: '/patterns',
+  path: '/patterns',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObservabilityRoute = ObservabilityRouteImport.update({
@@ -97,6 +104,11 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
   path: '/c/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPatternsRoute = ApiPatternsRouteImport.update({
+  id: '/api/patterns',
+  path: '/api/patterns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -153,8 +165,10 @@ export interface FileRoutesByFullPath {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -177,8 +191,10 @@ export interface FileRoutesByTo {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -202,8 +218,10 @@ export interface FileRoutesById {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -228,8 +246,10 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -252,8 +272,10 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -276,8 +298,10 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -301,8 +325,10 @@ export interface RootRouteChildren {
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
   ObservabilityRoute: typeof ObservabilityRoute
+  PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPatternsRoute: typeof ApiPatternsRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
   VisualGraphRoute: typeof VisualGraphRoute
@@ -323,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patterns': {
+      id: '/patterns'
+      path: '/patterns'
+      fullPath: '/patterns'
+      preLoaderRoute: typeof PatternsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/observability': {
@@ -407,6 +440,13 @@ declare module '@tanstack/react-router' {
       path: '/c/$threadId'
       fullPath: '/c/$threadId'
       preLoaderRoute: typeof CThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/patterns': {
+      id: '/api/patterns'
+      path: '/api/patterns'
+      fullPath: '/api/patterns'
+      preLoaderRoute: typeof ApiPatternsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -494,8 +534,10 @@ const rootRouteChildren: RootRouteChildren = {
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
   ObservabilityRoute: ObservabilityRoute,
+  PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPatternsRoute: ApiPatternsRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
   VisualGraphRoute: VisualGraphRoute,
