@@ -15,6 +15,7 @@ import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
+import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdoptionRouteImport } from './routes/adoption'
@@ -24,6 +25,7 @@ import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
+import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
@@ -62,6 +64,11 @@ const GraphRoute = GraphRouteImport.update({
 const GemsRoute = GemsRouteImport.update({
   id: '/gems',
   path: '/gems',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EngagementsRoute = EngagementsRouteImport.update({
+  id: '/engagements',
+  path: '/engagements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeliverableRoute = DeliverableRouteImport.update({
@@ -107,6 +114,11 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
 const ApiPatternsRoute = ApiPatternsRouteImport.update({
   id: '/api/patterns',
   path: '/api/patterns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
+  id: '/api/engagements',
+  path: '/api/engagements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -161,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -168,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -187,6 +201,7 @@ export interface FileRoutesByTo {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -194,6 +209,7 @@ export interface FileRoutesByTo {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -214,6 +230,7 @@ export interface FileRoutesById {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
@@ -221,6 +238,7 @@ export interface FileRoutesById {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -242,6 +260,7 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
     | '/gems'
     | '/graph'
     | '/health'
@@ -249,6 +268,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -268,6 +288,7 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
     | '/gems'
     | '/graph'
     | '/health'
@@ -275,6 +296,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -294,6 +316,7 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
     | '/gems'
     | '/graph'
     | '/health'
@@ -301,6 +324,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -321,6 +345,7 @@ export interface RootRouteChildren {
   AdoptionRoute: typeof AdoptionRoute
   DashboardRoute: typeof DashboardRoute
   DeliverableRoute: typeof DeliverableRoute
+  EngagementsRoute: typeof EngagementsRoute
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
@@ -328,6 +353,7 @@ export interface RootRouteChildren {
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiEngagementsRoute: typeof ApiEngagementsRoute
   ApiPatternsRoute: typeof ApiPatternsRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
@@ -384,6 +410,13 @@ declare module '@tanstack/react-router' {
       path: '/gems'
       fullPath: '/gems'
       preLoaderRoute: typeof GemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/engagements': {
+      id: '/engagements'
+      path: '/engagements'
+      fullPath: '/engagements'
+      preLoaderRoute: typeof EngagementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deliverable': {
@@ -447,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/api/patterns'
       fullPath: '/api/patterns'
       preLoaderRoute: typeof ApiPatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/engagements': {
+      id: '/api/engagements'
+      path: '/api/engagements'
+      fullPath: '/api/engagements'
+      preLoaderRoute: typeof ApiEngagementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -530,6 +570,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdoptionRoute: AdoptionRoute,
   DashboardRoute: DashboardRoute,
   DeliverableRoute: DeliverableRoute,
+  EngagementsRoute: EngagementsRoute,
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
@@ -537,6 +578,7 @@ const rootRouteChildren: RootRouteChildren = {
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiEngagementsRoute: ApiEngagementsRoute,
   ApiPatternsRoute: ApiPatternsRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
@@ -553,13 +595,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
