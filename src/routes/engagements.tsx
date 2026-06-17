@@ -11,10 +11,20 @@ import {
   X,
   Link2,
   Check,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
 import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
+import type {
+  DeliverableKind,
+  WorkArtifactRow,
+  EngagementDeliverablesResponse,
+  GenerateDeliverableBody,
+  GenerateDeliverableResponse,
+} from "./api/engagements.$id.deliverable";
 
 export const Route = createFileRoute("/engagements")({
   head: () => ({
@@ -279,6 +289,9 @@ function EngagementsRoute() {
               engagementId={selected.id}
               onLinked={() => onPatternLinked(selected.id)}
             />
+
+            {/* Deliverable draft + WorkArtifact provenance */}
+            <DeliverablePanel engagementId={selected.id} />
           </div>
         </div>
       )}
@@ -461,6 +474,181 @@ function PatternLinkPanel({
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       )}
+    </div>
+  );
+}
+
+const DELIVERABLE_KINDS: { id: DeliverableKind; label: string }[] = [
+  { id: "analysis", label: "Analyse" },
+  { id: "roadmap", label: "Roadmap" },
+  { id: "assessment", label: "Assessment" },
+];
+
+function DeliverablePanel({ engagementId }: { engagementId: string }) {
+  const [artifacts, setArtifacts] = useState<WorkArtifactRow[]>([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [kind, setKind] = useState<DeliverableKind>("analysis");
+  const [extraCtx, setExtraCtx] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [preview, setPreview] = useState<WorkArtifactRow | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const loadArtifacts = useCallback(async () => {
+    setLoadingList(true);
+    try {
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/deliverable`);
+      const body = (await res.json()) as EngagementDeliverablesResponse;
+      if (res.ok) setArtifacts(body.artifacts);
+    } finally {
+      setLoadingList(false);
+    }
+  }, [engagementId]);
+
+  useEffect(() => { void loadArtifacts(); }, [loadArtifacts]);
+
+  const generate = useCallback(async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const body: GenerateDeliverableBody = {
+        kind,
+        ...(extraCtx.trim() ? { extra_context: extraCtx.trim() } : {}),
+      };
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/deliverable`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as GenerateDeliverableResponse;
+      if (!res.ok || data.error) {
+        setGenError(data.error ?? `Fejl (${res.status})`);
+      } else {
+        const newArtifact: WorkArtifactRow = {
+          id: data.artifact_id,
+          title: `${kind.charAt(0).toUpperCase() + kind.slice(1)}: generated`,
+          kind: data.kind,
+          markdown: data.markdown,
+          citations: data.citations,
+          signed_status: null,
+          created_at: new Date().toISOString(),
+        };
+        setArtifacts((prev) => [newArtifact, ...prev]);
+        setPreview(newArtifact);
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }, [engagementId, kind, extraCtx]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Deliverables (WorkArtifact)
+        </h3>
+        <button
+          onClick={() => void loadArtifacts()}
+          disabled={loadingList}
+          className="rounded-md p-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
+        >
+          {loadingList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+
+      {/* Existing artifacts */}
+      {artifacts.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground">Produceret ({artifacts.length})</p>
+          <div className="space-y-1">
+            {artifacts.map((wa) => (
+              <button
+                key={wa.id}
+                onClick={() => setPreview((prev) => (prev?.id === wa.id ? null : wa))}
+                className={cn(
+                  "w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition",
+                  preview?.id === wa.id
+                    ? "border-primary bg-accent/60"
+                    : "border-border bg-background hover:bg-accent/40",
+                )}
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-xs text-foreground">{wa.title}</span>
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {wa.kind}
+                </span>
+                {wa.signed_status === null && (
+                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/5 px-1.5 py-0.5 text-[10px] text-amber-600">
+                    usigneret
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded preview */}
+      {preview && (
+        <div className="rounded-xl border border-border bg-background">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <span className="text-xs font-medium">{preview.title}</span>
+            <button onClick={() => setPreview(null)} className="rounded p-0.5 hover:bg-accent">
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          </div>
+          <div className="max-h-72 overflow-y-auto px-3 py-3">
+            <MessageContent text={preview.markdown} />
+          </div>
+          <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+            {preview.citations} citationer · {preview.id} · {preview.signed_status ?? "GAP-3: unsigned"}
+          </div>
+        </div>
+      )}
+
+      {/* Generate new */}
+      <div className="rounded-xl border border-border bg-background p-3 space-y-3">
+        <p className="text-[11px] font-medium text-foreground">Generér nyt deliverable</p>
+        <div className="flex gap-2">
+          {DELIVERABLE_KINDS.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => setKind(k.id)}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-[11px] font-medium transition",
+                kind === k.id
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-input text-muted-foreground hover:bg-accent",
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={extraCtx}
+          onChange={(e) => setExtraCtx(e.target.value)}
+          placeholder="Ekstra kontekst (valgfrit)…"
+          rows={2}
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+        />
+        {genError && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {genError}
+          </p>
+        )}
+        <button
+          onClick={() => void generate()}
+          disabled={generating}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+        >
+          {generating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" />
+          )}
+          {generating ? "Genererer…" : "Generér deliverable"}
+        </button>
+      </div>
     </div>
   );
 }

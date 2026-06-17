@@ -36,6 +36,7 @@ import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
 import { Route as ApiEngagementsIdPatternsRouteImport } from './routes/api/engagements.$id.patterns'
+import { Route as ApiEngagementsIdDeliverableRouteImport } from './routes/api/engagements.$id.deliverable'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -174,6 +175,12 @@ const ApiEngagementsIdPatternsRoute =
     path: '/$id/patterns',
     getParentRoute: () => ApiEngagementsRoute,
   } as any)
+const ApiEngagementsIdDeliverableRoute =
+  ApiEngagementsIdDeliverableRouteImport.update({
+    id: '/$id/deliverable',
+    path: '/$id/deliverable',
+    getParentRoute: () => ApiEngagementsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -230,6 +238,7 @@ export interface FileRoutesByTo {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -260,6 +269,7 @@ export interface FileRoutesById {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   id:
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesById: FileRoutesById
@@ -572,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEngagementsIdPatternsRouteImport
       parentRoute: typeof ApiEngagementsRoute
     }
+    '/api/engagements/$id/deliverable': {
+      id: '/api/engagements/$id/deliverable'
+      path: '/$id/deliverable'
+      fullPath: '/api/engagements/$id/deliverable'
+      preLoaderRoute: typeof ApiEngagementsIdDeliverableRouteImport
+      parentRoute: typeof ApiEngagementsRoute
+    }
   }
 }
 
@@ -586,10 +606,12 @@ const GemsRouteChildren: GemsRouteChildren = {
 const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
 
 interface ApiEngagementsRouteChildren {
+  ApiEngagementsIdDeliverableRoute: typeof ApiEngagementsIdDeliverableRoute
   ApiEngagementsIdPatternsRoute: typeof ApiEngagementsIdPatternsRoute
 }
 
 const ApiEngagementsRouteChildren: ApiEngagementsRouteChildren = {
+  ApiEngagementsIdDeliverableRoute: ApiEngagementsIdDeliverableRoute,
   ApiEngagementsIdPatternsRoute: ApiEngagementsIdPatternsRoute,
 }
 
