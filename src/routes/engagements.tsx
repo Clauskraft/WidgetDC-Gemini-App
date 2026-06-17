@@ -9,9 +9,12 @@ import {
   ChevronRight,
   BookOpen,
   X,
+  Link2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
+import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
 
 export const Route = createFileRoute("/engagements")({
   head: () => ({
@@ -93,6 +96,17 @@ function EngagementsRoute() {
     setSelected(null);
     void fetchEngagements(q, domain, 0, true);
   }, [fetchEngagements, q, domain]);
+
+  const onPatternLinked = useCallback((engId: string) => {
+    setEngagements((prev) =>
+      prev.map((e) =>
+        e.id === engId ? { ...e, pattern_count: e.pattern_count + 1 } : e,
+      ),
+    );
+    setSelected((prev) =>
+      prev?.id === engId ? { ...prev, pattern_count: prev.pattern_count + 1 } : prev,
+    );
+  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -253,19 +267,18 @@ function EngagementsRoute() {
               <p className="text-sm text-muted-foreground">Ingen beskrivelse tilgængelig.</p>
             )}
 
-            {/* Patterns gap notice */}
-            {selected.pattern_count === 0 && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-                GAP-4: Ingen UTILIZED_PATTERN-kanter — koblingsflywheel ikke aktiv for dette engagement.
-              </div>
-            )}
-
             {/* Created */}
             {selected.created_at && (
               <p className="text-xs text-muted-foreground">
                 Oprettet: {new Date(selected.created_at).toLocaleDateString("da-DK")}
               </p>
             )}
+
+            {/* Pattern kobling section */}
+            <PatternLinkPanel
+              engagementId={selected.id}
+              onLinked={() => onPatternLinked(selected.id)}
+            />
           </div>
         </div>
       )}
@@ -286,6 +299,166 @@ function EngagementsRoute() {
           <div className="flex-1 overflow-y-auto px-5 py-5">
             <CreateForm onCreated={onCreated} onCancel={() => setShowCreate(false)} />
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatternLinkPanel({
+  engagementId,
+  onLinked,
+}: {
+  engagementId: string;
+  onLinked: () => void;
+}) {
+  const [linked, setLinked] = useState<PatternRef[]>([]);
+  const [suggestions, setSuggestions] = useState<PatternRef[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [linking, setLinking] = useState<string | null>(null);
+  const [justLinked, setJustLinked] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/patterns`);
+      const body = (await res.json()) as EngagementPatternsResponse;
+      if (!res.ok) {
+        setError(body.error ?? `Fejl (${res.status})`);
+      } else {
+        setLinked(body.linked);
+        setSuggestions(body.suggestions);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Netværksfejl");
+    } finally {
+      setLoading(false);
+    }
+  }, [engagementId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const linkPattern = useCallback(
+    async (patternId: string) => {
+      setLinking(patternId);
+      try {
+        const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/patterns`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ pattern_id: patternId }),
+        });
+        if (res.ok) {
+          setJustLinked((prev) => new Set([...prev, patternId]));
+          const pat = suggestions.find((s) => s.id === patternId);
+          if (pat) {
+            setLinked((prev) => [pat, ...prev]);
+            setSuggestions((prev) => prev.filter((s) => s.id !== patternId));
+          }
+          onLinked();
+        }
+      } finally {
+        setLinking(null);
+      }
+    },
+    [engagementId, suggestions, onLinked],
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Pattern-kobling (UTILIZED_PATTERN)
+        </h3>
+        <button
+          onClick={() => void load()}
+          disabled={loading}
+          className="rounded-md p-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+
+      {error && (
+        <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+
+      {/* Linked patterns */}
+      {linked.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground">Koblet ({linked.length})</p>
+          <div className="space-y-1">
+            {linked.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2"
+              >
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                <span className="flex-1 truncate text-xs text-foreground">{p.name}</span>
+                {p.domain && (
+                  <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {p.domain}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions */}
+      {suggestions.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Foreslåede patterns (top resonans)
+          </p>
+          <div className="space-y-1">
+            {suggestions.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2"
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-xs text-foreground">{p.name}</span>
+                {p.domain && (
+                  <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {p.domain}
+                  </span>
+                )}
+                <button
+                  onClick={() => void linkPattern(p.id)}
+                  disabled={linking === p.id || justLinked.has(p.id)}
+                  className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+                >
+                  {linking === p.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : justLinked.has(p.id) ? (
+                    <Check className="h-3 w-3" />
+                  ) : (
+                    <Link2 className="h-3 w-3" />
+                  )}
+                  Kobl
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && linked.length === 0 && suggestions.length === 0 && !error && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+          GAP-4: Ingen UTILIZED_PATTERN-kanter — koblingsflywheel ikke aktiv for dette engagement.
+        </p>
+      )}
+
+      {loading && linked.length === 0 && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       )}
     </div>

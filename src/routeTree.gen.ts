@@ -35,6 +35,7 @@ import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/appro
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
+import { Route as ApiEngagementsIdPatternsRouteImport } from './routes/api/engagements.$id.patterns'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -167,6 +168,12 @@ const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
   path: '/api/mrp/canvas/resolve',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEngagementsIdPatternsRoute =
+  ApiEngagementsIdPatternsRouteImport.update({
+    id: '/$id/patterns',
+    path: '/$id/patterns',
+    getParentRoute: () => ApiEngagementsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -181,7 +188,7 @@ export interface FileRoutesByFullPath {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
-  '/api/engagements': typeof ApiEngagementsRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRoutesByTo {
@@ -209,7 +217,7 @@ export interface FileRoutesByTo {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
-  '/api/engagements': typeof ApiEngagementsRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRoutesById {
@@ -238,7 +247,7 @@ export interface FileRoutesById {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
-  '/api/engagements': typeof ApiEngagementsRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRouteTypes {
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   id:
     | '__root__'
@@ -337,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesById: FileRoutesById
 }
@@ -353,7 +366,7 @@ export interface RootRouteChildren {
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
-  ApiEngagementsRoute: typeof ApiEngagementsRoute
+  ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
   ApiPatternsRoute: typeof ApiPatternsRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
@@ -552,6 +565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMrpCanvasResolveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/engagements/$id/patterns': {
+      id: '/api/engagements/$id/patterns'
+      path: '/$id/patterns'
+      fullPath: '/api/engagements/$id/patterns'
+      preLoaderRoute: typeof ApiEngagementsIdPatternsRouteImport
+      parentRoute: typeof ApiEngagementsRoute
+    }
   }
 }
 
@@ -564,6 +584,18 @@ const GemsRouteChildren: GemsRouteChildren = {
 }
 
 const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
+
+interface ApiEngagementsRouteChildren {
+  ApiEngagementsIdPatternsRoute: typeof ApiEngagementsIdPatternsRoute
+}
+
+const ApiEngagementsRouteChildren: ApiEngagementsRouteChildren = {
+  ApiEngagementsIdPatternsRoute: ApiEngagementsIdPatternsRoute,
+}
+
+const ApiEngagementsRouteWithChildren = ApiEngagementsRoute._addFileChildren(
+  ApiEngagementsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -578,7 +610,7 @@ const rootRouteChildren: RootRouteChildren = {
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
-  ApiEngagementsRoute: ApiEngagementsRoute,
+  ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
   ApiPatternsRoute: ApiPatternsRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
