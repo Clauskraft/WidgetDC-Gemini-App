@@ -101,6 +101,11 @@ export const Route = createFileRoute("/api/engagements/$id/patterns")({
           WHERE coalesce(e.id, toString(id(e))) = '${engId}'
           MATCH (p:Pattern)
           WHERE NOT (e)-[:UTILIZED_PATTERN]->(p)
+            AND (
+              e.domain IS NULL
+              OR toLower(coalesce(p.domain, '')) CONTAINS toLower(coalesce(e.domain, ''))
+              OR toLower(coalesce(e.domain, '')) CONTAINS toLower(coalesce(p.domain, ''))
+            )
           OPTIONAL MATCH (p)-[:RESONATES_WITH]->(ci:CodeImplementation)
           WITH p, count(ci) AS resonates_count
           ORDER BY resonates_count DESC, p.name ASC

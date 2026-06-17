@@ -492,6 +492,7 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
   const [generating, setGenerating] = useState(false);
   const [preview, setPreview] = useState<WorkArtifactRow | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  const [lastQuality, setLastQuality] = useState<{ score: number } | null>(null);
 
   const loadArtifacts = useCallback(async () => {
     setLoadingList(true);
@@ -534,6 +535,7 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
         };
         setArtifacts((prev) => [newArtifact, ...prev]);
         setPreview(newArtifact);
+        setLastQuality(data.quality ?? null);
       }
     } finally {
       setGenerating(false);
@@ -599,8 +601,25 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
           <div className="max-h-72 overflow-y-auto px-3 py-3">
             <MessageContent text={preview.markdown} />
           </div>
-          <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
-            {preview.citations} citationer · {preview.id} · {preview.signed_status ?? "GAP-3: unsigned"}
+          <div className="border-t border-border px-3 py-2 flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
+            <span>
+              {preview.citations} citationer
+              {preview.signed_status
+                ? ` · ${preview.signed_status}`
+                : " · Afventer godkendelse"}
+            </span>
+            {lastQuality && preview.id === artifacts[0]?.id && (
+              <span className={cn(
+                "shrink-0 rounded-full px-2 py-0.5 font-medium",
+                lastQuality.score >= 0.8
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : lastQuality.score >= 0.6
+                  ? "bg-amber-500/10 text-amber-600"
+                  : "bg-destructive/10 text-destructive",
+              )}>
+                Kvalitet {Math.round(lastQuality.score * 100)}%
+              </span>
+            )}
           </div>
         </div>
       )}
