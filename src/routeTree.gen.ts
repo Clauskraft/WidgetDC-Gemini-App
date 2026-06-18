@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StorylineRouteImport } from './routes/storyline'
 import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as MondayReviewRouteImport } from './routes/monday-review'
@@ -34,6 +35,7 @@ import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
+import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiDeliverableExportRouteImport } from './routes/api/deliverable.export'
 import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
@@ -45,6 +47,11 @@ import { Route as ApiEngagementsIdDeliverableRouteImport } from './routes/api/en
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StorylineRoute = StorylineRouteImport.update({
+  id: '/storyline',
+  path: '/storyline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatternsRoute = PatternsRouteImport.update({
@@ -167,6 +174,11 @@ const ApiDeliverableGenerateRoute = ApiDeliverableGenerateRouteImport.update({
   path: '/api/deliverable/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStorylineRoute = ApiStorylineRouteImport.update({
+  id: '/api/storyline',
+  path: '/api/storyline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeliverableExportRoute = ApiDeliverableExportRouteImport.update({
   id: '/api/deliverable/export',
   path: '/api/deliverable/export',
@@ -239,6 +251,8 @@ export interface FileRoutesByFullPath {
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
+  '/storyline': typeof StorylineRoute
+  '/api/storyline': typeof ApiStorylineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,6 +287,8 @@ export interface FileRoutesByTo {
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
+  '/storyline': typeof StorylineRoute
+  '/api/storyline': typeof ApiStorylineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -308,6 +324,8 @@ export interface FileRoutesById {
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
+  '/storyline': typeof StorylineRoute
+  '/api/storyline': typeof ApiStorylineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -344,6 +362,8 @@ export interface FileRouteTypes {
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
+    | '/storyline'
+    | '/api/storyline'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -378,6 +398,8 @@ export interface FileRouteTypes {
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
+    | '/storyline'
+    | '/api/storyline'
   id:
     | '__root__'
     | '/'
@@ -412,6 +434,8 @@ export interface FileRouteTypes {
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
+    | '/storyline'
+    | '/api/storyline'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -443,6 +467,8 @@ export interface RootRouteChildren {
   ApiObservabilitySummaryRoute: typeof ApiObservabilitySummaryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
+  StorylineRoute: typeof StorylineRoute
+  ApiStorylineRoute: typeof ApiStorylineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -671,6 +697,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEngagementsIdDeliverableRouteImport
       parentRoute: typeof ApiEngagementsRoute
     }
+    '/storyline': {
+      id: '/storyline'
+      path: '/storyline'
+      fullPath: '/storyline'
+      preLoaderRoute: typeof StorylineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/storyline': {
+      id: '/api/storyline'
+      path: '/api/storyline'
+      fullPath: '/api/storyline'
+      preLoaderRoute: typeof ApiStorylineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -729,6 +769,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiObservabilitySummaryRoute: ApiObservabilitySummaryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
+  StorylineRoute: StorylineRoute,
+  ApiStorylineRoute: ApiStorylineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
