@@ -35,10 +35,6 @@ export type CpListResponse = {
   error?: string;
 };
 
-function escCypher(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-}
-
 function neo4jNum(v: unknown): number {
   if (typeof v === "number") return v;
   if (v && typeof v === "object") {
@@ -113,17 +109,19 @@ export const Route = createFileRoute("/api/consulting/assemble")({
           );
         }
 
-        const maxBlocks = Math.min(20, Math.max(1, body.max_blocks ?? 10));
+        // F1: NaN-safe parse — floor+fallback guards against non-numeric input
+        const maxBlocks = Math.min(20, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
         const domainFilter = body.domain_filter?.trim() ?? "";
 
+        // F2: parameterized Cypher — no string interpolation of user input
         const domainClause = domainFilter
-          ? `AND toLower(coalesce(ab.domain,'')) CONTAINS '${escCypher(domainFilter.toLowerCase())}'`
+          ? "AND toLower(coalesce(ab.domain,'')) CONTAINS toLower($domainFilter)"
           : "";
 
         // First try REQUIRES edges (seeded by legofactory.seed_cp_ab_edges)
         const cypher = `
           MATCH (cp:ConsultingProcess)
-          WHERE toLower(cp.name) = toLower('${escCypher(cpName)}')
+          WHERE toLower(cp.name) = toLower($cpName)
           MATCH (cp)-[:REQUIRES]->(ab:AssemblyBlock)
           WITH DISTINCT ab
           WHERE ab.content IS NOT NULL ${domainClause}
@@ -137,9 +135,12 @@ export const Route = createFileRoute("/api/consulting/assemble")({
           LIMIT ${maxBlocks}
         `;
 
+        const params: Record<string, string> = { cpName };
+        if (domainFilter) params.domainFilter = domainFilter;
+
         const result = await callMcpTool<unknown>(
           "data_graph_read",
-          { query: cypher },
+          { query: cypher, params },
           { timeoutMs: 15000 },
         ).catch(() => null);
 
@@ -159,7 +160,7 @@ export const Route = createFileRoute("/api/consulting/assemble")({
           // Fallback: domain-based match (no REQUIRES edges yet — G5 gap)
           const fallbackCypher = `
             MATCH (cp:ConsultingProcess)
-            WHERE toLower(cp.name) = toLower('${escCypher(cpName)}')
+            WHERE toLower(cp.name) = toLower($cpName)
             OPTIONAL MATCH (cp)-[:BELONGS_TO]->(d)
             WITH cp, coalesce(d.name, cp.domain, '') AS cpDomain
             MATCH (ab:AssemblyBlock)
@@ -178,7 +179,7 @@ export const Route = createFileRoute("/api/consulting/assemble")({
 
           const fallbackResult = await callMcpTool<unknown>(
             "data_graph_read",
-            { query: fallbackCypher },
+            { query: fallbackCypher, params },
             { timeoutMs: 15000 },
           ).catch(() => null);
 
