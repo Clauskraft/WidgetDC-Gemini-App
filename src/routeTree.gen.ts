@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
+import { Route as MondayReviewRouteImport } from './routes/monday-review'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
+import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdoptionRouteImport } from './routes/adoption'
@@ -23,6 +26,9 @@ import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
+import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
+import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
+import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
@@ -33,15 +39,27 @@ import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/appro
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
+import { Route as ApiEngagementsIdPatternsRouteImport } from './routes/api/engagements.$id.patterns'
+import { Route as ApiEngagementsIdDeliverableRouteImport } from './routes/api/engagements.$id.deliverable'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PatternsRoute = PatternsRouteImport.update({
+  id: '/patterns',
+  path: '/patterns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObservabilityRoute = ObservabilityRouteImport.update({
   id: '/observability',
   path: '/observability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MondayReviewRoute = MondayReviewRouteImport.update({
+  id: '/monday-review',
+  path: '/monday-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -57,6 +75,11 @@ const GraphRoute = GraphRouteImport.update({
 const GemsRoute = GemsRouteImport.update({
   id: '/gems',
   path: '/gems',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EngagementsRoute = EngagementsRouteImport.update({
+  id: '/engagements',
+  path: '/engagements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeliverableRoute = DeliverableRouteImport.update({
@@ -102,6 +125,21 @@ const DebugLogsRoute = DebugLogsRouteImport.update({
 const CThreadIdRoute = CThreadIdRouteImport.update({
   id: '/c/$threadId',
   path: '/c/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPatternsRoute = ApiPatternsRouteImport.update({
+  id: '/api/patterns',
+  path: '/api/patterns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMondayReviewRoute = ApiMondayReviewRouteImport.update({
+  id: '/api/monday-review',
+  path: '/api/monday-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
+  id: '/api/engagements',
+  path: '/api/engagements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -155,18 +193,36 @@ const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
   path: '/api/mrp/canvas/resolve',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEngagementsIdPatternsRoute =
+  ApiEngagementsIdPatternsRouteImport.update({
+    id: '/$id/patterns',
+    path: '/$id/patterns',
+    getParentRoute: () => ApiEngagementsRoute,
+  } as any)
+const ApiEngagementsIdDeliverableRoute =
+  ApiEngagementsIdDeliverableRouteImport.update({
+    id: '/$id/deliverable',
+    path: '/$id/deliverable',
+    getParentRoute: () => ApiEngagementsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -180,6 +236,8 @@ export interface FileRoutesByFullPath {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRoutesByTo {
@@ -187,11 +245,18 @@ export interface FileRoutesByTo {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
+  '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -205,6 +270,8 @@ export interface FileRoutesByTo {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRoutesById {
@@ -213,12 +280,18 @@ export interface FileRoutesById {
   '/adoption': typeof AdoptionRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
+  '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
+  '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -232,6 +305,8 @@ export interface FileRoutesById {
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
+  '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
+  '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
 }
 export interface FileRouteTypes {
@@ -241,12 +316,18 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
     | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
+    | '/api/monday-review'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -260,6 +341,8 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -267,11 +350,18 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
+    | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
+    | '/api/monday-review'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -285,6 +375,8 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   id:
     | '__root__'
@@ -292,12 +384,18 @@ export interface FileRouteTypes {
     | '/adoption'
     | '/dashboard'
     | '/deliverable'
+    | '/engagements'
     | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
+    | '/patterns'
     | '/settings'
     | '/api/chat'
+    | '/api/engagements'
+    | '/api/monday-review'
+    | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -311,6 +409,8 @@ export interface FileRouteTypes {
     | '/api/graph/query'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
+    | '/api/engagements/$id/deliverable'
+    | '/api/engagements/$id/patterns'
     | '/api/mrp/canvas/resolve'
   fileRoutesById: FileRoutesById
 }
@@ -319,12 +419,18 @@ export interface RootRouteChildren {
   AdoptionRoute: typeof AdoptionRoute
   DashboardRoute: typeof DashboardRoute
   DeliverableRoute: typeof DeliverableRoute
+  EngagementsRoute: typeof EngagementsRoute
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
+  MondayReviewRoute: typeof MondayReviewRoute
   ObservabilityRoute: typeof ObservabilityRoute
+  PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
+  ApiMondayReviewRoute: typeof ApiMondayReviewRoute
+  ApiPatternsRoute: typeof ApiPatternsRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
   VisualGraphRoute: typeof VisualGraphRoute
@@ -348,11 +454,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/patterns': {
+      id: '/patterns'
+      path: '/patterns'
+      fullPath: '/patterns'
+      preLoaderRoute: typeof PatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/observability': {
       id: '/observability'
       path: '/observability'
       fullPath: '/observability'
       preLoaderRoute: typeof ObservabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monday-review': {
+      id: '/monday-review'
+      path: '/monday-review'
+      fullPath: '/monday-review'
+      preLoaderRoute: typeof MondayReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -374,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: '/gems'
       fullPath: '/gems'
       preLoaderRoute: typeof GemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/engagements': {
+      id: '/engagements'
+      path: '/engagements'
+      fullPath: '/engagements'
+      preLoaderRoute: typeof EngagementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deliverable': {
@@ -437,6 +564,27 @@ declare module '@tanstack/react-router' {
       path: '/c/$threadId'
       fullPath: '/c/$threadId'
       preLoaderRoute: typeof CThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/patterns': {
+      id: '/api/patterns'
+      path: '/api/patterns'
+      fullPath: '/api/patterns'
+      preLoaderRoute: typeof ApiPatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/monday-review': {
+      id: '/api/monday-review'
+      path: '/api/monday-review'
+      fullPath: '/api/monday-review'
+      preLoaderRoute: typeof ApiMondayReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/engagements': {
+      id: '/api/engagements'
+      path: '/api/engagements'
+      fullPath: '/api/engagements'
+      preLoaderRoute: typeof ApiEngagementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -509,6 +657,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMrpCanvasResolveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/engagements/$id/patterns': {
+      id: '/api/engagements/$id/patterns'
+      path: '/$id/patterns'
+      fullPath: '/api/engagements/$id/patterns'
+      preLoaderRoute: typeof ApiEngagementsIdPatternsRouteImport
+      parentRoute: typeof ApiEngagementsRoute
+    }
+    '/api/engagements/$id/deliverable': {
+      id: '/api/engagements/$id/deliverable'
+      path: '/$id/deliverable'
+      fullPath: '/api/engagements/$id/deliverable'
+      preLoaderRoute: typeof ApiEngagementsIdDeliverableRouteImport
+      parentRoute: typeof ApiEngagementsRoute
+    }
   }
 }
 
@@ -524,17 +686,37 @@ const GemsRouteChildren: GemsRouteChildren = {
 
 const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
 
+interface ApiEngagementsRouteChildren {
+  ApiEngagementsIdDeliverableRoute: typeof ApiEngagementsIdDeliverableRoute
+  ApiEngagementsIdPatternsRoute: typeof ApiEngagementsIdPatternsRoute
+}
+
+const ApiEngagementsRouteChildren: ApiEngagementsRouteChildren = {
+  ApiEngagementsIdDeliverableRoute: ApiEngagementsIdDeliverableRoute,
+  ApiEngagementsIdPatternsRoute: ApiEngagementsIdPatternsRoute,
+}
+
+const ApiEngagementsRouteWithChildren = ApiEngagementsRoute._addFileChildren(
+  ApiEngagementsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
   DashboardRoute: DashboardRoute,
   DeliverableRoute: DeliverableRoute,
+  EngagementsRoute: EngagementsRoute,
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
+  MondayReviewRoute: MondayReviewRoute,
   ObservabilityRoute: ObservabilityRoute,
+  PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
+  ApiMondayReviewRoute: ApiMondayReviewRoute,
+  ApiPatternsRoute: ApiPatternsRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
   VisualGraphRoute: VisualGraphRoute,
@@ -551,13 +733,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
