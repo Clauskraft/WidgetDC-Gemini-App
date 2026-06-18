@@ -13,6 +13,7 @@ import {
   Check,
   FileText,
   Sparkles,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MessageContent } from "@/components/MessageContent";
@@ -25,6 +26,88 @@ import type {
   GenerateDeliverableBody,
   GenerateDeliverableResponse,
 } from "./api/engagements.$id.deliverable";
+
+// ─── Confidence-dots system (workshop beslutning 16d) ─────────────────────────
+// 3 niveauer: Velbelagt (score ≥ 0.8) / Indikativt (≥ 0.6) / Eksplorativt (<0.6)
+// Vis ●●● / ●●○ / ●○○ med forklaring via tooltip
+
+type ConfidenceLevel = "velbelagt" | "indikativt" | "eksplorativt";
+
+function scoreToLevel(score: number): ConfidenceLevel {
+  if (score >= 0.8) return "velbelagt";
+  if (score >= 0.6) return "indikativt";
+  return "eksplorativt";
+}
+
+const CONFIDENCE_META: Record<ConfidenceLevel, { dots: string; label: string; color: string; tooltip: string }> = {
+  velbelagt: {
+    dots: "●●●",
+    label: "Velbelagt",
+    color: "text-emerald-600 dark:text-emerald-400",
+    tooltip: "Høj evidenstæthed — konklusioner understøttet af multiple datakilder og patterns.",
+  },
+  indikativt: {
+    dots: "●●○",
+    label: "Indikativt",
+    color: "text-amber-600 dark:text-amber-400",
+    tooltip: "Moderat evidens — retning er klar, men supplerende dataindsamling anbefales.",
+  },
+  eksplorativt: {
+    dots: "●○○",
+    label: "Eksplorativt",
+    color: "text-rose-600 dark:text-rose-400",
+    tooltip: "Hypotese-niveau — brug som udgangspunkt for videre analyse, ikke som endegyldigt grundlag.",
+  },
+};
+
+function ConfidenceDots({ score, className }: { score: number; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const level = scoreToLevel(score);
+  const meta = CONFIDENCE_META[level];
+
+  return (
+    <span className={cn("relative inline-flex items-center gap-1", className)}>
+      <span
+        className={cn("font-mono text-[11px] tracking-widest select-none", meta.color)}
+        title={meta.tooltip}
+      >
+        {meta.dots}
+      </span>
+      <span className={cn("text-[10px] font-medium", meta.color)}>{meta.label}</span>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-accent"
+        aria-label="Forklaring af evidensniveau"
+      >
+        <Info className="h-3 w-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-xl border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg"
+          onClick={() => setOpen(false)}
+        >
+          <p className="mb-2 font-semibold">Evidensniveauer (16d)</p>
+          {(["velbelagt", "indikativt", "eksplorativt"] as ConfidenceLevel[]).map((lvl) => {
+            const m = CONFIDENCE_META[lvl];
+            return (
+              <div key={lvl} className={cn("mb-1.5 flex gap-2", lvl === level && "font-medium")}>
+                <span className={cn("shrink-0 font-mono tracking-widest", m.color)}>{m.dots}</span>
+                <span>
+                  <span className={m.color}>{m.label}</span>
+                  {lvl === level && " ←"}
+                  <span className="block text-muted-foreground">{m.tooltip}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/engagements")({
   head: () => ({
@@ -284,6 +367,9 @@ function EngagementsRoute() {
               </p>
             )}
 
+            {/* Engagement confidence indicator */}
+            <EngagementConfidence engagement={selected} />
+
             {/* Pattern kobling section */}
             <PatternLinkPanel
               engagementId={selected.id}
@@ -478,6 +564,39 @@ function PatternLinkPanel({
   );
 }
 
+function EngagementConfidence({ engagement }: { engagement: EngagementRow }) {
+  // Beregn evidensscore baseret på tilgængelige metadata:
+  // - pattern_count ≥ 3  → 0.35 point
+  // - client udfyldt     → 0.20 point
+  // - domain udfyldt     → 0.20 point
+  // - description ≥ 50t  → 0.25 point
+  let score = 0;
+  if (engagement.pattern_count >= 3) score += 0.35;
+  else if (engagement.pattern_count >= 1) score += 0.15;
+  if (engagement.client) score += 0.20;
+  if (engagement.domain) score += 0.20;
+  if ((engagement.description?.length ?? 0) >= 50) score += 0.25;
+  else if ((engagement.description?.length ?? 0) >= 10) score += 0.10;
+
+  const level = scoreToLevel(score);
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
+      <div>
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">AI-analyse evidens</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          {level === "velbelagt"
+            ? "Engagementet har tilstrækkelig kontekst til at generere velbegrundede analyser."
+            : level === "indikativt"
+            ? "Tilføj patterns, klient eller beskrivelse for at øge evidensstyrken."
+            : "Mangler kontekst — tilføj domain, klient og minimum 1 pattern."}
+        </p>
+      </div>
+      <ConfidenceDots score={score} className="ml-4 shrink-0" />
+    </div>
+  );
+}
+
 const DELIVERABLE_KINDS: { id: DeliverableKind; label: string }[] = [
   { id: "analysis", label: "Analyse" },
   { id: "roadmap", label: "Roadmap" },
@@ -609,16 +728,7 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
                 : " · Afventer godkendelse"}
             </span>
             {lastQuality && preview.id === artifacts[0]?.id && (
-              <span className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 font-medium",
-                lastQuality.score >= 0.8
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : lastQuality.score >= 0.6
-                  ? "bg-amber-500/10 text-amber-600"
-                  : "bg-destructive/10 text-destructive",
-              )}>
-                Kvalitet {Math.round(lastQuality.score * 100)}%
-              </span>
+              <ConfidenceDots score={lastQuality.score} />
             )}
           </div>
         </div>
