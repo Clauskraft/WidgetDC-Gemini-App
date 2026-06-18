@@ -55,6 +55,15 @@ const BodySchema = z.object({
   system: z.string().optional(),
   deep: z.boolean().optional(),
   council: z.boolean().optional(),
+  engagement_context: z
+    .object({
+      name: z.string(),
+      client: z.string().nullable().optional(),
+      domain: z.string().nullable().optional(),
+      description: z.string().nullable().optional(),
+      pattern_count: z.number().optional(),
+    })
+    .optional(),
 });
 
 /** Flatten AI-SDK model messages to plain {role,content} for the orchestrator. */
@@ -175,6 +184,20 @@ export const Route = createFileRoute("/api/chat")({
           content: unknown;
         }>;
         const baseMessages = toChatMessages(modelMessages);
+
+        if (body.engagement_context) {
+          const ec = body.engagement_context;
+          const engCtxMsg = [
+            `Du arbejder på engagement: "${ec.name}"`,
+            `Klient: ${ec.client ?? "ikke specificeret"}`,
+            `Domain: ${ec.domain ?? "ikke specificeret"}`,
+            `Beskrivelse: ${ec.description ?? "ingen"}`,
+            `Tilknyttede patterns: ${ec.pattern_count ?? 0}`,
+            `Brug denne kontekst til at give præcise, case-specifikke svar.`,
+          ].join("\n");
+          baseMessages.unshift({ role: "system", content: engCtxMsg });
+        }
+
         const lastUser = [...baseMessages].reverse().find((m) => m.role === "user");
 
         const deep = body.deep === true;

@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
 import { AppSidebar } from "../components/AppSidebar";
+import { CommandPalette } from "../components/CommandPalette";
 
 function NotFoundComponent() {
   return (
@@ -125,6 +126,7 @@ function RootComponent() {
         <main className="flex flex-1 overflow-hidden">
           <Outlet />
         </main>
+        <CommandPalette />
       </div>
     </QueryClientProvider>
   );

@@ -17,6 +17,8 @@ import {
   Wrench,
   Brain,
   Users,
+  Briefcase,
+  ChevronDown,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
@@ -24,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { validateGemResponse, type ValidationResult } from "@/lib/gemResponseValidator";
 import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
+import type { EngagementRow } from "@/routes/api/engagements";
 
 const SUGGESTIONS = [
   {
@@ -137,12 +140,36 @@ export function ChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const healAttemptsRef = useRef<Map<string, number>>(new Map());
   const healChainRef = useRef(0);
+  const engDropdownRef = useRef<HTMLDivElement>(null);
   // Chain-scoped trace of every failed attempt, reset when the chain closes
   // (success or max retries). Used to render the diff on the final message.
   const healChainTraceRef = useRef<HealAttempt[]>([]);
   const [healingMessageId, setHealingMessageId] = useState<string | null>(null);
   const [healHistory, setHealHistory] = useState<Record<string, HealSummary>>({});
   const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [engagements, setEngagements] = useState<EngagementRow[]>([]);
+  const [activeEngagement, setActiveEngagement] = useState<EngagementRow | null>(null);
+  const [engSelectorOpen, setEngSelectorOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/engagements?limit=10")
+      .then((r) => r.json())
+      .then((data: { engagements?: EngagementRow[] }) => {
+        if (Array.isArray(data.engagements)) setEngagements(data.engagements);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!engSelectorOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (engDropdownRef.current && !engDropdownRef.current.contains(e.target as Node)) {
+        setEngSelectorOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [engSelectorOpen]);
 
   const [model] = useModelPreference();
   // AUR-5: "Reason deeply" toggle — persisted across reloads, sent with each
@@ -192,16 +219,34 @@ export function ChatWindow({
     deep: deepMode,
     council: councilMode,
     system: gem?.systemPrompt,
+    activeEngagement,
   });
   requestMetaRef.current = {
     model,
     deep: deepMode,
     council: councilMode,
     system: gem?.systemPrompt,
+    activeEngagement,
   };
   const buildRequestBody = useCallback(() => {
-    const { model: m, deep, council, system } = requestMetaRef.current;
-    return { model: m, deep, council, ...(system ? { system } : {}) };
+    const { model: m, deep, council, system, activeEngagement: eng } = requestMetaRef.current;
+    return {
+      model: m,
+      deep,
+      council,
+      ...(system ? { system } : {}),
+      ...(eng
+        ? {
+            engagement_context: {
+              name: eng.name,
+              client: eng.client,
+              domain: eng.domain,
+              description: eng.description,
+              pattern_count: eng.pattern_count,
+            },
+          }
+        : {}),
+    };
   }, []);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
 
@@ -407,8 +452,98 @@ export function ChatWindow({
               </div>
             ) : null}
             <span className="text-sm text-muted-foreground">via WidgeTDC</span>
+            {activeEngagement && (
+              <div className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-2.5 py-1 text-xs text-primary">
+                <Briefcase className="h-3 w-3 flex-none" />
+                <span className="max-w-[14rem] truncate font-medium">{activeEngagement.name}</span>
+                <button
+                  onClick={() => setActiveEngagement(null)}
+                  className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-primary/60 transition hover:bg-primary/15 hover:text-primary"
+                  aria-label="Fjern engagement-kontekst"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {engagements.length > 0 && (
+              <div className="relative" ref={engDropdownRef}>
+                <button
+                  onClick={() => setEngSelectorOpen((v) => !v)}
+                  aria-expanded={engSelectorOpen}
+                  title="Vælg engagement-kontekst"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
+                    activeEngagement && "border-primary/40 bg-primary/8 text-primary",
+                  )}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Kontekst
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      engSelectorOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+                {engSelectorOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-2xl border border-border bg-card shadow-lg">
+                    <div className="border-b border-border/60 px-4 py-2.5">
+                      <p className="text-xs font-medium text-foreground">Engagement-kontekst</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        AI'en kender casen og giver case-specifikke svar.
+                      </p>
+                    </div>
+                    <ul className="max-h-64 overflow-y-auto py-1.5">
+                      {engagements.map((eng) => (
+                        <li key={eng.id}>
+                          <button
+                            onClick={() => {
+                              setActiveEngagement(
+                                activeEngagement?.id === eng.id ? null : eng,
+                              );
+                              setEngSelectorOpen(false);
+                            }}
+                            className={cn(
+                              "flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition hover:bg-accent",
+                              activeEngagement?.id === eng.id && "bg-primary/8",
+                            )}
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                {eng.name}
+                              </span>
+                              {activeEngagement?.id === eng.id && (
+                                <Check className="h-3.5 w-3.5 flex-none text-primary" />
+                              )}
+                            </span>
+                            {(eng.client ?? eng.domain) && (
+                              <span className="truncate text-[11px] text-muted-foreground">
+                                {[eng.client, eng.domain].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {activeEngagement && (
+                      <div className="border-t border-border/60 px-4 py-2">
+                        <button
+                          onClick={() => {
+                            setActiveEngagement(null);
+                            setEngSelectorOpen(false);
+                          }}
+                          className="text-xs text-muted-foreground transition hover:text-foreground"
+                        >
+                          Fjern kontekst
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <ModelPicker />
             <button
               onClick={toggleDeep}

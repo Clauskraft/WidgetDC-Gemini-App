@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Briefcase,
@@ -883,12 +883,26 @@ function EngagementCard({
   const health = engagementHealthScore(engagement);
   const level = scoreToLevel(health);
   const meta = CONFIDENCE_META[level];
+  const navigate = useNavigate();
+
+  const handleStoryline = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const briefParts = [engagement.name, engagement.client, engagement.domain].filter(Boolean);
+    const params = new URLSearchParams({
+      brief: briefParts.join(" – "),
+      kind: "analysis",
+    });
+    void navigate({ to: "/storyline", search: Object.fromEntries(params) });
+  };
 
   return (
-    <button
+    <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className={cn(
-        "group flex flex-col gap-2 rounded-2xl border p-4 text-left transition hover:border-primary/40 hover:bg-accent/40",
+        "group flex flex-col gap-2 rounded-2xl border p-4 text-left transition cursor-pointer hover:border-primary/40 hover:bg-accent/40",
         active ? "border-primary bg-accent/60 ring-1 ring-primary/20" : "border-border bg-card",
       )}
     >
@@ -945,7 +959,15 @@ function EngagementCard({
           style={{ width: `${Math.round(health * 100)}%` }}
         />
       </div>
-    </button>
+
+      <button
+        onClick={handleStoryline}
+        className="mt-0.5 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-aurora px-3 py-1 text-[11px] font-medium text-white opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100 hover:shadow-glow"
+      >
+        <FileText className="h-3 w-3" />
+        Byg storyline →
+      </button>
+    </div>
   );
 }
 

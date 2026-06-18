@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, Search, RefreshCw, Loader2, Code2, ChevronRight } from "lucide-react";
+import { BookOpen, Search, RefreshCw, Loader2, Code2, ChevronRight, Link2, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PatternRow, PatternsResponse } from "./api/patterns";
+
+type EngagementHit = { id: string; name: string; client?: string };
+type LinkState = "idle" | "searching" | "linking" | "success" | "error";
 
 export const Route = createFileRoute("/patterns")({
   head: () => ({
@@ -231,7 +234,133 @@ function PatternsRoute() {
                 GAP-1: Ingen <span className="font-mono">canonical_ref</span> — backfill planlagt post-EP-2 drain.
               </div>
             )}
+
+            <LinkToEngagement pattern={selected} />
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<EngagementHit[]>([]);
+  const [linkState, setLinkState] = useState<LinkState>("idle");
+  const [linkedName, setLinkedName] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = useCallback((value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) { setHits([]); setLinkState("idle"); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLinkState("searching");
+      try {
+        const res = await fetch(`/api/engagements?q=${encodeURIComponent(value)}&limit=8`);
+        const data = (await res.json()) as { engagements?: EngagementHit[]; error?: string };
+        setHits(Array.isArray(data.engagements) ? data.engagements : []);
+        setLinkState("idle");
+      } catch {
+        setHits([]);
+        setLinkState("idle");
+      }
+    }, 280);
+  }, []);
+
+  const link = async (eng: EngagementHit) => {
+    setLinkState("linking");
+    setHits([]);
+    setQ("");
+    try {
+      const res = await fetch(`/api/engagements/${encodeURIComponent(eng.id)}/patterns`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pattern_id: pattern.id }),
+      });
+      if (res.ok) {
+        setLinkedName(eng.name);
+        setLinkState("success");
+        setTimeout(() => { setLinkState("idle"); setLinkedName(null); }, 3500);
+      } else {
+        setLinkState("error");
+        setTimeout(() => setLinkState("idle"), 2500);
+      }
+    } catch {
+      setLinkState("error");
+      setTimeout(() => setLinkState("idle"), 2500);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Link2 className="h-4 w-4 text-primary flex-none" />
+        <span className="text-sm font-medium">Link til engagement</span>
+      </div>
+
+      {linkState === "success" && linkedName && (
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 flex-none" />
+          <span>Koblet til <strong>{linkedName}</strong></span>
+        </div>
+      )}
+
+      {linkState === "error" && (
+        <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm text-destructive">
+          Koblingshandling fejlede — prøv igen.
+        </div>
+      )}
+
+      {linkState !== "success" && (
+        <div className="relative">
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => { setQ(e.target.value); search(e.target.value); }}
+              placeholder="Søg engagement…"
+              disabled={linkState === "linking"}
+              className="w-full rounded-lg border border-input bg-card py-2 pl-8 pr-8 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            />
+            {linkState === "searching" && (
+              <Loader2 className="absolute right-2.5 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            )}
+            {q && linkState !== "searching" && linkState !== "linking" && (
+              <button
+                onClick={() => { setQ(""); setHits([]); }}
+                className="absolute right-2.5 text-muted-foreground hover:text-foreground transition"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {linkState === "linking" && (
+              <Loader2 className="absolute right-2.5 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {hits.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+              {hits.map((eng) => (
+                <li key={eng.id}>
+                  <button
+                    onClick={() => void link(eng)}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-accent"
+                  >
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-primary/10">
+                      <Link2 className="h-3 w-3 text-primary" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-foreground">{eng.name}</div>
+                      {eng.client && (
+                        <div className="truncate text-[11px] text-muted-foreground">{eng.client}</div>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

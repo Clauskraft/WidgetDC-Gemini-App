@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   Download,
@@ -11,8 +11,13 @@ import {
   Boxes,
   FileDown,
   AlertTriangle,
+  Briefcase,
+  X,
+  Search,
 } from "lucide-react";
 import { MessageContent } from "@/components/MessageContent";
+
+type EngagementOption = { id: string; name: string; client?: string };
 
 export const Route = createFileRoute("/deliverable")({
   head: () => ({
@@ -92,6 +97,38 @@ function DeliverableRoute() {
   const [degradation, setDegradation] = useState<DegradationNotice | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [engagements, setEngagements] = useState<EngagementOption[]>([]);
+  const [selectedEngagement, setSelectedEngagement] = useState<EngagementOption | null>(null);
+  const [engSearchQ, setEngSearchQ] = useState("");
+  const [engDropOpen, setEngDropOpen] = useState(false);
+  const engRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void fetch("/api/engagements?limit=20")
+      .then((r) => r.json())
+      .then((d: { engagements?: EngagementOption[] }) => {
+        if (Array.isArray(d.engagements)) setEngagements(d.engagements);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (engRef.current && !engRef.current.contains(e.target as Node)) {
+        setEngDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filteredEngagements = engSearchQ.trim()
+    ? engagements.filter((e) =>
+        e.name.toLowerCase().includes(engSearchQ.toLowerCase()) ||
+        (e.client ?? "").toLowerCase().includes(engSearchQ.toLowerCase()),
+      )
+    : engagements;
+
   const briefReady = brief.trim().length >= 10;
   const busy = loading || exporting !== null;
   const canSubmit = briefReady && !busy;
@@ -106,7 +143,14 @@ function DeliverableRoute() {
       const res = await fetch("/api/deliverable/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brief: brief.trim(), kind, engine, maxSections, validate }),
+        body: JSON.stringify({
+          brief: brief.trim(),
+          kind,
+          engine,
+          maxSections,
+          validate,
+          ...(selectedEngagement ? { engagement_id: selectedEngagement.id } : {}),
+        }),
       });
       const data = (await res.json()) as DeliverablePayload & { error?: string };
       if (!res.ok) setError(data.error ?? `Fejl (${res.status})`);
@@ -220,6 +264,83 @@ function DeliverableRoute() {
         </header>
 
         <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <div ref={engRef} className="relative">
+            <label className="mb-1.5 block text-sm font-medium">Engagement (valgfrit)</label>
+            {selectedEngagement ? (
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2">
+                  <Briefcase className="h-4 w-4 flex-none text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {selectedEngagement.name}
+                    </div>
+                    {selectedEngagement.client && (
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {selectedEngagement.client}
+                      </div>
+                    )}
+                  </div>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    Valgt
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedEngagement(null); setEngSearchQ(""); }}
+                  className="rounded-lg border border-input p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={engSearchQ}
+                    onFocus={() => setEngDropOpen(true)}
+                    onChange={(e) => { setEngSearchQ(e.target.value); setEngDropOpen(true); }}
+                    placeholder="Vælg eller søg engagement…"
+                    className="w-full rounded-xl border border-input bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                {engDropOpen && filteredEngagements.length > 0 && (
+                  <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+                    {filteredEngagements.map((eng) => (
+                      <li key={eng.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEngagement(eng);
+                            setEngSearchQ("");
+                            setEngDropOpen(false);
+                          }}
+                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-accent"
+                        >
+                          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-primary/10">
+                            <Briefcase className="h-3.5 w-3.5 text-primary" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-foreground">{eng.name}</div>
+                            {eng.client && (
+                              <div className="truncate text-[11px] text-muted-foreground">{eng.client}</div>
+                            )}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                    {engagements.length === 0 && (
+                      <li className="px-3 py-3 text-center text-sm text-muted-foreground">
+                        Ingen engagements fundet
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+
           <div>
             <label htmlFor="brief" className="mb-1.5 block text-sm font-medium">
               Brief

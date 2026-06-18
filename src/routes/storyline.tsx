@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useState, useCallback } from "react";
 import {
   Presentation,
@@ -53,9 +53,10 @@ const STEPS = [
 ];
 
 function StorylineRoute() {
+  const search = useSearch({ strict: false }) as Record<string, string | undefined>;
   const [step, setStep] = useState<Step>(1);
-  const [brief, setBrief] = useState("");
-  const [kind, setKind] = useState<Kind>("analysis");
+  const [brief, setBrief] = useState<string>(search.brief ?? "");
+  const [kind, setKind] = useState<Kind>((search.kind as Kind | undefined) ?? "analysis");
   const [slideCount, setSlideCount] = useState(5);
   const [theme, setTheme] = useState<DocTheme>("modern");
   const [complianceTier, setComplianceTier] = useState<ComplianceTier>("public");
@@ -464,7 +465,7 @@ function StorylineRoute() {
             <ExportToolbar slides={slides} theme={theme} onThemeChange={setTheme} />
 
             <button
-              onClick={() => { setStep(1); setSlides([]); setMeceResult(null); setBrief(""); }}
+              onClick={() => { setStep(1); setSlides([]); setMeceResult(null); setBrief(""); setKind("analysis"); }}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
               Start forfra
