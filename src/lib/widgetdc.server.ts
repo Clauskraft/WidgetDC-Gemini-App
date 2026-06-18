@@ -1839,3 +1839,51 @@ export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphS
   );
   return extractGraphSnapshot(legacy);
 }
+
+// ── BOMItem chat-turn emit ───────────────────────────────────────────────────
+// Records each completed chat turn as a BOMItem lineage event so the
+// decision-BOM coverage canary can count chat-pipeline turns.
+// item_type is derived from what actually happened this turn:
+//   grounding sources found  → 'grounding'   (RAG path fired)
+//   intent routing fired     → 'routing'     (intent router matched)
+//   plain completion         → 'provider_call'
+//
+// Fire-and-forget at call site — this function must never throw.
+
+export async function emitChatBOMItem(opts: {
+  correlationId: string;
+  provider?: string;
+  model?: string;
+  intentTool?: string;
+  hasGrounding: boolean;
+}): Promise<void> {
+  const item_type: string = opts.hasGrounding
+    ? 'grounding'
+    : opts.intentTool
+      ? 'routing'
+      : 'provider_call';
+
+  try {
+    await callMcpTool(
+      'governance.emit_spine_event',
+      {
+        event_type: 'bomitem_chat_turn',
+        source: 'widgetdc-gemini-frontend',
+        correlation_id: opts.correlationId,
+        tenant_id: 'tenant:widgetdc-internal',
+        outcome: 'success',
+        payload: {
+          logical_event_type: 'chat_bomitem_recorded',
+          item_type,
+          provider: opts.provider ?? 'platform',
+          model: opts.model,
+          intent_tool: opts.intentTool,
+          has_grounding: opts.hasGrounding,
+        },
+      },
+      { correlationId: opts.correlationId, timeoutMs: 5000 },
+    );
+  } catch {
+    // Intentional: BOMItem emit is best-effort; never block or surface errors.
+  }
+}
