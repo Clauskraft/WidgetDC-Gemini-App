@@ -55,6 +55,8 @@ export type MondayReviewResponse = {
     total_engagements: number;
     recent_artifacts: number;
     patterns_used: number;
+    avg_confidence: number;
+    open_action_items: number;
   };
   engagements: EngagementSummary[];
   recent_artifacts: RecentArtifact[];
@@ -228,6 +230,22 @@ export const Route = createFileRoute("/api/monday-review")({
         }
 
         const activeCount = engagements.filter((e) => e.status === "active" || e.status == null).length;
+
+        // avg_confidence: mean engagement health score across active engagements
+        function engScore(e: EngagementSummary): number {
+          let s = 0;
+          if (e.pattern_count >= 3) s += 0.35;
+          else if (e.pattern_count >= 1) s += 0.15;
+          if (e.client) s += 0.20;
+          if (e.domain) s += 0.20;
+          if (e.artifact_count >= 1) s += 0.25;
+          return s;
+        }
+        const activeEngs = engagements.filter((e) => e.status === "active" || e.status == null);
+        const avgConfidence = activeEngs.length > 0
+          ? Math.round((activeEngs.reduce((s, e) => s + engScore(e), 0) / activeEngs.length) * 100)
+          : 0;
+
         const now = new Date();
         const weekLabel = `Uge ${String(getWeekNumber(now))} — ${now.toLocaleDateString("da-DK", { month: "long", year: "numeric" })}`;
 
@@ -236,6 +254,8 @@ export const Route = createFileRoute("/api/monday-review")({
           total_engagements: engagements.length,
           recent_artifacts: recent_artifacts.length,
           patterns_used: top_patterns.reduce((s, p) => s + p.engagement_count, 0),
+          avg_confidence: avgConfidence,
+          open_action_items: action_items.length,
         };
 
         return jsonRes(

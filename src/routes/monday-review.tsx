@@ -208,6 +208,47 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
     <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
       {/* Left col — action inbox */}
       <div className="lg:col-span-2 space-y-6">
+        {/* B2: Live KPI spotlight — 3 primære KPI-tiles */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <LiveKpiTile
+            icon={<Briefcase className="h-5 w-5" />}
+            label="Aktive engagementer"
+            value={data.stats.active_engagements}
+            sub={`af ${data.stats.total_engagements} total`}
+            colorCls="bg-primary/10 text-primary"
+            live
+          />
+          <LiveKpiTile
+            icon={<TrendingUp className="h-5 w-5" />}
+            label="Gns. confidence"
+            value={data.stats.avg_confidence}
+            sub="engagement health score"
+            colorCls={
+              data.stats.avg_confidence >= 70
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : data.stats.avg_confidence >= 40
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            }
+            unit="%"
+            live
+          />
+          <LiveKpiTile
+            icon={<AlertCircle className="h-5 w-5" />}
+            label="Åbne action items"
+            value={data.stats.open_action_items}
+            sub="kræver opmærksomhed"
+            colorCls={
+              data.stats.open_action_items === 0
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : data.stats.open_action_items <= 3
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            }
+            live
+          />
+        </div>
+
         {/* Ugentlig KPI-strip */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <KpiTile
@@ -393,6 +434,47 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
 function KpiView({ data }: { data: MondayReviewResponse }) {
   return (
     <div className="p-6 space-y-6">
+      {/* B2: Live KPI tiles — prominent 3-tile row */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <LiveKpiTile
+          icon={<Briefcase className="h-5 w-5" />}
+          label="Aktive engagementer"
+          value={data.stats.active_engagements}
+          sub={`af ${data.stats.total_engagements} total`}
+          colorCls="bg-primary/10 text-primary"
+          live
+        />
+        <LiveKpiTile
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Gns. confidence"
+          value={data.stats.avg_confidence}
+          sub="engagement health score"
+          colorCls={
+            data.stats.avg_confidence >= 70
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : data.stats.avg_confidence >= 40
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+          }
+          unit="%"
+          live
+        />
+        <LiveKpiTile
+          icon={<AlertCircle className="h-5 w-5" />}
+          label="Åbne action items"
+          value={data.stats.open_action_items}
+          sub="kræver opmærksomhed"
+          colorCls={
+            data.stats.open_action_items === 0
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : data.stats.open_action_items <= 3
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+          }
+          live
+        />
+      </div>
+
       {/* KPI bar */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <KpiCard
@@ -436,6 +518,43 @@ function KpiView({ data }: { data: MondayReviewResponse }) {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function LiveKpiTile({
+  icon,
+  label,
+  value,
+  sub,
+  colorCls,
+  unit,
+  live,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  sub: string;
+  colorCls: string;
+  unit?: string;
+  live?: boolean;
+}) {
+  return (
+    <div className="relative rounded-2xl border border-border bg-card p-5 overflow-hidden">
+      {live && (
+        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Live
+        </span>
+      )}
+      <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", colorCls)}>
+        {icon}
+      </div>
+      <p className="text-3xl font-bold text-foreground tabular-nums">
+        {value}{unit}
+      </p>
+      <p className="mt-0.5 text-sm font-medium text-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }
