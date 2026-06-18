@@ -782,6 +782,17 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
   );
 }
 
+function engagementHealthScore(e: EngagementRow): number {
+  let s = 0;
+  if (e.pattern_count >= 3) s += 0.35;
+  else if (e.pattern_count >= 1) s += 0.15;
+  if (e.client) s += 0.20;
+  if (e.domain) s += 0.20;
+  if ((e.description?.length ?? 0) >= 50) s += 0.25;
+  else if ((e.description?.length ?? 0) >= 10) s += 0.10;
+  return s;
+}
+
 function EngagementCard({
   engagement,
   active,
@@ -791,6 +802,10 @@ function EngagementCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const health = engagementHealthScore(engagement);
+  const level = scoreToLevel(health);
+  const meta = CONFIDENCE_META[level];
+
   return (
     <button
       onClick={onClick}
@@ -803,12 +818,9 @@ function EngagementCard({
         <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
           {engagement.name || "Unavngivet engagement"}
         </span>
-        {engagement.pattern_count > 0 && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-            <BookOpen className="h-2.5 w-2.5" />
-            {engagement.pattern_count}
-          </span>
-        )}
+        <span className={cn("shrink-0 font-mono text-[10px] tracking-widest", meta.color)} title={meta.label}>
+          {meta.dots}
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -827,6 +839,12 @@ function EngagementCard({
             {engagement.status}
           </span>
         )}
+        {engagement.pattern_count > 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            <BookOpen className="h-2.5 w-2.5" />
+            {engagement.pattern_count}
+          </span>
+        )}
       </div>
 
       {engagement.client && (
@@ -838,6 +856,17 @@ function EngagementCard({
           {engagement.description}
         </p>
       )}
+
+      {/* Health bar */}
+      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            level === "velbelagt" ? "bg-emerald-500" : level === "indikativt" ? "bg-amber-500" : "bg-rose-500",
+          )}
+          style={{ width: `${Math.round(health * 100)}%` }}
+        />
+      </div>
     </button>
   );
 }
