@@ -1,11 +1,12 @@
 /**
- * POST /api/deliverable/export — Output Forge (Phase 1b).
+ * POST /api/deliverable/export — Output Forge (Phase 1b + Phase 5).
  *
- * Renders a brief to a downloadable DOCX via the platform `forge.artifact.generate`
- * tool when available. PDF and unavailable platform paths fall back to explicit
- * degraded local rendering.
+ * Primary path: backend /api/consulting/generate (real binary PPTX/DOCX/PDF).
+ * Secondary path: forge.artifact.generate (DOCX only via MCP).
+ * Tertiary path: local Markdown rendering (degraded fallback).
  * Server-only: keys read inside the handler.
  */
+import process from "node:process";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { renderMarkdownDocumentFallback } from "@/lib/documentFallback.server";
@@ -19,6 +20,54 @@ import {
   fallbackDeliverable,
   emitDeliverableDegradedEvent,
 } from "@/lib/widgetdc.server";
+
+async function callBackendGenerate(
+  brief: string,
+  format: "docx" | "pdf",
+  opts: { correlationId: string; title?: string; kind?: string; theme?: string },
+): Promise<{ base64: string; filename: string; mediaType: string } | null> {
+  const backendUrl = process.env.WIDGETDC_BACKEND_URL?.replace(/\/+$/, "");
+  const bearerKey =
+    process.env.WIDGETDC_BEARER_TOKEN ??
+    process.env.WIDGETDC_API_KEY ??
+    process.env.MCP_AGENT_API_KEY;
+  if (!backendUrl || !bearerKey) return null;
+
+  try {
+    const res = await fetch(`${backendUrl}/api/consulting/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${bearerKey}`,
+        "x-correlation-id": opts.correlationId,
+      },
+      body: JSON.stringify({
+        format,
+        theme: opts.theme ?? "mckinsey",
+        title: opts.title,
+        kind: opts.kind ?? "analysis",
+        markdown: brief,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!res.ok) return null;
+
+    const contentType = res.headers.get("content-type") ?? "";
+    const buf = await res.arrayBuffer();
+    const base64 = Buffer.from(buf).toString("base64");
+    const mediaType = format === "pdf" ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const ext = format === "pdf" ? "pdf" : "docx";
+    const filename = `${opts.title ?? `deliverable-${opts.kind ?? "analysis"}`}.${ext}`;
+
+    if (!contentType.includes("application/") && !contentType.includes("octet")) return null;
+
+    return { base64, filename, mediaType };
+  } catch {
+    return null;
+  }
+}
 
 const BodySchema = z.object({
   brief: z.string().min(10, "Brief must be at least 10 characters"),
@@ -134,6 +183,36 @@ export const Route = createFileRoute("/api/deliverable/export")({
               inheritedDegraded ? degradedHeaders(reason, source) : {},
             );
           }
+
+          // ── Primary path: backend /api/consulting/generate (real binary) ────
+          const backendDoc = await callBackendGenerate(brief, format, {
+            correlationId,
+            title,
+            kind,
+            theme: "mckinsey",
+          });
+          if (backendDoc) {
+            logServer("info", {
+              event: "deliverable_export_success",
+              requestId: correlationId,
+              format,
+              renderer: "backend_consulting_generate",
+              durationMs: Date.now() - started,
+            });
+            return json(
+              { ...backendDoc, correlationId, renderer: "backend_consulting_generate" },
+              200,
+              correlationId,
+            );
+          }
+
+          logServer("warn", {
+            event: "deliverable_export_backend_fallback",
+            requestId: correlationId,
+            format,
+            reason: "backend_consulting_generate_unavailable",
+            durationMs: Date.now() - started,
+          });
 
           if (isPlatformConfigured()) {
             const platformDoc = await produceDocument(brief, format, { correlationId, title });
