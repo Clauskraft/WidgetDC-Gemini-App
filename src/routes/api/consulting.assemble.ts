@@ -1,0 +1,215 @@
+/**
+ * POST /api/consulting/assemble — Assemble a BOM of AssemblyBlocks for a ConsultingProcess.
+ * GET  /api/consulting/assemble — List available ConsultingProcess nodes (for picker).
+ *
+ * POST body: { cp_name: string, brief: string, max_blocks?: number, domain_filter?: string }
+ * Response: { bom: AssemblyBlockRow[], cp_name: string, total: number, error?: string }
+ */
+import { createFileRoute } from "@tanstack/react-router";
+import { callMcpTool } from "@/lib/widgetdc.server";
+
+export type AssemblyBlockRow = {
+  id: string;
+  content: string;
+  domain: string | null;
+  quality_score: number;
+  title: string | null;
+};
+
+export type AssembleBody = {
+  cp_name: string;
+  brief: string;
+  max_blocks?: number;
+  domain_filter?: string;
+};
+
+export type AssembleResponse = {
+  bom: AssemblyBlockRow[];
+  cp_name: string;
+  total: number;
+  error?: string;
+};
+
+export type CpListResponse = {
+  cps: { name: string; domain: string | null }[];
+  error?: string;
+};
+
+function escCypher(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function neo4jNum(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if (typeof o.low === "number") {
+      return o.high ? (o.high as number) * 0x100000000 + (o.low as number) : (o.low as number);
+    }
+  }
+  return 0;
+}
+
+function jsonRes(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+export const Route = createFileRoute("/api/consulting/assemble")({
+  server: {
+    handlers: {
+      GET: async () => {
+        // Return list of non-archived ConsultingProcess nodes for the picker
+        const cypher = `
+          MATCH (cp:ConsultingProcess)
+          WHERE NOT cp:Archived
+          OPTIONAL MATCH (cp)-[:BELONGS_TO]->(d)
+          RETURN
+            coalesce(cp.name, '') AS name,
+            d.name AS domain
+          ORDER BY cp.name ASC
+          LIMIT 200
+        `;
+
+        const result = await callMcpTool<unknown>(
+          "data_graph_read",
+          { query: cypher },
+          { timeoutMs: 10000 },
+        ).catch(() => null);
+
+        if (result == null) {
+          return jsonRes({ cps: [], error: "Platform utilgængeligt" } satisfies CpListResponse, 503);
+        }
+
+        const r = result as Record<string, unknown>;
+        const inner = (r.result as Record<string, unknown>) ?? r;
+        const rawRows: unknown = inner.results ?? inner.rows ?? inner.records ?? inner.data;
+        const rows = Array.isArray(rawRows) ? (rawRows as Array<Record<string, unknown>>) : [];
+
+        const cps = rows.map((row) => ({
+          name: String(row.name ?? ""),
+          domain: row.domain != null ? String(row.domain) : null,
+        }));
+
+        return jsonRes({ cps } satisfies CpListResponse, 200);
+      },
+
+      POST: async ({ request }: { request: Request }) => {
+        let body: AssembleBody;
+        try {
+          body = (await request.json()) as AssembleBody;
+        } catch {
+          return jsonRes({ bom: [], cp_name: "", total: 0, error: "Ugyldig JSON" } satisfies AssembleResponse, 400);
+        }
+
+        const cpName = body.cp_name?.trim();
+        const brief = body.brief?.trim();
+        if (!cpName || !brief) {
+          return jsonRes(
+            { bom: [], cp_name: cpName ?? "", total: 0, error: "cp_name og brief er påkrævet" } satisfies AssembleResponse,
+            400,
+          );
+        }
+
+        const maxBlocks = Math.min(20, Math.max(1, body.max_blocks ?? 10));
+        const domainFilter = body.domain_filter?.trim() ?? "";
+
+        const domainClause = domainFilter
+          ? `AND toLower(coalesce(ab.domain,'')) CONTAINS '${escCypher(domainFilter.toLowerCase())}'`
+          : "";
+
+        // First try REQUIRES edges (seeded by legofactory.seed_cp_ab_edges)
+        const cypher = `
+          MATCH (cp:ConsultingProcess)
+          WHERE toLower(cp.name) = toLower('${escCypher(cpName)}')
+          MATCH (cp)-[:REQUIRES]->(ab:AssemblyBlock)
+          WITH DISTINCT ab
+          WHERE ab.content IS NOT NULL ${domainClause}
+          RETURN
+            coalesce(ab.id, toString(id(ab))) AS id,
+            ab.content AS content,
+            ab.domain AS domain,
+            coalesce(ab.quality_score, 0.5) AS quality_score,
+            ab.title AS title
+          ORDER BY quality_score DESC
+          LIMIT ${maxBlocks}
+        `;
+
+        const result = await callMcpTool<unknown>(
+          "data_graph_read",
+          { query: cypher },
+          { timeoutMs: 15000 },
+        ).catch(() => null);
+
+        if (result == null) {
+          return jsonRes(
+            { bom: [], cp_name: cpName, total: 0, error: "Platform utilgængeligt" } satisfies AssembleResponse,
+            503,
+          );
+        }
+
+        const r = result as Record<string, unknown>;
+        const inner = (r.result as Record<string, unknown>) ?? r;
+        const rawRows: unknown = inner.results ?? inner.rows ?? inner.records ?? inner.data;
+        const rows = Array.isArray(rawRows) ? (rawRows as Array<Record<string, unknown>>) : [];
+
+        if (rows.length === 0) {
+          // Fallback: domain-based match (no REQUIRES edges yet — G5 gap)
+          const fallbackCypher = `
+            MATCH (cp:ConsultingProcess)
+            WHERE toLower(cp.name) = toLower('${escCypher(cpName)}')
+            OPTIONAL MATCH (cp)-[:BELONGS_TO]->(d)
+            WITH cp, coalesce(d.name, cp.domain, '') AS cpDomain
+            MATCH (ab:AssemblyBlock)
+            WHERE ab.content IS NOT NULL
+              AND toLower(coalesce(ab.domain,'')) CONTAINS toLower(cpDomain)
+              ${domainClause}
+            RETURN
+              coalesce(ab.id, toString(id(ab))) AS id,
+              ab.content AS content,
+              ab.domain AS domain,
+              coalesce(ab.quality_score, 0.5) AS quality_score,
+              ab.title AS title
+            ORDER BY quality_score DESC
+            LIMIT ${maxBlocks}
+          `;
+
+          const fallbackResult = await callMcpTool<unknown>(
+            "data_graph_read",
+            { query: fallbackCypher },
+            { timeoutMs: 15000 },
+          ).catch(() => null);
+
+          if (fallbackResult != null) {
+            const fr = fallbackResult as Record<string, unknown>;
+            const fi = (fr.result as Record<string, unknown>) ?? fr;
+            const fbRaw: unknown = fi.results ?? fi.rows ?? fi.records ?? fi.data;
+            const fbRows = Array.isArray(fbRaw) ? (fbRaw as Array<Record<string, unknown>>) : [];
+
+            const bom: AssemblyBlockRow[] = fbRows.map((row) => ({
+              id: String(row.id ?? ""),
+              content: String(row.content ?? "").slice(0, 800),
+              domain: row.domain != null ? String(row.domain) : null,
+              quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
+              title: row.title != null ? String(row.title).slice(0, 120) : null,
+            }));
+
+            return jsonRes({ bom, cp_name: cpName, total: bom.length } satisfies AssembleResponse, 200);
+          }
+        }
+
+        const bom: AssemblyBlockRow[] = rows.map((row) => ({
+          id: String(row.id ?? ""),
+          content: String(row.content ?? "").slice(0, 800),
+          domain: row.domain != null ? String(row.domain) : null,
+          quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
+          title: row.title != null ? String(row.title).slice(0, 120) : null,
+        }));
+
+        return jsonRes({ bom, cp_name: cpName, total: bom.length } satisfies AssembleResponse, 200);
+      },
+    },
+  },
+});

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StorylineRouteImport } from './routes/storyline'
+import { Route as ConsultingRouteImport } from './routes/consulting'
 import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as MondayReviewRouteImport } from './routes/monday-review'
@@ -43,6 +44,7 @@ import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.me
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
 import { Route as ApiEngagementsIdPatternsRouteImport } from './routes/api/engagements.$id.patterns'
 import { Route as ApiEngagementsIdDeliverableRouteImport } from './routes/api/engagements.$id.deliverable'
+import { Route as ApiConsultingAssembleRouteImport } from './routes/api/consulting.assemble'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -52,6 +54,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const StorylineRoute = StorylineRouteImport.update({
   id: '/storyline',
   path: '/storyline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultingRoute = ConsultingRouteImport.update({
+  id: '/consulting',
+  path: '/consulting',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatternsRoute = PatternsRouteImport.update({
@@ -179,6 +186,11 @@ const ApiStorylineRoute = ApiStorylineRouteImport.update({
   path: '/api/storyline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiConsultingAssembleRoute = ApiConsultingAssembleRouteImport.update({
+  id: '/api/consulting/assemble',
+  path: '/api/consulting/assemble',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeliverableExportRoute = ApiDeliverableExportRouteImport.update({
   id: '/api/deliverable/export',
   path: '/api/deliverable/export',
@@ -253,6 +265,8 @@ export interface FileRoutesByFullPath {
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
   '/storyline': typeof StorylineRoute
   '/api/storyline': typeof ApiStorylineRoute
+  '/consulting': typeof ConsultingRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -289,6 +303,8 @@ export interface FileRoutesByTo {
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
   '/storyline': typeof StorylineRoute
   '/api/storyline': typeof ApiStorylineRoute
+  '/consulting': typeof ConsultingRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -326,6 +342,8 @@ export interface FileRoutesById {
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
   '/storyline': typeof StorylineRoute
   '/api/storyline': typeof ApiStorylineRoute
+  '/consulting': typeof ConsultingRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -364,6 +382,8 @@ export interface FileRouteTypes {
     | '/api/mrp/canvas/resolve'
     | '/storyline'
     | '/api/storyline'
+    | '/consulting'
+    | '/api/consulting/assemble'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -400,6 +420,8 @@ export interface FileRouteTypes {
     | '/api/mrp/canvas/resolve'
     | '/storyline'
     | '/api/storyline'
+    | '/consulting'
+    | '/api/consulting/assemble'
   id:
     | '__root__'
     | '/'
@@ -436,6 +458,8 @@ export interface FileRouteTypes {
     | '/api/mrp/canvas/resolve'
     | '/storyline'
     | '/api/storyline'
+    | '/consulting'
+    | '/api/consulting/assemble'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -469,6 +493,8 @@ export interface RootRouteChildren {
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
   StorylineRoute: typeof StorylineRoute
   ApiStorylineRoute: typeof ApiStorylineRoute
+  ConsultingRoute: typeof ConsultingRoute
+  ApiConsultingAssembleRoute: typeof ApiConsultingAssembleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -711,6 +737,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStorylineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/consulting': {
+      id: '/consulting'
+      path: '/consulting'
+      fullPath: '/consulting'
+      preLoaderRoute: typeof ConsultingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/consulting/assemble': {
+      id: '/api/consulting/assemble'
+      path: '/api/consulting/assemble'
+      fullPath: '/api/consulting/assemble'
+      preLoaderRoute: typeof ApiConsultingAssembleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -771,6 +811,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
   StorylineRoute: StorylineRoute,
   ApiStorylineRoute: ApiStorylineRoute,
+  ConsultingRoute: ConsultingRoute,
+  ApiConsultingAssembleRoute: ApiConsultingAssembleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
