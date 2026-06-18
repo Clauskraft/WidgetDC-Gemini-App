@@ -597,6 +597,82 @@ function EngagementConfidence({ engagement }: { engagement: EngagementRow }) {
   );
 }
 
+// ─── CitationsPanel BOM-item ────────────────────────────────────────────────
+// Reusable atom: viser engagement's linked patterns som citations (belæg-links).
+// Hentes lazy når brugeren åbner preview-footer. Kan genbruges i Monday Review,
+// chat-window og enhver kontekst med engagement_id + citations_count.
+
+function CitationsPanel({ engagementId, count }: { engagementId: string; count: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const [patterns, setPatterns] = useState<PatternRef[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  const load = useCallback(async () => {
+    if (fetched) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/patterns`);
+      const body = (await res.json()) as EngagementPatternsResponse;
+      if (res.ok) setPatterns(body.linked.slice(0, 12));
+      setFetched(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [engagementId, fetched]);
+
+  const toggle = () => {
+    if (!expanded && !fetched) void load();
+    setExpanded((v) => !v);
+  };
+
+  return (
+    <div>
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition"
+      >
+        <BookOpen className="h-3 w-3" />
+        <span>
+          {count} {count === 1 ? "citation" : "citationer"}
+        </span>
+        <ChevronRight
+          className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-1.5 space-y-1">
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          {!loading && patterns.length === 0 && fetched && (
+            <p className="text-[10px] text-muted-foreground">Ingen linkede patterns endnu</p>
+          )}
+          {patterns.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1"
+            >
+              <span className="text-[10px] font-medium text-foreground truncate flex-1">
+                {p.name}
+              </span>
+              {p.domain && (
+                <span className="shrink-0 text-[9px] text-muted-foreground bg-muted rounded px-1">
+                  {p.domain}
+                </span>
+              )}
+              {p.canonical_ref && (
+                <span className="shrink-0 text-[9px] text-primary font-mono truncate max-w-[80px]" title={p.canonical_ref}>
+                  {p.canonical_ref.split("/").pop()}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DELIVERABLE_KINDS: { id: DeliverableKind; label: string }[] = [
   { id: "analysis", label: "Analyse" },
   { id: "roadmap", label: "Roadmap" },
@@ -720,16 +796,18 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
           <div className="max-h-72 overflow-y-auto px-3 py-3">
             <MessageContent text={preview.markdown} />
           </div>
-          <div className="border-t border-border px-3 py-2 flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
-            <span>
-              {preview.citations} citationer
-              {preview.signed_status
-                ? ` · ${preview.signed_status}`
-                : " · Afventer godkendelse"}
-            </span>
-            {lastQuality && preview.id === artifacts[0]?.id && (
-              <ConfidenceDots score={lastQuality.score} />
-            )}
+          <div className="border-t border-border px-3 py-2 flex items-start justify-between gap-3">
+            <CitationsPanel engagementId={engagementId} count={preview.citations} />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              {preview.signed_status ? (
+                <span className="text-[10px] text-muted-foreground">{preview.signed_status}</span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Afventer godkendelse</span>
+              )}
+              {lastQuality && preview.id === artifacts[0]?.id && (
+                <ConfidenceDots score={lastQuality.score} />
+              )}
+            </div>
           </div>
         </div>
       )}

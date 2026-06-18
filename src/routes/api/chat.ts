@@ -15,6 +15,7 @@ import {
   fetchRagGrounding,
   modelPolicyPreflight,
   storeChatMemory,
+  emitChatBOMItem,
   type ChatIntentDetection,
   type ChatMessage,
   type RagSource,
@@ -368,6 +369,24 @@ export const Route = createFileRoute("/api/chat")({
                 { query: lastUser.content.slice(0, 200), provider: meta.provider ?? "platform" },
                 correlationId,
               ).catch(() => {});
+            }
+
+            // BOMItem emit — fire-and-forget, never blocks the stream.
+            // Records this chat turn as a BOMItem lineage event so the
+            // decision-BOM coverage canary can count chat turns.
+            // item_type sliced by what actually happened this turn:
+            //   grounding sources found  → grounding
+            //   intent routing fired     → routing
+            //   fallback (no platform)   → synthesis (LLM fallback)
+            //   normal completion        → provider_call
+            if (produced) {
+              void emitChatBOMItem({
+                correlationId,
+                provider: meta.provider,
+                model: meta.model,
+                intentTool: topIntent?.tool,
+                hasGrounding: sources.length > 0,
+              }).catch(() => {});
             }
           },
         });
