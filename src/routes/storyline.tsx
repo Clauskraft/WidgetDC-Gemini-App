@@ -6,26 +6,17 @@ import {
   ChevronRight,
   ChevronLeft,
   Loader2,
-  Download,
   Check,
   AlertTriangle,
-  GripVertical,
-  Edit3,
   CheckCircle2,
-  XCircle,
-  FileDown,
-  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  generatePPTX,
-  generateDOCX,
-  generateXLSX,
-  downloadBlob,
-  slidesToMarkdown,
-  type DocTheme,
-} from "@/lib/output-generators";
-import type { HeadlineSlide, StorylineResponse, MeceResponse } from "./api/storyline";
+import { SlideCard } from "@/components/SlideCard";
+import { ThemePicker, THEMES } from "@/components/ThemePicker";
+import { MeceResultPanel } from "@/components/MeceResultPanel";
+import { ExportToolbar } from "@/components/ExportToolbar";
+import type { DocTheme } from "@/lib/output-generators";
+import type { HeadlineSlide, StorylineResponse, MeceResponse, ComplianceTier } from "./api/storyline";
 
 export const Route = createFileRoute("/storyline")({
   head: () => ({
@@ -39,131 +30,24 @@ export const Route = createFileRoute("/storyline")({
 
 type Kind = "analysis" | "roadmap" | "assessment";
 type Step = 1 | 2 | 3;
-type ExportFormat = "pptx" | "docx" | "xlsx";
 
 const KINDS: { id: Kind; label: string; hint: string }[] = [
-  { id: "analysis", label: "Analyse", hint: "Problem → findings → anbefalinger" },
-  { id: "roadmap", label: "Roadmap", hint: "Vision → faser → milepæle" },
+  { id: "analysis",   label: "Analyse",    hint: "Problem → findings → anbefalinger" },
+  { id: "roadmap",    label: "Roadmap",    hint: "Vision → faser → milepæle" },
   { id: "assessment", label: "Assessment", hint: "Kriterier → vurdering → score" },
 ];
 
-const THEMES: { id: DocTheme; label: string; dot: string }[] = [
-  { id: "modern",   label: "Modern",   dot: "bg-blue-500" },
-  { id: "mckinsey", label: "McKinsey", dot: "bg-indigo-600" },
-  { id: "bcg",      label: "BCG",      dot: "bg-emerald-600" },
-  { id: "bain",     label: "Bain",     dot: "bg-red-600" },
-  { id: "dark",     label: "Dark",     dot: "bg-slate-700" },
+const COMPLIANCE_TIERS: { id: ComplianceTier; label: string; hint: string }[] = [
+  { id: "public",       label: "Public",       hint: "Kan deles frit" },
+  { id: "confidential", label: "Confidential", hint: "Kun internt" },
+  { id: "restricted",   label: "Restricted",   hint: "Strengt fortroligt" },
 ];
 
-function SlideCard({
-  slide,
-  index,
-  total,
-  onUpdate,
-  onMoveUp,
-  onMoveDown,
-}: {
-  slide: HeadlineSlide;
-  index: number;
-  total: number;
-  onUpdate: (updated: HeadlineSlide) => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}) {
-  const [editingGT, setEditingGT] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(false);
-
-  return (
-    <div className="group relative rounded-xl border border-border bg-card p-4 transition hover:border-primary/40">
-      <div className="mb-2 flex items-start gap-2">
-        <div className="flex flex-col gap-0.5 pt-1">
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-          >
-            <GripVertical className="h-3 w-3" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-          >
-            <GripVertical className="h-3 w-3 rotate-180" />
-          </button>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-              {index + 1}
-            </span>
-            {editingTitle ? (
-              <input
-                autoFocus
-                value={slide.title}
-                onChange={(e) => onUpdate({ ...slide, title: e.target.value })}
-                onBlur={() => setEditingTitle(false)}
-                className="flex-1 rounded border border-input bg-background px-2 py-0.5 text-sm outline-none focus:border-primary"
-              />
-            ) : (
-              <button
-                onClick={() => setEditingTitle(true)}
-                className="flex-1 text-left text-sm font-semibold text-foreground hover:text-primary"
-              >
-                {slide.title}
-                <Edit3 className="ml-1 inline h-3 w-3 opacity-0 group-hover:opacity-60" />
-              </button>
-            )}
-          </div>
-
-          {/* Governing thought */}
-          <div className="mb-2 ml-7">
-            {editingGT ? (
-              <textarea
-                autoFocus
-                value={slide.governing_thought}
-                onChange={(e) => onUpdate({ ...slide, governing_thought: e.target.value })}
-                onBlur={() => setEditingGT(false)}
-                rows={2}
-                placeholder="Governing thought — hvad er konklusionen på denne slide?"
-                className="w-full resize-none rounded border border-primary/50 bg-background px-2 py-1 text-sm text-primary outline-none"
-              />
-            ) : (
-              <button
-                onClick={() => setEditingGT(true)}
-                className="w-full text-left text-sm text-primary font-medium italic"
-              >
-                {slide.governing_thought || (
-                  <span className="text-muted-foreground not-italic">"Klik for at tilføje governing thought…"</span>
-                )}
-                <Edit3 className="ml-1 inline h-3 w-3 opacity-0 group-hover:opacity-60" />
-              </button>
-            )}
-          </div>
-
-          {/* Key points */}
-          <ul className="ml-7 space-y-1">
-            {slide.key_points.map((pt, pi) => (
-              <li key={pi} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                <span className="mt-0.5 text-primary">▸</span>
-                <input
-                  value={pt}
-                  onChange={(e) => {
-                    const points = [...slide.key_points];
-                    points[pi] = e.target.value;
-                    onUpdate({ ...slide, key_points: points });
-                  }}
-                  className="flex-1 bg-transparent outline-none hover:underline focus:underline"
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
+const STEPS = [
+  { n: 1 as Step, label: "Brief" },
+  { n: 2 as Step, label: "Rediger outline" },
+  { n: 3 as Step, label: "MECE + Export" },
+];
 
 function StorylineRoute() {
   const [step, setStep] = useState<Step>(1);
@@ -171,6 +55,7 @@ function StorylineRoute() {
   const [kind, setKind] = useState<Kind>("analysis");
   const [slideCount, setSlideCount] = useState(5);
   const [theme, setTheme] = useState<DocTheme>("modern");
+  const [complianceTier, setComplianceTier] = useState<ComplianceTier>("public");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,8 +64,6 @@ function StorylineRoute() {
 
   const [meceLoading, setMeceLoading] = useState(false);
   const [meceResult, setMeceResult] = useState<MeceResponse | null>(null);
-
-  const [exporting, setExporting] = useState<ExportFormat | null>(null);
 
   const briefReady = brief.trim().length >= 10;
 
@@ -193,13 +76,15 @@ function StorylineRoute() {
       const res = await fetch("/api/storyline", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brief: brief.trim(), kind, slide_count: slideCount }),
+        body: JSON.stringify({
+          brief: brief.trim(),
+          kind,
+          slide_count: slideCount,
+          compliance_tier: complianceTier,
+        }),
       });
       const data = (await res.json()) as StorylineResponse & { error?: string };
-      if (!res.ok) {
-        setError(data.error ?? `Fejl (${res.status})`);
-        return;
-      }
+      if (!res.ok) { setError(data.error ?? `Fejl (${res.status})`); return; }
       setSlides(data.slides);
       setDegraded(data.degraded ?? false);
       setStep(2);
@@ -210,7 +95,7 @@ function StorylineRoute() {
     }
   };
 
-  const checkMece = async () => {
+  const checkMece = useCallback(async () => {
     setMeceLoading(true);
     setMeceResult(null);
     try {
@@ -221,12 +106,10 @@ function StorylineRoute() {
       });
       const data = (await res.json()) as MeceResponse & { error?: string };
       if (res.ok) setMeceResult(data);
-    } catch {
-      // Silent — MECE check is best-effort
-    } finally {
+    } catch { /* best-effort */ } finally {
       setMeceLoading(false);
     }
-  };
+  }, [slides]);
 
   const moveSlide = useCallback((from: number, to: number) => {
     setSlides((prev) => {
@@ -241,36 +124,15 @@ function StorylineRoute() {
     setSlides((prev) => prev.map((s, i) => (i === index ? updated : s)));
   }, []);
 
-  const doExport = async (format: ExportFormat) => {
-    setExporting(format);
-    try {
-      const markdown = slidesToMarkdown(slides);
-      const title = slides[0]?.title ?? "storyline";
-      const date = new Date().toISOString().slice(0, 10);
-      const base = `${title.replace(/[^a-z0-9æøå]/gi, "-").toLowerCase()}-${date}`;
-
-      if (format === "pptx") {
-        downloadBlob(generatePPTX(markdown, theme), `${base}.html`);
-      } else if (format === "docx") {
-        downloadBlob(generateDOCX(markdown, theme), `${base}.doc`);
-      } else {
-        downloadBlob(generateXLSX(markdown), `${base}.xls`);
-      }
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const proceed = async () => {
+  const proceed = useCallback(async () => {
     await checkMece();
     setStep(3);
-  };
+  }, [checkMece]);
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
 
-        {/* Header */}
         <header className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
             <Presentation className="h-5 w-5 text-white" />
@@ -285,11 +147,7 @@ function StorylineRoute() {
 
         {/* Step indicators */}
         <div className="mb-8 flex items-center gap-2 text-xs">
-          {[
-            { n: 1, label: "Brief" },
-            { n: 2, label: "Rediger outline" },
-            { n: 3, label: "MECE + Export" },
-          ].map(({ n, label }) => (
+          {STEPS.map(({ n, label }) => (
             <div key={n} className="flex items-center gap-2">
               <div
                 className={cn(
@@ -319,9 +177,7 @@ function StorylineRoute() {
         {step === 1 && (
           <div className="space-y-5 rounded-2xl border border-border bg-card p-5">
             <div>
-              <label htmlFor="brief" className="mb-1.5 block text-sm font-medium">
-                Brief
-              </label>
+              <label htmlFor="brief" className="mb-1.5 block text-sm font-medium">Brief</label>
               <textarea
                 id="brief"
                 value={brief}
@@ -372,20 +228,25 @@ function StorylineRoute() {
 
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">Tema</label>
-                  <div className="flex flex-wrap gap-2">
-                    {THEMES.map((t) => (
+                  <ThemePicker value={theme} onChange={setTheme} />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Fortrolighed</label>
+                  <div className="flex flex-col gap-1">
+                    {COMPLIANCE_TIERS.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => setTheme(t.id)}
+                        onClick={() => setComplianceTier(t.id)}
                         className={cn(
-                          "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition",
-                          theme === t.id
-                            ? "border-primary text-foreground"
+                          "rounded-lg border px-3 py-1.5 text-left text-xs transition",
+                          complianceTier === t.id
+                            ? "border-primary bg-primary/10 text-foreground"
                             : "border-input text-muted-foreground hover:bg-accent",
                         )}
                       >
-                        <div className={cn("h-2.5 w-2.5 rounded-full", t.dot)} />
-                        {t.label}
+                        <span className="font-medium">{t.label}</span>
+                        <span className="ml-2 text-muted-foreground">{t.hint}</span>
                       </button>
                     ))}
                   </div>
@@ -470,73 +331,7 @@ function StorylineRoute() {
               </button>
             </div>
 
-            {/* MECE result */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {meceLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  ) : meceResult?.passed ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  ) : meceResult ? (
-                    <XCircle className="h-4 w-4 text-amber-500" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="text-sm font-medium">
-                    {meceLoading
-                      ? "Kører MECE-check…"
-                      : meceResult?.passed
-                      ? "MECE godkendt"
-                      : meceResult
-                      ? "MECE: mulige forbedringer"
-                      : "MECE-check ikke kørt"}
-                  </span>
-                </div>
-                <button
-                  onClick={checkMece}
-                  disabled={meceLoading}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Kør igen
-                </button>
-              </div>
-
-              {meceResult && !meceResult.passed && (
-                <div className="space-y-3">
-                  {meceResult.issues.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">Problemer:</p>
-                      <ul className="space-y-1">
-                        {meceResult.issues.map((issue, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                            <span className="text-amber-500">•</span>{issue}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {meceResult.suggestions.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-primary">Forslag:</p>
-                      <ul className="space-y-1">
-                        {meceResult.suggestions.map((s, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                            <span className="text-primary">→</span>{s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-              {meceResult?.passed && (
-                <p className="text-xs text-muted-foreground">
-                  Slides er MECE — ingen overlappende emner, storylinen dækker problemet fuldt ud.
-                </p>
-              )}
-            </div>
+            <MeceResultPanel loading={meceLoading} result={meceResult} onRerun={checkMece} />
 
             {/* Slide summary */}
             <div className="rounded-2xl border border-border bg-card p-5">
@@ -558,51 +353,7 @@ function StorylineRoute() {
               </ol>
             </div>
 
-            {/* Export */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h3 className="mb-1 text-sm font-medium">Eksportér</h3>
-              <p className="mb-4 text-xs text-muted-foreground">
-                Tema: <strong>{theme}</strong> — genererer direkte fra outline i browseren (ingen server-round-trip).
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {(
-                  [
-                    { format: "pptx" as ExportFormat, label: "PowerPoint (.html)", icon: <Presentation className="h-4 w-4" /> },
-                    { format: "docx" as ExportFormat, label: "Word (.doc)", icon: <FileDown className="h-4 w-4" /> },
-                    { format: "xlsx" as ExportFormat, label: "Excel (.xls)", icon: <FileDown className="h-4 w-4" /> },
-                  ] as const
-                ).map(({ format, label, icon }) => (
-                  <button
-                    key={format}
-                    onClick={() => doExport(format)}
-                    disabled={exporting !== null}
-                    className="inline-flex items-center gap-2 rounded-full border border-input px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40"
-                  >
-                    {exporting === format ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tema-vælger på export step */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTheme(t.id)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition",
-                      theme === t.id
-                        ? "border-primary text-foreground"
-                        : "border-input text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    <div className={cn("h-2.5 w-2.5 rounded-full", t.dot)} />
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <ExportToolbar slides={slides} theme={theme} onThemeChange={setTheme} />
 
             <button
               onClick={() => { setStep(1); setSlides([]); setMeceResult(null); setBrief(""); }}

@@ -19,9 +19,12 @@ export type HeadlineSlide = {
   key_points: string[];
 };
 
+export type ComplianceTier = "public" | "confidential" | "restricted";
+
 export type StorylineResponse = {
   slides: HeadlineSlide[];
   correlationId: string;
+  compliance_tier: ComplianceTier;
   degraded?: boolean;
 };
 
@@ -36,6 +39,7 @@ const OutlineBodySchema = z.object({
   brief: z.string().min(10).max(4000),
   kind: z.enum(["analysis", "roadmap", "assessment"]).default("analysis"),
   slide_count: z.number().int().min(3).max(10).default(5),
+  compliance_tier: z.enum(["public", "confidential", "restricted"]).default("public"),
 });
 
 const MeceBodySchema = z.object({
@@ -144,8 +148,8 @@ export const Route = createFileRoute("/api/storyline")({
         const parsed = OutlineBodySchema.safeParse(raw);
         if (!parsed.success) return jsonRes({ error: "Invalid request", details: parsed.error.flatten() }, 422, correlationId);
 
-        const { brief, kind, slide_count } = parsed.data;
-        logServer("info", { event: "storyline_generate_start", correlationId, kind, slide_count });
+        const { brief, kind, slide_count, compliance_tier } = parsed.data;
+        logServer("info", { event: "storyline_generate_start", correlationId, kind, slide_count, compliance_tier });
 
         try {
           let slides: HeadlineSlide[] = [];
@@ -183,11 +187,28 @@ export const Route = createFileRoute("/api/storyline")({
           if (slides.length === 0) {
             slides = await generateOutlineFallback(brief, kind, slide_count);
             logServer("warn", { event: "storyline_fallback", correlationId });
-            return jsonRes({ slides, correlationId, degraded: true } satisfies StorylineResponse, 200, correlationId);
+            return jsonRes({ slides, correlationId, compliance_tier, degraded: true } satisfies StorylineResponse, 200, correlationId);
           }
 
-          logServer("info", { event: "storyline_generate_success", correlationId, slideCount: slides.length });
-          return jsonRes({ slides, correlationId } satisfies StorylineResponse, 200, correlationId);
+          // Best-effort BOMItem emit — PRODUCED edge (non-blocking)
+          if (isPlatformConfigured()) {
+            callMcpTool("memory_store", {
+              agent_id: "storyline-builder",
+              key: `storyline-outline-${correlationId}`,
+              value: JSON.stringify({
+                kind,
+                compliance_tier,
+                slide_count: slides.length,
+                titles: slides.map((s) => s.title),
+                brief: brief.slice(0, 200),
+              }),
+              type: "consulting_artifact",
+              tags: ["storyline", "outline", kind, compliance_tier],
+            }).catch(() => {/* fire-and-forget */});
+          }
+
+          logServer("info", { event: "storyline_generate_success", correlationId, slideCount: slides.length, compliance_tier });
+          return jsonRes({ slides, correlationId, compliance_tier } satisfies StorylineResponse, 200, correlationId);
         } catch (error) {
           logServer("error", { event: "storyline_exception", correlationId, summary: summarizeError(error) }, error);
           return jsonRes({ error: "Storyline generation failed", correlationId }, 500, correlationId);
