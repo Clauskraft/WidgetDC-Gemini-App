@@ -2,7 +2,7 @@
  * POST /api/consulting/assemble — Assemble a BOM of AssemblyBlocks for a ConsultingProcess.
  * GET  /api/consulting/assemble — List available ConsultingProcess nodes (for picker).
  *
- * POST body: { cp_name: string, brief: string, max_blocks?: number, domain_filter?: string }
+ * POST body: { cp_name?: string, brief: string, max_blocks?: number, domain_filter?: string }
  * Response: { bom: AssemblyBlockRow[], cp_name: string, total: number, error?: string }
  */
 import { createFileRoute } from "@tanstack/react-router";
@@ -17,7 +17,7 @@ export type AssemblyBlockRow = {
 };
 
 export type AssembleBody = {
-  cp_name: string;
+  cp_name?: string;
   brief: string;
   max_blocks?: number;
   domain_filter?: string;
@@ -100,23 +100,67 @@ export const Route = createFileRoute("/api/consulting/assemble")({
           return jsonRes({ bom: [], cp_name: "", total: 0, error: "Ugyldig JSON" } satisfies AssembleResponse, 400);
         }
 
-        const cpName = body.cp_name?.trim();
+        const cpName = body.cp_name?.trim() ?? "";
         const brief = body.brief?.trim();
-        if (!cpName || !brief) {
+        if (!brief) {
           return jsonRes(
-            { bom: [], cp_name: cpName ?? "", total: 0, error: "cp_name og brief er påkrævet" } satisfies AssembleResponse,
+            { bom: [], cp_name: cpName, total: 0, error: "brief er påkrævet" } satisfies AssembleResponse,
             400,
           );
         }
 
         // F1: NaN-safe parse — floor+fallback guards against non-numeric input
-        const maxBlocks = Math.min(20, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
+        const maxBlocks = Math.min(50, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
         const domainFilter = body.domain_filter?.trim() ?? "";
 
         // F2: parameterized Cypher — no string interpolation of user input
         const domainClause = domainFilter
           ? "AND toLower(coalesce(ab.domain,'')) CONTAINS toLower($domainFilter)"
           : "";
+
+        // Brief-only mode: no cp_name provided — return top AssemblyBlocks by quality_score
+        if (!cpName) {
+          const briefOnlyCypher = `
+            MATCH (ab:AssemblyBlock)
+            WHERE ab.content IS NOT NULL ${domainClause}
+            RETURN
+              coalesce(ab.id, toString(id(ab))) AS id,
+              ab.content AS content,
+              ab.domain AS domain,
+              coalesce(ab.quality_score, 0.5) AS quality_score,
+              ab.title AS title
+            ORDER BY quality_score DESC
+            LIMIT ${maxBlocks}
+          `;
+          const boParams: Record<string, string> = {};
+          if (domainFilter) boParams.domainFilter = domainFilter;
+
+          const boResult = await callMcpTool<unknown>(
+            "data_graph_read",
+            { query: briefOnlyCypher, params: boParams },
+            { timeoutMs: 15000 },
+          ).catch(() => null);
+
+          if (boResult == null) {
+            return jsonRes(
+              { bom: [], cp_name: "", total: 0, error: "Platform utilgængeligt" } satisfies AssembleResponse,
+              503,
+            );
+          }
+
+          const boR = boResult as Record<string, unknown>;
+          const boI = (boR.result as Record<string, unknown>) ?? boR;
+          const boRaw: unknown = boI.results ?? boI.rows ?? boI.records ?? boI.data;
+          const boRows = Array.isArray(boRaw) ? (boRaw as Array<Record<string, unknown>>) : [];
+          const boBom: AssemblyBlockRow[] = boRows.map((row) => ({
+            id: String(row.id ?? ""),
+            content: String(row.content ?? "").slice(0, 800),
+            domain: row.domain != null ? String(row.domain) : null,
+            quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
+            title: row.title != null ? String(row.title).slice(0, 120) : null,
+          }));
+          return jsonRes({ bom: boBom, cp_name: "", total: boBom.length } satisfies AssembleResponse, 200);
+        }
 
         // First try REQUIRES edges (seeded by legofactory.seed_cp_ab_edges)
         const cypher = `
