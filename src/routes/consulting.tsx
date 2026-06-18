@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Boxes, Search, RefreshCw, Loader2, ChevronRight, X, Sparkles, Copy, Check, AlertTriangle } from "lucide-react";
+import {
+  Boxes,
+  Search,
+  RefreshCw,
+  Loader2,
+  ChevronRight,
+  X,
+  Sparkles,
+  Copy,
+  Check,
+  AlertTriangle,
+  ExternalLink,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AssemblyBlockRow, AssembleResponse, CpListResponse } from "./api/consulting.assemble";
 
@@ -17,6 +29,173 @@ export const Route = createFileRoute("/consulting")({
   component: ConsultingRoute,
 });
 
+function qualityBadge(score: number): { label: string; className: string } {
+  if (score >= 0.7) return { label: `${(score * 100).toFixed(0)}%`, className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30" };
+  if (score >= 0.4) return { label: `${(score * 100).toFixed(0)}%`, className: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30" };
+  return { label: `${(score * 100).toFixed(0)}%`, className: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/30" };
+}
+
+interface PreviewDrawerProps {
+  block: AssemblyBlockRow;
+  onClose: () => void;
+  onCopy: (id: string, content: string) => void;
+  copiedId: string | null;
+}
+
+function PreviewDrawer({ block, onClose, onCopy, copiedId }: PreviewDrawerProps) {
+  const badge = qualityBadge(block.quality_score);
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div
+        className="relative flex h-full w-[420px] flex-col bg-card shadow-2xl border-l border-border overflow-hidden animate-in slide-in-from-right-4 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drawer header */}
+        <div className="flex shrink-0 items-start gap-3 border-b border-border px-5 py-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground leading-snug">
+              {block.title ?? block.id}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {block.domain && (
+                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-500/30">
+                  {block.domain}
+                </span>
+              )}
+              <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", badge.className)}>
+                Quality {badge.label}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5 mt-0.5">
+            <button
+              onClick={() => onCopy(block.id, block.content)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent"
+              title="Kopiér indhold"
+            >
+              {copiedId === block.id ? (
+                <><Check className="h-3.5 w-3.5 text-emerald-500" />Kopieret</>
+              ) : (
+                <><Copy className="h-3.5 w-3.5" />Kopiér</>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent"
+              title="Luk"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Metadata strip */}
+        <div className="shrink-0 flex items-center gap-4 border-b border-border px-5 py-2 text-[11px] text-muted-foreground">
+          <span className="truncate font-mono opacity-60">{block.id.slice(0, 20)}…</span>
+        </div>
+
+        {/* Full content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/80">
+            {block.content}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 border-t border-border px-5 py-3">
+          <p className="text-[10px] text-muted-foreground/60">
+            BOM-item · AssemblyBlock · Knowledge Graph
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BomCard({
+  block,
+  index,
+  onPreview,
+  onCopy,
+  copiedId,
+}: {
+  block: AssemblyBlockRow;
+  index: number;
+  onPreview: (block: AssemblyBlockRow) => void;
+  onCopy: (id: string, content: string) => void;
+  copiedId: string | null;
+}) {
+  const badge = qualityBadge(block.quality_score);
+
+  return (
+    <div className="group relative flex flex-col rounded-xl border border-border bg-card transition hover:border-border/60 hover:shadow-md hover:shadow-black/10">
+      {/* Card header */}
+      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+          {index + 1}
+        </span>
+        <div className="flex-1 min-w-0">
+          {block.title ? (
+            <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
+              {block.title}
+            </p>
+          ) : (
+            <p className="text-xs font-mono text-muted-foreground/60 truncate">{block.id}</p>
+          )}
+
+          {/* Tags row */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {block.domain && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-500/25">
+                {block.domain}
+              </span>
+            )}
+            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+              {badge.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions — visible on hover */}
+        <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onCopy(block.id, block.content)}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent transition"
+            title="Kopiér indhold"
+          >
+            {copiedId === block.id ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            onClick={() => onPreview(block)}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent transition"
+            title="Forhåndsvisning"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content preview */}
+      <div
+        className="cursor-pointer px-4 pb-4 pl-12"
+        onClick={() => onPreview(block)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && onPreview(block)}
+        aria-label="Åbn forhåndsvisning"
+      >
+        <p className="text-xs leading-relaxed text-muted-foreground line-clamp-3">
+          {block.content}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ConsultingRoute() {
   const [cps, setCps] = useState<{ name: string; domain: string | null }[]>([]);
   const [cpFilter, setCpFilter] = useState("");
@@ -30,6 +209,7 @@ function ConsultingRoute() {
   const [error, setError] = useState<string | null>(null);
   const [cpError, setCpError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewBlock, setPreviewBlock] = useState<AssemblyBlockRow | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchCps = useCallback(async () => {
@@ -63,6 +243,7 @@ function ConsultingRoute() {
     setLoadingBom(true);
     setError(null);
     setBom(null);
+    setPreviewBlock(null);
     try {
       const res = await fetch("/api/consulting/assemble", {
         method: "POST",
@@ -80,7 +261,9 @@ function ConsultingRoute() {
       } else {
         setBom(body.bom);
         if (body.bom.length === 0) {
-          setError("Ingen AssemblyBlocks fundet for denne ConsultingProcess. G5-gap kan stadig være aktiv — CP→AB REQUIRES edges ikke seeded endnu.");
+          setError(
+            "Konfigurér REQUIRES-edges i backend for at se blocks. G5-gap aktiv — CP→AB edges ikke seeded endnu."
+          );
         }
       }
     } catch (e) {
@@ -100,7 +283,7 @@ function ConsultingRoute() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left panel: CP picker */}
-      <div className={cn("flex w-72 shrink-0 flex-col overflow-hidden border-r border-border transition-all", bom ? "w-64" : "w-72")}>
+      <div className={cn("flex shrink-0 flex-col overflow-hidden border-r border-border transition-all duration-200", bom ? "w-60" : "w-72")}>
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
             <Boxes className="h-4 w-4 text-white" />
@@ -150,6 +333,7 @@ function ConsultingRoute() {
                 setSelectedCp(cp.name);
                 setBom(null);
                 setError(null);
+                setPreviewBlock(null);
                 setTimeout(() => briefRef.current?.focus(), 80);
               }}
               className={cn(
@@ -171,7 +355,7 @@ function ConsultingRoute() {
         </div>
       </div>
 
-      {/* Right panel: brief + BOM */}
+      {/* Right panel: brief + BOM grid */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-6 py-5">
@@ -181,12 +365,12 @@ function ConsultingRoute() {
             </h1>
             <p className="text-xs text-muted-foreground">
               {selectedCp
-                ? "Beskriv opgaven — assemblér relevante byggeklodser"
+                ? "Beskriv opgaven — assemblér relevante byggeklodser fra knowledge graph"
                 : "Vælg en ConsultingProcess til venstre"}
             </p>
           </div>
-          {bom && (
-            <span className="ml-auto rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+          {bom && bom.length > 0 && (
+            <span className="ml-auto rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/20">
               {bom.length} blokke
             </span>
           )}
@@ -223,7 +407,7 @@ function ConsultingRoute() {
                   onChange={(e) => setMaxBlocks(Number(e.target.value))}
                   className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {[5, 10, 15, 20].map((n) => (
+                  {[5, 10, 15, 20, 50].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
@@ -251,7 +435,7 @@ function ConsultingRoute() {
           </div>
         )}
 
-        {/* BOM results */}
+        {/* BOM card grid */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {!bom && !loadingBom && !error && selectedCp && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -271,54 +455,31 @@ function ConsultingRoute() {
             </div>
           )}
           {bom && bom.length > 0 && (
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
               {bom.map((block, idx) => (
-                <div
+                <BomCard
                   key={block.id}
-                  className="group relative rounded-xl border border-border bg-card p-4 transition hover:border-border/80 hover:shadow-sm"
-                >
-                  <div className="mb-2 flex items-start gap-3">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      {block.title ? (
-                        <p className="text-sm font-medium text-foreground leading-snug">{block.title}</p>
-                      ) : (
-                        <p className="text-xs font-mono text-muted-foreground/60 truncate">{block.id}</p>
-                      )}
-                      <div className="mt-1 flex items-center gap-2">
-                        {block.domain && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                            {block.domain}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-muted-foreground">
-                          quality {(block.quality_score * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => copyContent(block.id, block.content)}
-                      className="shrink-0 rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-accent group-hover:opacity-100"
-                      title="Kopiér indhold"
-                    >
-                      {copiedId === block.id ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
-                  <p className="pl-8 text-xs leading-relaxed text-muted-foreground line-clamp-4">
-                    {block.content}
-                  </p>
-                </div>
+                  block={block}
+                  index={idx}
+                  onPreview={setPreviewBlock}
+                  onCopy={copyContent}
+                  copiedId={copiedId}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Preview drawer */}
+      {previewBlock && (
+        <PreviewDrawer
+          block={previewBlock}
+          onClose={() => setPreviewBlock(null)}
+          onCopy={copyContent}
+          copiedId={copiedId}
+        />
+      )}
     </div>
   );
 }

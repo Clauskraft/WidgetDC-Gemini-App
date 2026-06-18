@@ -9,6 +9,8 @@ import {
   Check,
   AlertTriangle,
   CheckCircle2,
+  Database,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "@/components/SlideCard";
@@ -17,6 +19,7 @@ import { MeceResultPanel } from "@/components/MeceResultPanel";
 import { ExportToolbar } from "@/components/ExportToolbar";
 import type { DocTheme } from "@/lib/output-generators";
 import type { HeadlineSlide, StorylineResponse, MeceResponse, ComplianceTier } from "./api/storyline";
+import type { AssemblyBlockRow, AssembleResponse } from "./api/consulting.assemble";
 
 export const Route = createFileRoute("/storyline")({
   head: () => ({
@@ -64,6 +67,39 @@ function StorylineRoute() {
 
   const [meceLoading, setMeceLoading] = useState(false);
   const [meceResult, setMeceResult] = useState<MeceResponse | null>(null);
+
+  // B3: BOM-blocks per slide (index → blocks)
+  const [slideBom, setSlideBom] = useState<Record<number, AssemblyBlockRow[]>>({});
+  const [slideBomLoading, setSlideBomLoading] = useState<Record<number, boolean>>({});
+  const [slideBomCopied, setSlideBomCopied] = useState<string | null>(null);
+
+  const fetchSlideBom = useCallback(async (slideIndex: number, slideTitle: string) => {
+    setSlideBomLoading((prev) => ({ ...prev, [slideIndex]: true }));
+    try {
+      const res = await fetch("/api/consulting/assemble", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brief: slideTitle, max_blocks: 3 }),
+      });
+      const data = (await res.json()) as AssembleResponse;
+      if (res.ok && !data.error) {
+        setSlideBom((prev) => ({ ...prev, [slideIndex]: data.bom }));
+      } else {
+        setSlideBom((prev) => ({ ...prev, [slideIndex]: [] }));
+      }
+    } catch {
+      setSlideBom((prev) => ({ ...prev, [slideIndex]: [] }));
+    } finally {
+      setSlideBomLoading((prev) => ({ ...prev, [slideIndex]: false }));
+    }
+  }, []);
+
+  const copySlideBomNote = useCallback((id: string, content: string) => {
+    void navigator.clipboard.writeText(content).then(() => {
+      setSlideBomCopied(id);
+      setTimeout(() => setSlideBomCopied(null), 1500);
+    });
+  }, []);
 
   const briefReady = brief.trim().length >= 10;
 
@@ -336,16 +372,74 @@ function StorylineRoute() {
             {/* Slide summary */}
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="mb-3 text-sm font-medium">Outline ({slides.length} slides)</h3>
-              <ol className="space-y-3">
+              <ol className="space-y-4">
                 {slides.map((s, i) => (
                   <li key={i} className="flex gap-3 text-sm">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                       {i + 1}
                     </span>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground">{s.title}</div>
                       {s.governing_thought && (
                         <div className="text-xs text-primary italic mt-0.5">{s.governing_thought}</div>
+                      )}
+
+                      {/* B3: BOM-blocks knap + resultater */}
+                      {!slideBom[i] && (
+                        <button
+                          onClick={() => void fetchSlideBom(i, s.title)}
+                          disabled={slideBomLoading[i]}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-600 dark:text-cyan-400 transition hover:bg-cyan-500/20 disabled:opacity-50"
+                        >
+                          {slideBomLoading[i] ? (
+                            <><Loader2 className="h-3 w-3 animate-spin" />Henter…</>
+                          ) : (
+                            <><Database className="h-3 w-3" />Hent BOM-blocks fra knowledge graph</>
+                          )}
+                        </button>
+                      )}
+                      {slideBom[i] && slideBom[i].length === 0 && (
+                        <p className="mt-1.5 text-[11px] text-muted-foreground/60 italic">
+                          Ingen blocks fundet — G5-gap stadig aktiv.
+                        </p>
+                      )}
+                      {slideBom[i] && slideBom[i].length > 0 && (
+                        <div className="mt-2 space-y-1.5">
+                          {slideBom[i].map((block) => (
+                            <div
+                              key={block.id}
+                              className="group flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2"
+                            >
+                              <div className="flex-1 min-w-0">
+                                {block.domain && (
+                                  <span className="mr-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                                    {block.domain}
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-foreground/80 leading-snug">
+                                  {block.title ?? block.content.slice(0, 80)}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => copySlideBomNote(block.id, block.content)}
+                                className="shrink-0 rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent transition"
+                                title="Kopiér som speaker note"
+                              >
+                                {slideBomCopied === block.id ? (
+                                  <Check className="h-3 w-3 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => setSlideBom((prev) => { const n = {...prev}; delete n[i]; return n; })}
+                            className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition"
+                          >
+                            Skjul blocks
+                          </button>
+                        </div>
                       )}
                     </div>
                   </li>

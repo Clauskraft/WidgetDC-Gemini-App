@@ -110,7 +110,7 @@ export const Route = createFileRoute("/api/consulting/assemble")({
         }
 
         // F1: NaN-safe parse — floor+fallback guards against non-numeric input
-        const maxBlocks = Math.min(20, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
+        const maxBlocks = Math.min(50, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
         const domainFilter = body.domain_filter?.trim() ?? "";
 
         // F2: parameterized Cypher — no string interpolation of user input
