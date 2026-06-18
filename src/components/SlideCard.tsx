@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { GripVertical, Edit3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { HeadlineSlide } from "@/routes/api/storyline";
 
 export function SlideCard({
@@ -9,6 +10,7 @@ export function SlideCard({
   onUpdate,
   onMoveUp,
   onMoveDown,
+  onDrop,
 }: {
   slide: HeadlineSlide;
   index: number;
@@ -16,28 +18,83 @@ export function SlideCard({
   onUpdate: (updated: HeadlineSlide) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onDrop?: (fromIndex: number, toIndex: number) => void;
 }) {
   const [editingGT, setEditingGT] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [dragOver, setDragOver] = useState<"top" | "bottom" | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+    setDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setDragging(false);
+    setDragOver(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!dragRef.current) return;
+    const rect = dragRef.current.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    setDragOver(e.clientY < mid ? "top" : "bottom");
+  };
+
+  const handleDragLeave = () => setDragOver(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(null);
+    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (isNaN(fromIndex) || fromIndex === index) return;
+    if (!dragRef.current) return;
+    const rect = dragRef.current.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const insertAfter = e.clientY >= mid;
+    let toIndex = insertAfter ? index : index - 1;
+    if (fromIndex < index) toIndex = insertAfter ? index : index - 1;
+    else toIndex = insertAfter ? index + 1 : index;
+    // clamp
+    toIndex = Math.max(0, Math.min(total - 1, toIndex));
+    if (toIndex !== fromIndex) onDrop?.(fromIndex, toIndex);
+  };
 
   return (
-    <div className="group relative rounded-xl border border-border bg-card p-4 transition hover:border-primary/40">
+    <div
+      ref={dragRef}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        "group relative rounded-xl border bg-card p-4 transition-all duration-200 select-none",
+        dragging
+          ? "opacity-40 scale-[0.98] border-primary/40 shadow-none"
+          : "border-border hover:border-primary/40 hover:shadow-md",
+        dragOver === "top" && "border-t-2 border-t-primary shadow-[0_-3px_0_0] shadow-primary/30",
+        dragOver === "bottom" && "border-b-2 border-b-primary shadow-[0_3px_0_0] shadow-primary/30",
+      )}
+    >
+      {/* Top drop indicator */}
+      {dragOver === "top" && (
+        <div className="pointer-events-none absolute -top-1 left-4 right-4 h-0.5 rounded-full bg-primary shadow-[0_0_6px_2px] shadow-primary/40" />
+      )}
+
       <div className="mb-2 flex items-start gap-2">
-        <div className="flex flex-col gap-0.5 pt-1">
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-          >
-            <GripVertical className="h-3 w-3" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
-          >
-            <GripVertical className="h-3 w-3 rotate-180" />
-          </button>
+        {/* Drag handle */}
+        <div
+          className="flex flex-col items-center justify-center pt-1 cursor-grab active:cursor-grabbing touch-none"
+          title="Træk for at ændre rækkefølge"
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground/40 group-hover:text-muted-foreground/80 transition-colors" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -106,6 +163,11 @@ export function SlideCard({
           </ul>
         </div>
       </div>
+
+      {/* Bottom drop indicator */}
+      {dragOver === "bottom" && (
+        <div className="pointer-events-none absolute -bottom-1 left-4 right-4 h-0.5 rounded-full bg-primary shadow-[0_0_6px_2px] shadow-primary/40" />
+      )}
     </div>
   );
 }

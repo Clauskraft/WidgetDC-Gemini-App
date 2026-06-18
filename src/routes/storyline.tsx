@@ -71,6 +71,7 @@ function StorylineRoute() {
   // B3: BOM-blocks per slide (index → blocks)
   const [slideBom, setSlideBom] = useState<Record<number, AssemblyBlockRow[]>>({});
   const [slideBomLoading, setSlideBomLoading] = useState<Record<number, boolean>>({});
+  const [slideBomVisible, setSlideBomVisible] = useState<Record<number, boolean>>({});
   const [slideBomCopied, setSlideBomCopied] = useState<string | null>(null);
 
   const fetchSlideBom = useCallback(async (slideIndex: number, slideTitle: string) => {
@@ -84,11 +85,14 @@ function StorylineRoute() {
       const data = (await res.json()) as AssembleResponse;
       if (res.ok && !data.error) {
         setSlideBom((prev) => ({ ...prev, [slideIndex]: data.bom }));
+        setSlideBomVisible((prev) => ({ ...prev, [slideIndex]: true }));
       } else {
         setSlideBom((prev) => ({ ...prev, [slideIndex]: [] }));
+        setSlideBomVisible((prev) => ({ ...prev, [slideIndex]: true }));
       }
     } catch {
       setSlideBom((prev) => ({ ...prev, [slideIndex]: [] }));
+      setSlideBomVisible((prev) => ({ ...prev, [slideIndex]: true }));
     } finally {
       setSlideBomLoading((prev) => ({ ...prev, [slideIndex]: false }));
     }
@@ -337,6 +341,7 @@ function StorylineRoute() {
                   onUpdate={(updated) => updateSlide(i, updated)}
                   onMoveUp={() => moveSlide(i, i - 1)}
                   onMoveDown={() => moveSlide(i, i + 1)}
+                  onDrop={(from, to) => moveSlide(from, to)}
                 />
               ))}
             </div>
@@ -385,7 +390,7 @@ function StorylineRoute() {
                       )}
 
                       {/* B3: BOM-blocks knap + resultater */}
-                      {!slideBom[i] && (
+                      {!slideBom[i] ? (
                         <button
                           onClick={() => void fetchSlideBom(i, s.title)}
                           disabled={slideBomLoading[i]}
@@ -397,15 +402,30 @@ function StorylineRoute() {
                             <><Database className="h-3 w-3" />Hent BOM-blocks fra knowledge graph</>
                           )}
                         </button>
-                      )}
-                      {slideBom[i] && slideBom[i].length === 0 && (
-                        <p className="mt-1.5 text-[11px] text-muted-foreground/60 italic">
-                          Ingen blocks fundet — G5-gap stadig aktiv.
-                        </p>
-                      )}
-                      {slideBom[i] && slideBom[i].length > 0 && (
+                      ) : (
                         <div className="mt-2 space-y-1.5">
-                          {slideBom[i].map((block) => (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSlideBomVisible((prev) => ({ ...prev, [i]: !prev[i] }))}
+                              className="text-[10px] text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 transition"
+                            >
+                              {slideBomVisible[i] ? "Skjul blocks" : `Vis ${slideBom[i].length} blocks`}
+                            </button>
+                            <span className="text-muted-foreground/30">·</span>
+                            <button
+                              onClick={() => void fetchSlideBom(i, s.title)}
+                              disabled={slideBomLoading[i]}
+                              className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition disabled:opacity-40"
+                            >
+                              {slideBomLoading[i] ? "Henter…" : "Hent igen"}
+                            </button>
+                          </div>
+                          {slideBomVisible[i] && slideBom[i].length === 0 && (
+                            <p className="text-[11px] text-muted-foreground/60 italic">
+                              Ingen relevante blocks fundet for denne slide.
+                            </p>
+                          )}
+                          {slideBomVisible[i] && slideBom[i].length > 0 && slideBom[i].map((block) => (
                             <div
                               key={block.id}
                               className="group flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2"
@@ -433,12 +453,6 @@ function StorylineRoute() {
                               </button>
                             </div>
                           ))}
-                          <button
-                            onClick={() => setSlideBom((prev) => { const n = {...prev}; delete n[i]; return n; })}
-                            className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition"
-                          >
-                            Skjul blocks
-                          </button>
                         </div>
                       )}
                     </div>

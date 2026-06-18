@@ -19,6 +19,7 @@ export type EngagementSummary = {
   status: string | null;
   pattern_count: number;
   artifact_count: number;
+  description_length: number;
   created_at: string | null;
 };
 
@@ -110,6 +111,7 @@ export const Route = createFileRoute("/api/monday-review")({
             e.status AS status,
             pattern_count,
             artifact_count,
+            size(coalesce(e.description, '')) AS description_length,
             e.created_at AS created_at
         `;
 
@@ -153,7 +155,7 @@ export const Route = createFileRoute("/api/monday-review")({
           return jsonRes(
             {
               week_label: "",
-              stats: { active_engagements: 0, total_engagements: 0, recent_artifacts: 0, patterns_used: 0 },
+              stats: { active_engagements: 0, total_engagements: 0, recent_artifacts: 0, patterns_used: 0, avg_confidence: 0, open_action_items: 0 },
               engagements: [],
               recent_artifacts: [],
               top_patterns: [],
@@ -176,6 +178,7 @@ export const Route = createFileRoute("/api/monday-review")({
           status: r.status != null ? String(r.status) : null,
           pattern_count: neo4jNum(r.pattern_count),
           artifact_count: neo4jNum(r.artifact_count),
+          description_length: neo4jNum(r.description_length),
           created_at: r.created_at != null ? String(r.created_at) : null,
         }));
 

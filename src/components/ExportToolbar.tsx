@@ -62,7 +62,7 @@ export function ExportToolbar({
       <div>
         <h3 className="mb-1 text-sm font-medium">Eksportér</h3>
         <p className="mb-4 text-xs text-muted-foreground">
-          Tema: <strong>{theme}</strong> — genererer direkte fra outline i browseren.
+          Tema: <strong>{theme}</strong> — genererer direkte i browseren. PowerPoint eksporteres som HTML-slides (åbn i Chrome og print til PDF for bedste kvalitet).
         </p>
         <div className="flex flex-wrap gap-3">
           {FORMATS.map(({ format, label }) => (
