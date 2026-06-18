@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
+import { Route as MondayReviewRouteImport } from './routes/monday-review'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
@@ -25,6 +26,7 @@ import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
+import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
@@ -51,6 +53,11 @@ const PatternsRoute = PatternsRouteImport.update({
 const ObservabilityRoute = ObservabilityRouteImport.update({
   id: '/observability',
   path: '/observability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MondayReviewRoute = MondayReviewRouteImport.update({
+  id: '/monday-review',
+  path: '/monday-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -116,6 +123,11 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
 const ApiPatternsRoute = ApiPatternsRouteImport.update({
   id: '/api/patterns',
   path: '/api/patterns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMondayReviewRoute = ApiMondayReviewRouteImport.update({
+  id: '/api/monday-review',
+  path: '/api/monday-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
@@ -191,11 +203,13 @@ export interface FileRoutesByFullPath {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -221,11 +235,13 @@ export interface FileRoutesByTo {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -252,11 +268,13 @@ export interface FileRoutesById {
   '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
+  '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/api/chat': typeof ApiChatRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
@@ -284,11 +302,13 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
     | '/patterns'
     | '/settings'
     | '/api/chat'
     | '/api/engagements'
+    | '/api/monday-review'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -314,11 +334,13 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
     | '/patterns'
     | '/settings'
     | '/api/chat'
     | '/api/engagements'
+    | '/api/monday-review'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -344,11 +366,13 @@ export interface FileRouteTypes {
     | '/gems'
     | '/graph'
     | '/health'
+    | '/monday-review'
     | '/observability'
     | '/patterns'
     | '/settings'
     | '/api/chat'
     | '/api/engagements'
+    | '/api/monday-review'
     | '/api/patterns'
     | '/c/$threadId'
     | '/debug/logs'
@@ -375,11 +399,13 @@ export interface RootRouteChildren {
   GemsRoute: typeof GemsRouteWithChildren
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
+  MondayReviewRoute: typeof MondayReviewRoute
   ObservabilityRoute: typeof ObservabilityRoute
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
+  ApiMondayReviewRoute: typeof ApiMondayReviewRoute
   ApiPatternsRoute: typeof ApiPatternsRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
@@ -415,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/observability'
       fullPath: '/observability'
       preLoaderRoute: typeof ObservabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monday-review': {
+      id: '/monday-review'
+      path: '/monday-review'
+      fullPath: '/monday-review'
+      preLoaderRoute: typeof MondayReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -506,6 +539,13 @@ declare module '@tanstack/react-router' {
       path: '/api/patterns'
       fullPath: '/api/patterns'
       preLoaderRoute: typeof ApiPatternsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/monday-review': {
+      id: '/api/monday-review'
+      path: '/api/monday-review'
+      fullPath: '/api/monday-review'
+      preLoaderRoute: typeof ApiMondayReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/engagements': {
@@ -628,11 +668,13 @@ const rootRouteChildren: RootRouteChildren = {
   GemsRoute: GemsRouteWithChildren,
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
+  MondayReviewRoute: MondayReviewRoute,
   ObservabilityRoute: ObservabilityRoute,
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
+  ApiMondayReviewRoute: ApiMondayReviewRoute,
   ApiPatternsRoute: ApiPatternsRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
