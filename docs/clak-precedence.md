@@ -31,10 +31,12 @@ flowchart LR
 ## Vinder-regler ved overlap
 
 ### 1. `style` / `linkStyle` linjer fra kilden
+
 **Regel:** Fjernes helt.  
 **Hvorfor:** CLAK themeVariables + classDefs styrer farver. Ingen ad-hoc overrides overlever.
 
 **Eksempel:**
+
 ```mermaid
 %% Kilde
 graph TD
@@ -42,6 +44,7 @@ A-->B
 style A fill:#ff0000
 linkStyle 0 stroke:#abcabc
 ```
+
 ```mermaid
 %% Resultat
 style A …        ← fjernet
@@ -52,14 +55,17 @@ linkStyle 0 …    ← fjernet
 ---
 
 ### 2. Inline farver i node-syntax
+
 **Regel:** `fill:#xxx`, `stroke:#xxx`, `color:#xxx`, `background:#xxx` strippes via regex.  
 **Hvorfor:** Samme som ovenfor — CLAK classDefs vinder.
 
 **Eksempel:**
+
 ```mermaid
 %% Kilde
 A[Label fill:#123456 stroke:#abcdef] --> B
 ```
+
 ```mermaid
 %% Resultat
 A[Label ] --> B   ← farver strippet, struktur bevaret
@@ -68,16 +74,19 @@ A[Label ] --> B   ← farver strippet, struktur bevaret
 ---
 
 ### 3. `classDef <name>` fra kilden overlapper CLAK's `classDef <name>`
+
 **Regel:** Begge bevares. CLAK's variant appendes **efter** kildens.  
 **Hvorfor:** Mermaid bruger "last definition wins".  
 **Vinder:** CLAK.
 
 **Eksempel:**
+
 ```mermaid
 %% Kilde
 classDef tool fill:#deadbe,stroke:#beefed;
 A-->B
 ```
+
 ```mermaid
 %% Resultat (uddrag)
 classDef tool ,;                           ← kilde bevaret (farver strippet)
@@ -88,15 +97,18 @@ classDef tool fill:#111827,stroke:#3b82f6,… ← CLAK sidst → vinder
 ---
 
 ### 4. `class <id> <name>;` bindinger — kilde vs `spec.classes`
+
 **Regel:** Hvis både kilde og `spec.classes` binder samme `<id>`, bevares begge og CLAK's binding appendes sidst.  
 **Hvorfor:** Mermaid "last binding wins".  
 **Vinder:** `spec.classes`.
 
 **Eksempel:**
+
 ```ts
 // spec.classes = { A: "agent" }
 // Kilde indeholder: class A tool;
 ```
+
 ```mermaid
 %% Resultat (uddrag)
 class A tool;     ← kilde bevaret
@@ -107,6 +119,7 @@ class A agent;    ← CLAK sidst → vinder
 ---
 
 ### 5. Init-block fra kilden
+
 **Regel:** Kildens `%%{init: …}%%` erstattes af CLAK's init.  
 **Hvorfor:** CLAK skal sætte `theme: "base"` og `themeVariables`.  
 **Vinder:** CLAK init.
@@ -115,13 +128,13 @@ class A agent;    ← CLAK sidst → vinder
 
 ## Opsummeringstabel
 
-| Overlap | Kilde | CLAK | Vinder | Mekanisme |
-|---------|-------|------|--------|-----------|
-| `style` / `linkStyle` | bevaret | — | CLAK | fjernet helt |
-| inline farver | bevaret | — | CLAK | strippet via regex |
-| `classDef <name>` | bevaret | appendes efter | CLAK | last-def-wins |
-| `class <id> <name>` | bevaret | appendes efter | CLAK | last-binding-wins |
-| `%%{init}%%` | erstattet | altid linje 1 | CLAK | overskrives |
+| Overlap               | Kilde     | CLAK           | Vinder | Mekanisme          |
+| --------------------- | --------- | -------------- | ------ | ------------------ |
+| `style` / `linkStyle` | bevaret   | —              | CLAK   | fjernet helt       |
+| inline farver         | bevaret   | —              | CLAK   | strippet via regex |
+| `classDef <name>`     | bevaret   | appendes efter | CLAK   | last-def-wins      |
+| `class <id> <name>`   | bevaret   | appendes efter | CLAK   | last-binding-wins  |
+| `%%{init}%%`          | erstattet | altid linje 1  | CLAK   | overskrives        |
 
 ---
 

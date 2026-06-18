@@ -53,15 +53,17 @@ type _NotPromise = Expect<
   Equal<ReturnType<ReadThreadMessages> extends Promise<unknown> ? true : false, false>
 >;
 // 4) StoredThread kræver kun id; messages er valgfri.
-type _StoredThreadShape = Expect<
-  Equal<StoredThread, { id: string; messages?: UIMessage[] }>
->;
+type _StoredThreadShape = Expect<Equal<StoredThread, { id: string; messages?: UIMessage[] }>>;
 // 5) Parametertypen accepterer unknown (non-string input håndteres defensivt).
-type _ParamAcceptsUnknown = Expect<
-  Equal<Parameters<ReadThreadMessages>[0], unknown>
->;
+type _ParamAcceptsUnknown = Expect<Equal<Parameters<ReadThreadMessages>[0], unknown>>;
 // Holder referencer i live for noUnusedLocals.
-type _Hold = [_SignatureMatches, _ReturnIsSync, _NotPromise, _StoredThreadShape, _ParamAcceptsUnknown];
+type _Hold = [
+  _SignatureMatches,
+  _ReturnIsSync,
+  _NotPromise,
+  _StoredThreadShape,
+  _ParamAcceptsUnknown,
+];
 
 // ---------- Runtime kontrakt-tests ----------
 describe("readThreadMessages — kontrakt", () => {
@@ -242,9 +244,7 @@ describe("readThreadMessages — non-string threadId inputs", () => {
   for (const { label, value } of badInputs) {
     it(`total for ${label}: kaster aldrig, returnerer frisk []`, () => {
       installLocalStorage({
-        [THREADS_STORAGE_KEY]: JSON.stringify([
-          { id: "a", messages: [msg("m1", "x")] },
-        ]),
+        [THREADS_STORAGE_KEY]: JSON.stringify([{ id: "a", messages: [msg("m1", "x")] }]),
       });
       let threw = false;
       let result: UIMessage[] | undefined;

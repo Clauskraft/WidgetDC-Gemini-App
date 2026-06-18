@@ -2,33 +2,61 @@
  * POST /api/deliverable/generate — Deliverable Studio (Phase 1).
  *
  * Turns a free-form brief into a consulting deliverable (analysis / roadmap /
- * assessment) via the platform `generate_deliverable` tool (RAG-backed,
- * citation-bearing markdown), with an optional `judge_response` PRISM quality
- * pass. Server-only: keys live in process.env, read inside the handler.
+ * assessment) via the platform writer path (RAG-backed, citation-bearing
+ * markdown), with an optional `judge_response` PRISM quality pass.
+ * Server-only: keys live in process.env, read inside the handler.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { isPlatformConfigured, generateDeliverable, judgeDeliverable } from "@/lib/widgetdc.server";
+import {
+  isPlatformConfigured,
+  generateDeliverable,
+  deliverableDraft,
+  longformGenerate,
+  fallbackDeliverable,
+  judgeDeliverable,
+  emitDeliverableDegradedEvent,
+} from "@/lib/widgetdc.server";
+import { logServer, summarizeError } from "@/lib/server-logger";
 
 const BodySchema = z.object({
   brief: z.string().min(10, "Brief must be at least 10 characters"),
   kind: z.enum(["analysis", "roadmap", "assessment"]),
   maxSections: z.number().int().min(2).max(8).optional(),
   validate: z.boolean().optional(),
+  // "rag" = generate_deliverable (fast); "lego" = deliverable_draft Lego Factory
+  // pipeline; "longform" = iterative RLM + context_fold (extremely long output).
+  engine: z.enum(["rag", "lego", "longform"]).optional(),
 });
 
-function json(body: unknown, status: number, correlationId: string): Response {
+function json(
+  body: unknown,
+  status: number,
+  correlationId: string,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "x-correlation-id": correlationId },
+    headers: {
+      "content-type": "application/json",
+      "x-correlation-id": correlationId,
+      ...extraHeaders,
+    },
   });
 }
+
+const DEGRADED_HEADERS = {
+  "X-WidgeTDC-Degraded": "true",
+  "X-WidgeTDC-Fallback-Reason": "platform_pipeline_unavailable",
+  "X-WidgeTDC-Fallback-Source": "writer_fallback",
+};
 
 export const Route = createFileRoute("/api/deliverable/generate")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
+        const started = Date.now();
 
         let raw: unknown;
         try {
@@ -57,23 +85,125 @@ export const Route = createFileRoute("/api/deliverable/generate")({
           );
         }
 
-        const { brief, kind, maxSections, validate } = parsed.data;
-        const deliverable = await generateDeliverable(brief, kind, { correlationId, maxSections });
-        if (!deliverable) {
+        const { brief, kind, maxSections, validate, engine } = parsed.data;
+        logServer("info", {
+          event: "deliverable_generate_start",
+          requestId: correlationId,
+          kind,
+          engine: engine ?? "rag",
+          maxSections,
+          validate: validate !== false,
+          briefChars: brief.length,
+        });
+
+        try {
+          const primary =
+            engine === "longform"
+              ? await longformGenerate(brief, kind, { correlationId, targetSections: maxSections })
+              : engine === "lego"
+                ? await deliverableDraft(brief, kind, { correlationId, maxSections })
+                : await generateDeliverable(brief, kind, { correlationId, maxSections });
+          let deliverable = primary;
+          if (!deliverable) {
+            logServer("warn", {
+              event: "deliverable_generate_writer_fallback",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+            });
+            deliverable = await fallbackDeliverable(brief, kind, { correlationId, maxSections });
+          }
+          if (!deliverable) {
+            logServer("error", {
+              event: "deliverable_generate_failed",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+            });
+            return json(
+              {
+                error: "Deliverable generation failed — see server logs for correlationId.",
+                correlationId,
+              },
+              502,
+              correlationId,
+            );
+          }
+          const source = primary ? (engine ?? "rag") : "writer_fallback";
+          const degraded = !primary;
+          if (degraded) {
+            logServer("warn", {
+              event: "deliverable_generation_degraded",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              fallbackReason: "platform_pipeline_unavailable",
+              fallbackSource: "writer_fallback",
+              durationMs: Date.now() - started,
+            });
+            await emitDeliverableDegradedEvent({
+              correlationId,
+              stage: "generate",
+              kind,
+              engine: engine ?? "rag",
+              reason: "platform_pipeline_unavailable",
+              fallbackType: "writer_fallback",
+            });
+          }
+
+          // Best-effort PRISM gate (default on); never blocks the deliverable.
+          const quality =
+            validate === false
+              ? null
+              : await judgeDeliverable(brief, deliverable.markdown, correlationId);
+
+          logServer("info", {
+            event: "deliverable_generate_success",
+            requestId: correlationId,
+            kind,
+            engine: engine ?? "rag",
+            source,
+            citations: deliverable.citations,
+            markdownChars: deliverable.markdown.length,
+            durationMs: Date.now() - started,
+          });
           return json(
-            { error: "Deliverable generation failed or timed out — try a tighter brief." },
-            502,
+            {
+              ...deliverable,
+              kind,
+              engine: engine ?? "rag",
+              source,
+              degraded,
+              fallbackReason: degraded ? "platform_pipeline_unavailable" : undefined,
+              fallbackSource: degraded ? "writer_fallback" : undefined,
+              quality,
+              correlationId,
+            },
+            200,
+            correlationId,
+            degraded ? DEGRADED_HEADERS : {},
+          );
+        } catch (error) {
+          logServer(
+            "error",
+            {
+              event: "deliverable_generate_exception",
+              requestId: correlationId,
+              kind,
+              engine: engine ?? "rag",
+              durationMs: Date.now() - started,
+              summary: summarizeError(error),
+            },
+            error,
+          );
+          return json(
+            { error: "Deliverable generation crashed", correlationId },
+            500,
             correlationId,
           );
         }
-
-        // Best-effort PRISM gate (default on); never blocks the deliverable.
-        const quality =
-          validate === false
-            ? null
-            : await judgeDeliverable(brief, deliverable.markdown, correlationId);
-
-        return json({ ...deliverable, kind, quality, correlationId }, 200, correlationId);
       },
     },
   },

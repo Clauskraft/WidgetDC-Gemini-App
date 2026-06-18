@@ -13,7 +13,8 @@ bun run test:e2e              # kør snapshot-diff
 bun run test:e2e:update       # opdater baselines bevidst
 ```
 
-Webserver startes automatisk (`vite build && vite preview` på port 4173).
+Webserver startes automatisk (`vite dev --strictPort` på port 4173). Production
+SSR dækkes separat af `npm run build`.
 Sæt `PW_NO_SERVER=1` hvis du allerede har en server kørende på `PW_BASE_URL`.
 
 ## Suiter
@@ -23,12 +24,12 @@ Sæt `PW_NO_SERVER=1` hvis du allerede har en server kørende på `PW_BASE_URL`.
 Dækker `GraphBlock`, `KnowledgeGraphBlock` og `GraphErrorBlock` med
 deterministiske fixtures (ingen tilfældighed, ingen netværk).
 
-| case        | formål                                                      |
-| ----------- | ----------------------------------------------------------- |
-| `linear`    | Lineær 4-node pipeline — basis-layout for layered graph     |
-| `branching` | Router der fan-outter til 3 agents — flere edges per node   |
-| `knowledge` | KnowledgeGraph med blandede `type`-farver                   |
-| `invalid`   | Ugyldigt spec → `GraphErrorBlock` (fejl-UX regression)      |
+| case        | formål                                                    |
+| ----------- | --------------------------------------------------------- |
+| `linear`    | Lineær 4-node pipeline — basis-layout for layered graph   |
+| `branching` | Router der fan-outter til 3 agents — flere edges per node |
+| `knowledge` | KnowledgeGraph med blandede `type`-farver                 |
+| `invalid`   | Ugyldigt spec → `GraphErrorBlock` (fejl-UX regression)    |
 
 Hver case snapshottes både `normal` (880px stage) og `fullscreen` (1280px).
 

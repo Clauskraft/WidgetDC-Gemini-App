@@ -10,8 +10,8 @@ export const Route = createFileRoute("/gems/$gemId")({
     const gem = getGem(params.gemId);
     return {
       meta: [
-        { title: gem ? `${gem.name} · Gem · WidgeTDC Aurora` : "Gem · WidgeTDC Aurora" },
-        { name: "description", content: gem?.description ?? "WidgeTDC Aurora Gem" },
+        { title: gem ? `${gem.name} · Widget · WidgeTDC Aurora` : "Widget · WidgeTDC Aurora" },
+        { name: "description", content: gem?.description ?? "WidgeTDC Aurora Widget" },
       ],
     };
   },
@@ -24,10 +24,10 @@ export const Route = createFileRoute("/gems/$gemId")({
   notFoundComponent: () => (
     <div className="flex flex-1 items-center justify-center p-12 text-center">
       <div>
-        <h1 className="text-2xl font-semibold">Gem ikke fundet</h1>
-        <p className="mt-2 text-muted-foreground">Den gem du leder efter eksisterer ikke.</p>
+        <h1 className="text-2xl font-semibold">Widget ikke fundet</h1>
+        <p className="mt-2 text-muted-foreground">Den widget du leder efter eksisterer ikke.</p>
         <Link to="/gems" className="mt-4 inline-block text-primary hover:underline">
-          ← Tilbage til Gem-bots
+          ← Tilbage til Widgets
         </Link>
       </div>
     </div>
@@ -46,14 +46,20 @@ function GemChatRoute() {
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
-  const initial = useMemo(() => (hydrated ? readThreadMessages(threadId) : []), [hydrated, threadId]);
+  const initial = useMemo(
+    () => (hydrated ? readThreadMessages(threadId) : []),
+    [hydrated, threadId],
+  );
 
   return (
     <div className="flex flex-1 flex-col">
       <div className="border-b border-border/60 bg-background/60 px-6 py-2 backdrop-blur">
-        <Link to="/gems" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/gems"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
           <ChevronLeft className="h-3.5 w-3.5" />
-          Alle Gem-bots
+          Alle widgets
         </Link>
       </div>
       <ChatWindow

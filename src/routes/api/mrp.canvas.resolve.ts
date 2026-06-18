@@ -14,7 +14,11 @@ import {
   buildEmbedUrl,
 } from "@/lib/widgetdcContracts";
 import { deriveCanvasId, signCanvasToken, ttlSeconds } from "@/lib/widgetdcContracts.server";
-import { detectIntent, VISUALIZATION_STANDARDS, type VisualizationIntent } from "@/lib/visualizationIntent";
+import {
+  detectIntent,
+  VISUALIZATION_STANDARDS,
+  type VisualizationIntent,
+} from "@/lib/visualizationIntent";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,8 +40,9 @@ function json(body: unknown, init: ResponseInit = {}): Response {
 
 function preferIntent(prefer: string | undefined): VisualizationIntent | null {
   if (!prefer) return null;
-  const found = (Object.entries(VISUALIZATION_STANDARDS) as [VisualizationIntent, { family: string }][])
-    .find(([k, v]) => k === prefer || v.family === prefer);
+  const found = (
+    Object.entries(VISUALIZATION_STANDARDS) as [VisualizationIntent, { family: string }][]
+  ).find(([k, v]) => k === prefer || v.family === prefer);
   return found ? found[0] : null;
 }
 

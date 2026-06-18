@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { extractChatResult, llmChatProvider } from "./widgetdc.server";
 
-describe("extractChatResult — llm_chat `content` field (the 5-line-answer fix)", () => {
-  it("extracts the answer from the llm_chat `content` field", () => {
-    // Real llm_chat envelope shape: { provider, model, content, usage }
+describe("extractChatResult — platform chat content/response fields", () => {
+  it("extracts the answer from a `content` field", () => {
+    // Legacy chat envelope shape: { provider, model, content, usage }
     const env = {
       provider: "gemini",
       model: "gemini-2.5-flash",
@@ -32,9 +32,13 @@ describe("extractChatResult — llm_chat `content` field (the 5-line-answer fix)
     expect(extractChatResult({ usage: {} })).toBeNull();
     expect(extractChatResult(null)).toBeNull();
   });
+
+  it("extracts llm.generate `response` field", () => {
+    expect(extractChatResult({ result: { response: "OK" } })?.text).toBe("OK");
+  });
 });
 
-describe("llmChatProvider — model id → required llm_chat provider", () => {
+describe("llmChatProvider — model id → platform provider hint", () => {
   it("maps vendor prefixes to providers + bare model", () => {
     expect(llmChatProvider("openai/gpt-5")).toEqual({ provider: "openai", model: "gpt-5" });
     expect(llmChatProvider("google/gemini-2.5-pro")).toEqual({

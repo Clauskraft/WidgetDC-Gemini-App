@@ -21,6 +21,7 @@ import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GemsIndexRouteImport } from './routes/gems.index'
 import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
@@ -33,6 +34,7 @@ import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
+import { Route as ApiDeliverableExportRouteImport } from './routes/api/deliverable.export'
 import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
@@ -100,6 +102,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GemsIndexRoute = GemsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GemsRoute,
+} as any)
 const VisualGraphRoute = VisualGraphRouteImport.update({
   id: '/visual/graph',
   path: '/visual/graph',
@@ -160,6 +167,11 @@ const ApiDeliverableGenerateRoute = ApiDeliverableGenerateRouteImport.update({
   path: '/api/deliverable/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDeliverableExportRoute = ApiDeliverableExportRouteImport.update({
+  id: '/api/deliverable/export',
+  path: '/api/deliverable/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiApprovalsOrchestratorRoute =
   ApiApprovalsOrchestratorRouteImport.update({
     id: '/api/approvals/orchestrator',
@@ -215,9 +227,11 @@ export interface FileRoutesByFullPath {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems/': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -247,9 +261,11 @@ export interface FileRoutesByTo {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -280,9 +296,11 @@ export interface FileRoutesById {
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
   '/visual/graph': typeof VisualGraphRoute
+  '/gems/': typeof GemsIndexRoute
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -314,9 +332,11 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems/'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/api/observability/summary'
@@ -346,9 +366,11 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/api/observability/summary'
@@ -378,9 +400,11 @@ export interface FileRouteTypes {
     | '/debug/logs'
     | '/gems/$gemId'
     | '/visual/graph'
+    | '/gems/'
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
     | '/api/observability/summary'
@@ -413,6 +437,7 @@ export interface RootRouteChildren {
   ApiAdoptionMetricsRoute: typeof ApiAdoptionMetricsRoute
   ApiApprovalsBackendRoute: typeof ApiApprovalsBackendRoute
   ApiApprovalsOrchestratorRoute: typeof ApiApprovalsOrchestratorRoute
+  ApiDeliverableExportRoute: typeof ApiDeliverableExportRoute
   ApiDeliverableGenerateRoute: typeof ApiDeliverableGenerateRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   ApiObservabilitySummaryRoute: typeof ApiObservabilitySummaryRoute
@@ -506,6 +531,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gems/': {
+      id: '/gems/'
+      path: '/'
+      fullPath: '/gems/'
+      preLoaderRoute: typeof GemsIndexRouteImport
+      parentRoute: typeof GemsRoute
+    }
     '/visual/graph': {
       id: '/visual/graph'
       path: '/visual/graph'
@@ -590,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDeliverableGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/deliverable/export': {
+      id: '/api/deliverable/export'
+      path: '/api/deliverable/export'
+      fullPath: '/api/deliverable/export'
+      preLoaderRoute: typeof ApiDeliverableExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/approvals/orchestrator': {
       id: '/api/approvals/orchestrator'
       path: '/api/approvals/orchestrator'
@@ -637,10 +676,12 @@ declare module '@tanstack/react-router' {
 
 interface GemsRouteChildren {
   GemsGemIdRoute: typeof GemsGemIdRoute
+  GemsIndexRoute: typeof GemsIndexRoute
 }
 
 const GemsRouteChildren: GemsRouteChildren = {
   GemsGemIdRoute: GemsGemIdRoute,
+  GemsIndexRoute: GemsIndexRoute,
 }
 
 const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
@@ -682,6 +723,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdoptionMetricsRoute: ApiAdoptionMetricsRoute,
   ApiApprovalsBackendRoute: ApiApprovalsBackendRoute,
   ApiApprovalsOrchestratorRoute: ApiApprovalsOrchestratorRoute,
+  ApiDeliverableExportRoute: ApiDeliverableExportRoute,
   ApiDeliverableGenerateRoute: ApiDeliverableGenerateRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
   ApiObservabilitySummaryRoute: ApiObservabilitySummaryRoute,

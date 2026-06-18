@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { FileText, Download, Copy, Check, Loader2, Sparkles, ShieldCheck } from "lucide-react";
+import {
+  FileText,
+  Download,
+  Copy,
+  Check,
+  Loader2,
+  Sparkles,
+  ShieldCheck,
+  Boxes,
+  FileDown,
+  AlertTriangle,
+} from "lucide-react";
 import { MessageContent } from "@/components/MessageContent";
 
 export const Route = createFileRoute("/deliverable")({
@@ -18,12 +29,26 @@ export const Route = createFileRoute("/deliverable")({
 });
 
 type Kind = "analysis" | "roadmap" | "assessment";
+type Engine = "rag" | "lego" | "longform";
+type DocFormat = "docx" | "pdf";
 
 type DeliverablePayload = {
   markdown: string;
   citations: number;
   kind: Kind;
+  engine?: Engine;
+  source?: Engine | "writer_fallback";
+  degraded?: boolean;
+  fallbackReason?: string;
+  fallbackSource?: string;
+  correlationId?: string;
   quality?: { score: number; dimensions?: Record<string, number> } | null;
+};
+
+type DegradationNotice = {
+  reason: string;
+  source?: string;
+  correlationId?: string;
 };
 
 const KINDS: { id: Kind; label: string; hint: string }[] = [
@@ -32,34 +57,73 @@ const KINDS: { id: Kind; label: string; hint: string }[] = [
   { id: "assessment", label: "Assessment", hint: "Vurdering mod kriterier" },
 ];
 
+const ENGINES: { id: Engine; label: string; hint: string }[] = [
+  { id: "rag", label: "RAG draft", hint: "Hurtig, citationsbaseret" },
+  { id: "lego", label: "Lego Factory", hint: "Plan→Retrieve→Write→Assemble→Render" },
+  { id: "longform", label: "Long-form", hint: "Iterativ RLM + folding (meget langt)" },
+];
+
+function base64ToBlob(b64: string, mime: string): Blob {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function DeliverableRoute() {
   const [brief, setBrief] = useState("");
   const [kind, setKind] = useState<Kind>("analysis");
+  const [engine, setEngine] = useState<Engine>("rag");
   const [maxSections, setMaxSections] = useState(5);
   const [validate, setValidate] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState<DocFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeliverablePayload | null>(null);
+  const [degradation, setDegradation] = useState<DegradationNotice | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const canSubmit = brief.trim().length >= 10 && !loading;
+  const briefReady = brief.trim().length >= 10;
+  const busy = loading || exporting !== null;
+  const canSubmit = briefReady && !busy;
 
   const generate = async () => {
     if (!canSubmit) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setDegradation(null);
     try {
       const res = await fetch("/api/deliverable/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brief: brief.trim(), kind, maxSections, validate }),
+        body: JSON.stringify({ brief: brief.trim(), kind, engine, maxSections, validate }),
       });
       const data = (await res.json()) as DeliverablePayload & { error?: string };
-      if (!res.ok) {
-        setError(data.error ?? `Fejl (${res.status})`);
-      } else {
+      if (!res.ok) setError(data.error ?? `Fejl (${res.status})`);
+      else {
         setResult(data);
+        const degraded = data.degraded || res.headers.get("X-WidgeTDC-Degraded") === "true";
+        if (degraded) {
+          setDegradation({
+            reason:
+              data.fallbackReason ??
+              res.headers.get("X-WidgeTDC-Fallback-Reason") ??
+              "platform_pipeline_unavailable",
+            source:
+              data.fallbackSource ?? res.headers.get("X-WidgeTDC-Fallback-Source") ?? data.source,
+            correlationId: data.correlationId ?? res.headers.get("x-correlation-id") ?? undefined,
+          });
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Netværksfejl");
@@ -68,15 +132,68 @@ function DeliverableRoute() {
     }
   };
 
+  const exportDoc = async (format: DocFormat) => {
+    if (!briefReady || busy) return;
+    setExporting(format);
+    setError(null);
+    try {
+      const res = await fetch("/api/deliverable/export", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          brief: brief.trim(),
+          format,
+          kind,
+          engine,
+          maxSections,
+          markdown: result?.markdown,
+          degraded: result?.degraded,
+          fallbackReason: result?.fallbackReason,
+          fallbackSource: result?.fallbackSource ?? result?.source,
+        }),
+      });
+      const data = (await res.json()) as {
+        base64?: string;
+        filename?: string;
+        mediaType?: string;
+        degraded?: boolean;
+        fallbackReason?: string;
+        fallbackSource?: string;
+        correlationId?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.base64) {
+        setError(data.error ?? `Eksport fejlede (${res.status})`);
+        return;
+      }
+      triggerDownload(
+        base64ToBlob(data.base64, data.mediaType ?? "application/octet-stream"),
+        data.filename ?? `deliverable.${format}`,
+      );
+      const degraded = data.degraded || res.headers.get("X-WidgeTDC-Degraded") === "true";
+      if (degraded) {
+        setDegradation({
+          reason:
+            data.fallbackReason ??
+            res.headers.get("X-WidgeTDC-Fallback-Reason") ??
+            "platform_pipeline_unavailable",
+          source: data.fallbackSource ?? res.headers.get("X-WidgeTDC-Fallback-Source") ?? undefined,
+          correlationId: data.correlationId ?? res.headers.get("x-correlation-id") ?? undefined,
+        });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Netværksfejl");
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const download = () => {
     if (!result) return;
-    const blob = new Blob([result.markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `deliverable-${result.kind}-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerDownload(
+      new Blob([result.markdown], { type: "text/markdown" }),
+      `deliverable-${result.kind}-${new Date().toISOString().slice(0, 10)}.md`,
+    );
   };
 
   const copy = () => {
@@ -97,7 +214,7 @@ function DeliverableRoute() {
             <h1 className="text-2xl font-semibold tracking-tight">Deliverable Studio</h1>
             <p className="text-sm text-muted-foreground">
               Et brief ind — en citationsbaseret consulting-deliverable ud, drevet af platformens
-              knowledge graph.
+              knowledge graph og Lego Factory-pipeline.
             </p>
           </div>
         </header>
@@ -141,6 +258,29 @@ function DeliverableRoute() {
 
             <div className="sm:col-span-2 space-y-4">
               <div>
+                <label className="mb-1.5 block text-sm font-medium">Engine</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ENGINES.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => setEngine(e.id)}
+                      className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                        engine === e.id
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-input text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {e.id === "lego" && <Boxes className="h-3.5 w-3.5" />}
+                        {e.label}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{e.hint}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label htmlFor="sections" className="mb-1.5 block text-sm font-medium">
                   Sektioner: {maxSections}
                 </label>
@@ -167,28 +307,68 @@ function DeliverableRoute() {
             </div>
           </div>
 
-          <button
-            onClick={generate}
-            disabled={!canSubmit}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-aurora px-5 py-2.5 text-sm font-medium text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Genererer… (kan tage op til ~2 min)
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Generér deliverable
-              </>
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={generate}
+              disabled={!canSubmit}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-aurora px-5 py-2.5 text-sm font-medium text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Genererer… (kan tage op til ~2 min)
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generér deliverable
+                </>
+              )}
+            </button>
+            <span className="text-xs text-muted-foreground">eller eksportér direkte:</span>
+            {(["docx", "pdf"] as DocFormat[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => exportDoc(f)}
+                disabled={!briefReady || busy}
+                title="Output Forge — render brief til dokument"
+                className="inline-flex items-center gap-1.5 rounded-full border border-input px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent disabled:opacity-40"
+              >
+                {exporting === f ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                {f.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
           <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {degradation && (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+              <div>
+                <div className="font-medium">Safe-mode output</div>
+                <div>
+                  Den fulde platform pipeline var utilgængelig, så resultatet er markeret som
+                  degraderet ({degradation.reason}
+                  {degradation.source ? ` / ${degradation.source}` : ""}).
+                </div>
+                {degradation.correlationId && (
+                  <div className="mt-1 text-xs opacity-80">
+                    CorrelationId: {degradation.correlationId}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -198,6 +378,12 @@ function DeliverableRoute() {
               <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                 {result.kind}
               </span>
+              {result.engine === "lego" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <Boxes className="h-3 w-3" />
+                  Lego Factory
+                </span>
+              )}
               {result.citations > 0 && (
                 <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                   {result.citations} citationer

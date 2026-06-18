@@ -81,6 +81,34 @@ export interface BackendApprovalRequest {
   [key: string]: unknown;
 }
 
+function nonEmptyString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function normalizeBackendApprovalRequest(raw: unknown): BackendApprovalRequest | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  const identifiers = [
+    nonEmptyString(record.requestId),
+    nonEmptyString(record.request_id),
+    nonEmptyString(record.id),
+  ].filter((value): value is string => value !== null);
+  const uniqueIdentifiers = new Set(identifiers);
+  if (uniqueIdentifiers.size !== 1) return null;
+
+  const status = nonEmptyString(record.status);
+  const normalizedStatus =
+    status === "approved" || status === "rejected" || status === "expired" ? status : "pending";
+
+  return {
+    ...record,
+    requestId: identifiers[0],
+    status: normalizedStatus,
+  } as BackendApprovalRequest;
+}
+
 export async function listBackendPending(): Promise<
   { ok: true; requests: BackendApprovalRequest[] } | { ok: false; error: string; status?: number }
 > {
@@ -93,22 +121,40 @@ export async function listBackendPending(): Promise<
   if (!res.ok) return { ok: false, error: "non_2xx", status: res.status };
   const body = (await res.json()) as {
     success?: boolean;
-    requests?: BackendApprovalRequest[];
+    requests?: unknown[];
   };
   if (!body.success || !Array.isArray(body.requests)) {
     return { ok: false, error: "malformed_response" };
   }
-  return { ok: true, requests: body.requests };
+  const requests = body.requests.map(normalizeBackendApprovalRequest);
+  if (requests.some((request) => request === null)) {
+    return { ok: false, error: "malformed_response" };
+  }
+  return { ok: true, requests: requests as BackendApprovalRequest[] };
 }
 
-export type BackendApprovalErrorCode = "NOT_FOUND" | "NOT_PENDING" | "network_error" | "non_2xx" | "malformed_response" | "backend_not_configured" | string;
+export type BackendApprovalErrorCode =
+  | "NOT_FOUND"
+  | "NOT_PENDING"
+  | "network_error"
+  | "non_2xx"
+  | "malformed_response"
+  | "backend_not_configured"
+  | string;
 
 export async function approveBackend(
   requestId: string,
   approvedBy: string,
 ): Promise<
   | { ok: true; request: BackendApprovalRequest }
-  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+      code?: BackendApprovalErrorCode;
+      current_status?: string;
+      hint?: string;
+    }
 > {
   const cfg = backendConfig();
   if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };
@@ -131,7 +177,7 @@ export async function approveBackend(
   // these structured errors instead of treating them as success.
   const body = (await res.json()) as {
     success?: boolean;
-    request?: BackendApprovalRequest;
+    request?: unknown;
     error?: string;
     code?: string;
     current_status?: string;
@@ -141,7 +187,8 @@ export async function approveBackend(
     // True non-2xx without structured code — surface raw status.
     return { ok: false, error: "non_2xx", status: res.status };
   }
-  if (!body.success || !body.request) {
+  const request = normalizeBackendApprovalRequest(body.request);
+  if (!body.success || !request) {
     return {
       ok: false,
       error: body.error ?? "malformed_response",
@@ -151,7 +198,7 @@ export async function approveBackend(
       status: res.status,
     };
   }
-  return { ok: true, request: body.request };
+  return { ok: true, request };
 }
 
 export async function rejectBackend(
@@ -160,7 +207,14 @@ export async function rejectBackend(
   reason: string,
 ): Promise<
   | { ok: true; request: BackendApprovalRequest }
-  | { ok: false; error: string; status?: number; code?: BackendApprovalErrorCode; current_status?: string; hint?: string }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+      code?: BackendApprovalErrorCode;
+      current_status?: string;
+      hint?: string;
+    }
 > {
   const cfg = backendConfig();
   if (!cfg) return { ok: false, error: "backend_not_configured", code: "backend_not_configured" };
@@ -179,7 +233,7 @@ export async function rejectBackend(
   if (!res) return { ok: false, error: "network_error", code: "network_error" };
   const body = (await res.json()) as {
     success?: boolean;
-    request?: BackendApprovalRequest;
+    request?: unknown;
     error?: string;
     code?: string;
     current_status?: string;
@@ -188,7 +242,8 @@ export async function rejectBackend(
   if (!res.ok && !body.code) {
     return { ok: false, error: "non_2xx", status: res.status };
   }
-  if (!body.success || !body.request) {
+  const request = normalizeBackendApprovalRequest(body.request);
+  if (!body.success || !request) {
     return {
       ok: false,
       error: body.error ?? "malformed_response",
@@ -198,7 +253,7 @@ export async function rejectBackend(
       status: res.status,
     };
   }
-  return { ok: true, request: body.request };
+  return { ok: true, request };
 }
 
 // ── Orchestrator plan-approval store (LIN-1911) ────────────────────────────

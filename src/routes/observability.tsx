@@ -23,6 +23,7 @@ type Summary = {
     totalRequests: number;
     successRate: number;
     tools: ToolHealth[];
+    source?: "runtime_summary" | "audit.adoption_metrics" | "intent.stats" | "generic";
   } | null;
   graph: { nodes: number; relationships: number; online: boolean } | null;
 };
@@ -56,6 +57,25 @@ function ObservabilityRoute() {
   }, [load]);
 
   const tools = [...(data?.runtime?.tools ?? [])].sort((a, b) => b.errorRate - a.errorRate);
+  const runtimeSource = data?.runtime?.source;
+  const successLabel =
+    runtimeSource === "audit.adoption_metrics"
+      ? "Activation"
+      : runtimeSource === "intent.stats"
+        ? "Avg. confidence"
+        : "Success-rate";
+  const requestsLabel =
+    runtimeSource === "audit.adoption_metrics"
+      ? "Tool events"
+      : runtimeSource === "intent.stats"
+        ? "Intent edges"
+        : "Requests";
+  const agentsLabel =
+    runtimeSource === "audit.adoption_metrics"
+      ? "WAU"
+      : runtimeSource === "intent.stats"
+        ? "Tools"
+        : "Agenter";
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -92,9 +112,9 @@ function ObservabilityRoute() {
 
         {data?.runtime && (
           <div className="mb-6 grid gap-3 sm:grid-cols-3">
-            <Kpi label="Success-rate" value={`${data.runtime.successRate.toFixed(1)}%`} />
-            <Kpi label="Requests" value={fmt(data.runtime.totalRequests)} />
-            <Kpi label="Agenter" value={fmt(data.runtime.totalAgents)} />
+            <Kpi label={successLabel} value={`${data.runtime.successRate.toFixed(1)}%`} />
+            <Kpi label={requestsLabel} value={fmt(data.runtime.totalRequests)} />
+            <Kpi label={agentsLabel} value={fmt(data.runtime.totalAgents)} />
           </div>
         )}
 

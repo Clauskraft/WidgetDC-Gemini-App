@@ -156,11 +156,14 @@ export function MermaidBlock({ content }: { content: string }) {
 
   // Drag-pan med mus.
   const dragRef = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    dragRef.current = { x: e.clientX, y: e.clientY, vx: viewport.x, vy: viewport.y };
-  }, [viewport.x, viewport.y]);
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+      dragRef.current = { x: e.clientX, y: e.clientY, vx: viewport.x, vy: viewport.y };
+    },
+    [viewport.x, viewport.y],
+  );
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d) return;
@@ -168,7 +171,11 @@ export function MermaidBlock({ content }: { content: string }) {
   }, []);
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     dragRef.current = null;
-    try { (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    try {
+      (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const resetViewport = useCallback(() => setViewport(DEFAULT_VIEWPORT), []);
@@ -264,13 +271,15 @@ export function MermaidBlock({ content }: { content: string }) {
                 </button>
               </HoverCardTrigger>
               <HoverCardContent side="bottom" align="start" className="w-80 space-y-2 text-xs">
-                <div className="font-semibold text-foreground">
-                  Type-mismatch detekteret
-                </div>
+                <div className="font-semibold text-foreground">Type-mismatch detekteret</div>
                 <div className="text-muted-foreground">
-                  Forventet: <span className="font-mono text-foreground">{detection.det.standard.mermaidType}</span>
+                  Forventet:{" "}
+                  <span className="font-mono text-foreground">
+                    {detection.det.standard.mermaidType}
+                  </span>
                   {" — "}
-                  fundet: <span className="font-mono text-foreground">{detection.actual ?? "?"}</span>
+                  fundet:{" "}
+                  <span className="font-mono text-foreground">{detection.actual ?? "?"}</span>
                 </div>
                 <div>
                   <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -298,9 +307,28 @@ export function MermaidBlock({ content }: { content: string }) {
           )}
         </div>
         <div className="pointer-events-auto absolute right-2 top-2 flex gap-1 rounded-md border border-border/60 bg-card/80 p-1 text-[11px] backdrop-blur">
-          <button type="button" onClick={() => zoomBy(1.2)} className="rounded px-2 py-0.5 hover:bg-accent" title="Zoom ind">+</button>
-          <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded px-2 py-0.5 hover:bg-accent" title="Zoom ud">−</button>
-          <button type="button" onClick={resetViewport} className="rounded px-2 py-0.5 hover:bg-accent" title="Reset zoom">
+          <button
+            type="button"
+            onClick={() => zoomBy(1.2)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            title="Zoom ind"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / 1.2)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            title="Zoom ud"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={resetViewport}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            title="Reset zoom"
+          >
             {Math.round(viewport.scale * 100)}%
           </button>
         </div>

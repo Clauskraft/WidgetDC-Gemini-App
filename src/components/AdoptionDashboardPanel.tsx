@@ -62,6 +62,7 @@ type Snapshot = {
   intentStats: Result<{
     toolCount: number;
     patternCount: number;
+    edgeCount: number;
     avgConfidence: number;
   }>;
   enforcement: Result<{ enforced: boolean; violations24h: number; totalChecks: number }>;
@@ -381,11 +382,16 @@ function IntentStatsCard({ result }: { result?: Snapshot["intentStats"] }) {
       ) : !result.ok ? (
         <ErrorState message={result.error} />
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          <Stat label="Tools" value={String(result.data.toolCount)} />
-          <Stat label="Patterns" value={String(result.data.patternCount)} />
-          <Stat label="Avg conf" value={conf.toFixed(2)} valueClassName={confColor} />
-        </div>
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Tools" value={String(result.data.toolCount)} />
+            <Stat label="Patterns" value={String(result.data.patternCount)} />
+            <Stat label="Edges" value={String(result.data.edgeCount)} />
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3">
+            <Stat label="Avg conf" value={conf.toFixed(2)} valueClassName={confColor} />
+          </div>
+        </>
       )}
     </CardShell>
   );

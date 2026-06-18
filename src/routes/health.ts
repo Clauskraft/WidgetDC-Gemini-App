@@ -14,10 +14,7 @@ export const Route = createFileRoute("/health")({
         const body = {
           status: "ok",
           service: "widgetdc-aurora",
-          commit_sha:
-            process.env.RAILWAY_GIT_COMMIT_SHA ??
-            process.env.COMMIT_SHA ??
-            "unknown",
+          commit_sha: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.COMMIT_SHA ?? "unknown",
           ts: new Date().toISOString(),
         };
         return new Response(JSON.stringify(body), {

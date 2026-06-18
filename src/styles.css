@@ -93,7 +93,12 @@
   --sidebar-border: oklch(0.91 0.008 260);
 
   /* Aurora signature gradient: blue → magenta → amber */
-  --gradient-aurora: linear-gradient(135deg, oklch(0.6 0.2 255) 0%, oklch(0.65 0.22 320) 50%, oklch(0.75 0.18 60) 100%);
+  --gradient-aurora: linear-gradient(
+    135deg,
+    oklch(0.6 0.2 255) 0%,
+    oklch(0.65 0.22 320) 50%,
+    oklch(0.75 0.18 60) 100%
+  );
 
   --shadow-soft: 0 4px 20px -8px oklch(0.55 0.18 255 / 0.15);
   --shadow-glow: 0 0 32px -8px oklch(0.6 0.22 280 / 0.4);
@@ -157,32 +162,59 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  body { background-color: var(--color-background); color: var(--color-foreground); }
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
 }
 
 /* Aurora gradient utility */
-.bg-gradient-aurora { background-image: var(--gradient-aurora); }
-.shadow-soft { box-shadow: var(--shadow-soft); }
-.shadow-glow { box-shadow: var(--shadow-glow); }
+.bg-gradient-aurora {
+  background-image: var(--gradient-aurora);
+}
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
 
 /* Markdown styling for chat */
 .prose-aurora {
   color: var(--foreground);
   line-height: 1.65;
 }
-.prose-aurora h1, .prose-aurora h2, .prose-aurora h3 {
+.prose-aurora h1,
+.prose-aurora h2,
+.prose-aurora h3 {
   font-weight: 600;
   margin-top: 1.4em;
   margin-bottom: 0.5em;
   color: var(--foreground);
 }
-.prose-aurora h1 { font-size: 1.4em; }
-.prose-aurora h2 { font-size: 1.2em; }
-.prose-aurora h3 { font-size: 1.05em; }
-.prose-aurora p { margin: 0.6em 0; }
-.prose-aurora ul, .prose-aurora ol { margin: 0.6em 0; padding-left: 1.4em; }
-.prose-aurora li { margin: 0.25em 0; }
+.prose-aurora h1 {
+  font-size: 1.4em;
+}
+.prose-aurora h2 {
+  font-size: 1.2em;
+}
+.prose-aurora h3 {
+  font-size: 1.05em;
+}
+.prose-aurora p {
+  margin: 0.6em 0;
+}
+.prose-aurora ul,
+.prose-aurora ol {
+  margin: 0.6em 0;
+  padding-left: 1.4em;
+}
+.prose-aurora li {
+  margin: 0.25em 0;
+}
 .prose-aurora code {
   background: var(--muted);
   padding: 0.1em 0.35em;
@@ -198,18 +230,42 @@
   overflow-x: auto;
   margin: 0.8em 0;
 }
-.prose-aurora pre code { background: transparent; padding: 0; color: inherit; }
-.prose-aurora a { color: var(--primary); text-decoration: underline; }
+.prose-aurora pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.prose-aurora a {
+  color: var(--primary);
+  text-decoration: underline;
+}
 .prose-aurora blockquote {
   border-left: 3px solid var(--primary);
   padding-left: 1em;
   color: var(--muted-foreground);
   margin: 0.8em 0;
 }
-.prose-aurora table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 0.9em; }
-.prose-aurora th, .prose-aurora td { border: 1px solid var(--border); padding: 0.4em 0.7em; text-align: left; }
-.prose-aurora th { background: var(--muted); font-weight: 600; }
-.prose-aurora hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.prose-aurora table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 0.9em;
+}
+.prose-aurora th,
+.prose-aurora td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.prose-aurora th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.prose-aurora hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.2em 0;
+}
 
 /* ===== Normaliseret grafisk visning =====
    Fælles container til figurer, diagrammer, charts og billeder.
@@ -219,8 +275,8 @@
   position: relative;
   display: block;
   background:
-    radial-gradient(color-mix(in oklab, var(--figure-grid) 55%, transparent) 1px, transparent 1px)
-    0 0 / 22px 22px,
+    radial-gradient(color-mix(in oklab, var(--figure-grid) 55%, transparent) 1px, transparent 1px) 0
+      0 / 22px 22px,
     var(--figure-surface);
   border: 1px solid var(--figure-border);
   border-radius: var(--radius-lg);
@@ -241,7 +297,12 @@
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--primary) 70%, transparent), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--primary) 70%, transparent),
+    transparent
+  );
   box-shadow: 0 0 14px color-mix(in oklab, var(--primary) 50%, transparent);
   opacity: 0.35;
   animation: aurora-scan 7s ease-in-out infinite;
@@ -249,10 +310,20 @@
   z-index: 2;
 }
 @keyframes aurora-scan {
-  0%   { top: 0%;   opacity: 0; }
-  10%  { opacity: 0.45; }
-  90%  { opacity: 0.45; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.45;
+  }
+  90% {
+    opacity: 0.45;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 .aurora-figure > figcaption,
 .aurora-figure > .aurora-figure-caption {
@@ -322,9 +393,19 @@
   align-items: start;
   scroll-snap-type: y proximity;
   background-image:
-    linear-gradient(to right, color-mix(in oklab, var(--figure-grid) 35%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklab, var(--figure-grid) 35%, transparent) 1px, transparent 1px);
-  background-size: var(--canvas-grid) var(--canvas-grid), var(--canvas-grid) var(--canvas-grid);
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--figure-grid) 35%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--figure-grid) 35%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    var(--canvas-grid) var(--canvas-grid),
+    var(--canvas-grid) var(--canvas-grid);
   padding: calc(var(--canvas-grid) * 2);
   border-radius: var(--radius-lg);
 }
@@ -335,16 +416,27 @@
   min-width: 0;
   grid-row: span 32;
 }
-.aurora-canvas > [data-span="wide"]  { grid-column: span 2; grid-row: span 28; }
-.aurora-canvas > [data-span="tall"]  { grid-row: span 48; }
-.aurora-canvas > [data-span="full"]  { grid-column: 1 / -1; grid-row: span 36; }
+.aurora-canvas > [data-span="wide"] {
+  grid-column: span 2;
+  grid-row: span 28;
+}
+.aurora-canvas > [data-span="tall"] {
+  grid-row: span 48;
+}
+.aurora-canvas > [data-span="full"] {
+  grid-column: 1 / -1;
+  grid-row: span 36;
+}
 
 /* ===== Robust graph canvas ===== */
 .viz-graph-shell {
   overflow: hidden;
   border: 1px solid var(--figure-border);
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--card) 92%, transparent), color-mix(in oklab, var(--figure-surface) 88%, transparent));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--card) 92%, transparent),
+    color-mix(in oklab, var(--figure-surface) 88%, transparent)
+  );
 }
 .viz-graph-toolbar {
   display: flex;
@@ -393,11 +485,23 @@
   touch-action: none;
   user-select: none;
   background-image:
-    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--figure-grid) 70%, transparent) 1px, transparent 0),
-    linear-gradient(180deg, color-mix(in oklab, var(--figure-surface) 70%, transparent), transparent 50%);
-  background-size: 18px 18px, 100% 100%;
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklab, var(--figure-grid) 70%, transparent) 1px,
+      transparent 0
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--figure-surface) 70%, transparent),
+      transparent 50%
+    );
+  background-size:
+    18px 18px,
+    100% 100%;
 }
-.viz-graph-viewport:active { cursor: grabbing; }
+.viz-graph-viewport:active {
+  cursor: grabbing;
+}
 .viz-graph-world {
   position: absolute;
   inset: 0 auto auto 0;
@@ -415,8 +519,12 @@
   stroke-width: 1.7;
   stroke-linecap: round;
 }
-.viz-arrow-fill { fill: color-mix(in oklab, var(--muted-foreground) 68%, transparent); }
-.viz-edge-label-wrap { overflow: visible; }
+.viz-arrow-fill {
+  fill: color-mix(in oklab, var(--muted-foreground) 68%, transparent);
+}
+.viz-edge-label-wrap {
+  overflow: visible;
+}
 .viz-edge-label {
   display: flex;
   height: 1.35rem;
@@ -447,12 +555,18 @@
   border: 1px solid color-mix(in oklab, var(--viz-node-color) 42%, var(--figure-border));
   border-left-width: 4px;
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(135deg, color-mix(in oklab, var(--viz-node-color) 10%, var(--card)), var(--card));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--viz-node-color) 10%, var(--card)),
+    var(--card)
+  );
   color: var(--card-foreground);
   box-shadow: 0 12px 28px -22px color-mix(in oklab, var(--foreground) 32%, transparent);
   text-align: left;
-  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 .viz-node:hover,
 .viz-node--selected {
@@ -504,8 +618,6 @@
   background: var(--viz-node-color);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--viz-node-color) 16%, transparent);
 }
-
-
 
 /* Normaliser inline-figurer i markdown-svar */
 .prose-aurora img,
@@ -675,28 +787,68 @@
 }
 
 /* Auto-farver via data-series="1..5" eller .series-N — virker for fill+stroke */
-.aurora-chart [data-series="1"], [data-chart] [data-series="1"], .aurora-chart .series-1 { fill: var(--chart-1); stroke: var(--chart-1); }
-.aurora-chart [data-series="2"], [data-chart] [data-series="2"], .aurora-chart .series-2 { fill: var(--chart-2); stroke: var(--chart-2); }
-.aurora-chart [data-series="3"], [data-chart] [data-series="3"], .aurora-chart .series-3 { fill: var(--chart-3); stroke: var(--chart-3); }
-.aurora-chart [data-series="4"], [data-chart] [data-series="4"], .aurora-chart .series-4 { fill: var(--chart-4); stroke: var(--chart-4); }
-.aurora-chart [data-series="5"], [data-chart] [data-series="5"], .aurora-chart .series-5 { fill: var(--chart-5); stroke: var(--chart-5); }
+.aurora-chart [data-series="1"],
+[data-chart] [data-series="1"],
+.aurora-chart .series-1 {
+  fill: var(--chart-1);
+  stroke: var(--chart-1);
+}
+.aurora-chart [data-series="2"],
+[data-chart] [data-series="2"],
+.aurora-chart .series-2 {
+  fill: var(--chart-2);
+  stroke: var(--chart-2);
+}
+.aurora-chart [data-series="3"],
+[data-chart] [data-series="3"],
+.aurora-chart .series-3 {
+  fill: var(--chart-3);
+  stroke: var(--chart-3);
+}
+.aurora-chart [data-series="4"],
+[data-chart] [data-series="4"],
+.aurora-chart .series-4 {
+  fill: var(--chart-4);
+  stroke: var(--chart-4);
+}
+.aurora-chart [data-series="5"],
+[data-chart] [data-series="5"],
+.aurora-chart .series-5 {
+  fill: var(--chart-5);
+  stroke: var(--chart-5);
+}
 
 /* Recharts: roter cyklus via nth-of-type på de tegnede serier */
-[data-chart] .recharts-layer.recharts-line:nth-of-type(5n+1) .recharts-line-curve,
-[data-chart] .recharts-layer.recharts-area:nth-of-type(5n+1) .recharts-area-area,
-[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n+1) .recharts-rectangle { fill: var(--chart-1); stroke: var(--chart-1); }
-[data-chart] .recharts-layer.recharts-line:nth-of-type(5n+2) .recharts-line-curve,
-[data-chart] .recharts-layer.recharts-area:nth-of-type(5n+2) .recharts-area-area,
-[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n+2) .recharts-rectangle { fill: var(--chart-2); stroke: var(--chart-2); }
-[data-chart] .recharts-layer.recharts-line:nth-of-type(5n+3) .recharts-line-curve,
-[data-chart] .recharts-layer.recharts-area:nth-of-type(5n+3) .recharts-area-area,
-[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n+3) .recharts-rectangle { fill: var(--chart-3); stroke: var(--chart-3); }
-[data-chart] .recharts-layer.recharts-line:nth-of-type(5n+4) .recharts-line-curve,
-[data-chart] .recharts-layer.recharts-area:nth-of-type(5n+4) .recharts-area-area,
-[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n+4) .recharts-rectangle { fill: var(--chart-4); stroke: var(--chart-4); }
+[data-chart] .recharts-layer.recharts-line:nth-of-type(5n + 1) .recharts-line-curve,
+[data-chart] .recharts-layer.recharts-area:nth-of-type(5n + 1) .recharts-area-area,
+[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n + 1) .recharts-rectangle {
+  fill: var(--chart-1);
+  stroke: var(--chart-1);
+}
+[data-chart] .recharts-layer.recharts-line:nth-of-type(5n + 2) .recharts-line-curve,
+[data-chart] .recharts-layer.recharts-area:nth-of-type(5n + 2) .recharts-area-area,
+[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n + 2) .recharts-rectangle {
+  fill: var(--chart-2);
+  stroke: var(--chart-2);
+}
+[data-chart] .recharts-layer.recharts-line:nth-of-type(5n + 3) .recharts-line-curve,
+[data-chart] .recharts-layer.recharts-area:nth-of-type(5n + 3) .recharts-area-area,
+[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n + 3) .recharts-rectangle {
+  fill: var(--chart-3);
+  stroke: var(--chart-3);
+}
+[data-chart] .recharts-layer.recharts-line:nth-of-type(5n + 4) .recharts-line-curve,
+[data-chart] .recharts-layer.recharts-area:nth-of-type(5n + 4) .recharts-area-area,
+[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n + 4) .recharts-rectangle {
+  fill: var(--chart-4);
+  stroke: var(--chart-4);
+}
 [data-chart] .recharts-layer.recharts-line:nth-of-type(5n) .recharts-line-curve,
 [data-chart] .recharts-layer.recharts-area:nth-of-type(5n) .recharts-area-area,
-[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n) .recharts-rectangle { fill: var(--chart-5); stroke: var(--chart-5); }
+[data-chart] .recharts-layer.recharts-bar:nth-of-type(5n) .recharts-rectangle {
+  fill: var(--chart-5);
+  stroke: var(--chart-5);
+}
 
 /* ===== Normaliseret legend-layout =====
    Én fast regel på tværs af Recharts, håndskrevne SVG og canvas-charts:
@@ -845,7 +997,9 @@
   background: color-mix(in oklab, var(--flow-color, var(--muted)) 22%, transparent);
   color: var(--flow-color, var(--foreground));
 }
-.flow-node-dashed { border-style: dashed; }
+.flow-node-dashed {
+  border-style: dashed;
+}
 
 /* Layer pill (CFDS §5.1 layer label) */
 .flow-layer-pill {
@@ -866,10 +1020,16 @@
   border-left-width: 3px;
 }
 .flow-foundry-pill {
-  position: absolute; top: -8px; left: 10px;
-  font-size: 8px; font-weight: 700; letter-spacing: 0.12em;
-  padding: 2px 6px; border-radius: 999px;
-  background: var(--background); color: var(--flow-color);
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--flow-color);
   border: 1px solid color-mix(in oklab, var(--flow-color) 60%, transparent);
 }
 
@@ -889,7 +1049,9 @@
 .flow-variant-query {
   background: color-mix(in oklab, var(--flow-color) 8%, var(--card));
 }
-.flow-variant-query .flow-node-icon { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.flow-variant-query .flow-node-icon {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
 /* §5.2 ComboNode — neutral, layered look */
 .flow-variant-combo {
@@ -899,31 +1061,43 @@
 
 /* §5.3 Overlays */
 .flow-overlay-row {
-  position: absolute; top: 4px; right: 6px;
-  display: inline-flex; gap: 4px; align-items: center;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
   pointer-events: none;
 }
 .flow-provenance {
-  font-size: 11px; line-height: 1;
-  padding: 2px 4px; border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
   background: color-mix(in oklab, var(--muted) 70%, transparent);
 }
 .flow-regulatory {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
-  padding: 2px 5px; border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 5px;
+  border-radius: 4px;
   text-transform: uppercase;
   border: 1px solid;
 }
 
 /* §5.3 Compliance bar */
 .flow-compliance-bar {
-  height: 3px; width: 100%;
+  height: 3px;
+  width: 100%;
   background: color-mix(in oklab, var(--muted) 40%, transparent);
-  border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
   overflow: hidden;
 }
 .flow-compliance-bar > span {
-  display: block; height: 100%;
+  display: block;
+  height: 100%;
   transition: width 200ms ease;
 }
 
@@ -954,7 +1128,9 @@
   align-self: flex-start;
 }
 .flow-lane-dot {
-  width: 6px; height: 6px; border-radius: 999px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--lane-color);
   box-shadow: 0 0 6px color-mix(in oklab, var(--lane-color) 70%, transparent);
 }
@@ -967,9 +1143,16 @@
 }
 
 /* §6.1 Edge animation — gentle dash march */
-@keyframes flow-edge-dash { to { stroke-dashoffset: -20; } }
-.flow-edge-path { animation: flow-edge-dash 1.4s linear infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .flow-edge-path { animation: none; }
+@keyframes flow-edge-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
 }
-
+.flow-edge-path {
+  animation: flow-edge-dash 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-edge-path {
+    animation: none;
+  }
+}

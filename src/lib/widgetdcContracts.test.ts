@@ -39,8 +39,12 @@ describe("widgetdcContracts", () => {
 
   it("afviser tampered token", () => {
     const token = signCanvasToken({
-      canvas_id: "x", intent: "system-architecture", family: "c4",
-      mermaid_type: "c4", drawio_type: "c4", brief: "b",
+      canvas_id: "x",
+      intent: "system-architecture",
+      family: "c4",
+      mermaid_type: "c4",
+      drawio_type: "c4",
+      brief: "b",
       exp: Math.floor(Date.now() / 1000) + 60,
     });
     const tampered = token.replace(/.$/, (c) => (c === "a" ? "b" : "a"));
@@ -49,8 +53,12 @@ describe("widgetdcContracts", () => {
 
   it("afviser udløbet token", () => {
     const token = signCanvasToken({
-      canvas_id: "x", intent: "system-architecture", family: "c4",
-      mermaid_type: "c4", drawio_type: "c4", brief: "b",
+      canvas_id: "x",
+      intent: "system-architecture",
+      family: "c4",
+      mermaid_type: "c4",
+      drawio_type: "c4",
+      brief: "b",
       exp: Math.floor(Date.now() / 1000) - 1,
     });
     expect(verifyCanvasToken(token)).toBeNull();
@@ -68,17 +76,29 @@ describe("widgetdcContracts", () => {
   it("BridgeMessage kræver v=1 + contract-versionering", () => {
     expect(
       BridgeMessageSchema.safeParse({
-        v: 1, contract: "widgetdc.bridge.v1", canvas_id: "c", type: "canvas:ready", ts: 1,
+        v: 1,
+        contract: "widgetdc.bridge.v1",
+        canvas_id: "c",
+        type: "canvas:ready",
+        ts: 1,
       }).success,
     ).toBe(true);
     expect(
       BridgeMessageSchema.safeParse({
-        v: 1, contract: "wrong", canvas_id: "c", type: "canvas:ready", ts: 1,
+        v: 1,
+        contract: "wrong",
+        canvas_id: "c",
+        type: "canvas:ready",
+        ts: 1,
       }).success,
     ).toBe(false);
     expect(
       BridgeMessageSchema.safeParse({
-        v: 1, contract: "widgetdc.bridge.v1", canvas_id: "c", type: "rogue", ts: 1,
+        v: 1,
+        contract: "widgetdc.bridge.v1",
+        canvas_id: "c",
+        type: "rogue",
+        ts: 1,
       }).success,
     ).toBe(false);
   });

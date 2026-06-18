@@ -76,7 +76,7 @@ async function callOpenAI(
       "content-type": "application/json",
       authorization: `Bearer ${key}`,
     },
-    body: JSON.stringify({ model, messages }),
+    body: JSON.stringify({ model, messages, max_completion_tokens: 4096 }),
     signal,
   });
   if (!res.ok) return null;
@@ -289,7 +289,14 @@ export async function streamDirectProvider(
             "content-type": "application/json",
             authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           },
-          body: JSON.stringify({ model, messages, stream: true, max_tokens: 4096 }),
+          // GPT-5 / o-series reject `max_tokens` (require `max_completion_tokens`);
+          // the latter is accepted by all current OpenAI chat models.
+          body: JSON.stringify({
+            model,
+            messages,
+            stream: true,
+            max_completion_tokens: 4096,
+          }),
         },
         controller.signal,
       );
@@ -453,6 +460,7 @@ export async function openAiToolRound(
     body: JSON.stringify({
       model,
       messages,
+      max_completion_tokens: 4096,
       ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
     }),
     signal,

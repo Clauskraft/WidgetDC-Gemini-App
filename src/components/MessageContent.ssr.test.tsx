@@ -65,13 +65,17 @@ const SVG_BLOCK = [
 ].join("\n");
 const FIGURE_BLOCK = ["```figure", "**Caption** med markdown", "```"].join("\n");
 
-const MARKDOWN = [
-  "# Overskrift",
-  "",
-  "Almindelig prosa med **fed** tekst.",
-].join("\n");
+const MARKDOWN = ["# Overskrift", "", "Almindelig prosa med **fed** tekst."].join("\n");
 
-const ALL_BLOCKS = [MARKDOWN, CHART_BLOCK, FLOW_BLOCK, GRAPH_BLOCK, KNOWLEDGE_GRAPH_BLOCK, SVG_BLOCK, FIGURE_BLOCK].join("\n\n");
+const ALL_BLOCKS = [
+  MARKDOWN,
+  CHART_BLOCK,
+  FLOW_BLOCK,
+  GRAPH_BLOCK,
+  KNOWLEDGE_GRAPH_BLOCK,
+  SVG_BLOCK,
+  FIGURE_BLOCK,
+].join("\n\n");
 
 describe("MessageContent SSR", () => {
   it("parser splitter input i forventede block-typer", () => {

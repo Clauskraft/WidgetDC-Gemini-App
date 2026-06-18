@@ -37,6 +37,8 @@ describe("detectIntent", () => {
     // Body er flowchart, men intent forventer 'er' → mismatch.
     expect(isMermaidMismatch(det.intent, detectMermaidType("graph TD\nA-->B"))).toBe(true);
     // Body er ER → ingen mismatch.
-    expect(isMermaidMismatch(det.intent, detectMermaidType("erDiagram\nA ||--o{ B : has"))).toBe(false);
+    expect(isMermaidMismatch(det.intent, detectMermaidType("erDiagram\nA ||--o{ B : has"))).toBe(
+      false,
+    );
   });
 });

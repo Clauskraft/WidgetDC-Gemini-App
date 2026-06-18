@@ -3,11 +3,7 @@ import { useEffect } from "react";
 import { GraphBlock } from "@/components/GraphBlock";
 import { KnowledgeGraphBlock } from "@/components/KnowledgeGraphBlock";
 import { GraphErrorBlock } from "@/components/GraphErrorBlock";
-import {
-  validateGraphLikeSpec,
-  type GraphSpec,
-  type KnowledgeGraphSpec,
-} from "@/lib/figureBlocks";
+import { validateGraphLikeSpec, type GraphSpec, type KnowledgeGraphSpec } from "@/lib/figureBlocks";
 
 /**
  * Isoleret harness til visuelle regression-snapshots af graf-renderingen.
@@ -89,8 +85,16 @@ type CaseDef = {
 
 const CASES: CaseDef[] = [
   { id: "linear", title: "Linear pipeline", render: () => <GraphBlock spec={linearGraph} /> },
-  { id: "branching", title: "Branching agent graph", render: () => <GraphBlock spec={branchingGraph} /> },
-  { id: "knowledge", title: "Knowledge graph", render: () => <KnowledgeGraphBlock spec={knowledgeGraph} /> },
+  {
+    id: "branching",
+    title: "Branching agent graph",
+    render: () => <GraphBlock spec={branchingGraph} />,
+  },
+  {
+    id: "knowledge",
+    title: "Knowledge graph",
+    render: () => <KnowledgeGraphBlock spec={knowledgeGraph} />,
+  },
   {
     id: "invalid",
     title: "Invalid spec → error block",
@@ -130,7 +134,10 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
   if (fs) {
     return (
       <div style={{ minHeight: "100vh", padding: 24, background: "var(--background)" }}>
-        <div style={{ width: "100%", maxWidth: 1280, margin: "0 auto" }} data-testid="visual-fullscreen">
+        <div
+          style={{ width: "100%", maxWidth: 1280, margin: "0 auto" }}
+          data-testid="visual-fullscreen"
+        >
           {found.render()}
         </div>
       </div>
@@ -140,7 +147,14 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
   return (
     <div style={{ minHeight: "100vh", padding: 24, background: "var(--background)" }}>
       <div style={{ width: 880, margin: "0 auto" }} data-testid="visual-stage" data-case={found.id}>
-        <h1 style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "var(--muted-foreground)" }}>
+        <h1
+          style={{
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: 2,
+            color: "var(--muted-foreground)",
+          }}
+        >
           {found.title}
         </h1>
         <div style={{ marginTop: 16 }}>{found.render()}</div>

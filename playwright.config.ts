@@ -47,9 +47,14 @@ export default defineConfig({
         // produces — so boot the nitro output directly. The output dir is either
         // `.output/server` or `dist/server` depending on the build's sandbox
         // detection, so pick whichever entry exists.
-        command: `bun run build && PORT=${PORT} HOST=127.0.0.1 node "$([ -f .output/server/index.mjs ] && echo .output/server/index.mjs || echo dist/server/index.mjs)"`,
+        command: "node scripts/playwright-webserver.mjs",
         url: BASE_URL,
+        env: {
+          NODE_ENV: "development",
+          PORT: String(PORT),
+          HOST: "127.0.0.1",
+        },
         reuseExistingServer: !process.env.CI,
-        timeout: 180_000,
+        timeout: 120_000,
       },
 });

@@ -1,10 +1,4 @@
-import {
-  Briefcase,
-  Shield,
-  Boxes,
-  Eye,
-  type LucideIcon,
-} from "lucide-react";
+import { Briefcase, Shield, Boxes, Eye, type LucideIcon } from "lucide-react";
 
 export type Gem = {
   id: string;
@@ -15,6 +9,8 @@ export type Gem = {
   accent: string; // tailwind gradient
   systemPrompt: string;
   starters: { title: string; body: string }[];
+  patterns?: { title: string; summary: string }[];
+  dataSurfaces?: { title: string; examples: string[] }[];
 };
 
 /**
@@ -92,6 +88,19 @@ ${PLATFORM_CONTRACT}`,
 
 Mission: levér threat models, compliance-mapping og detection/response-artefakter som er klar til at indgå i kundens GRC- og SOC-tooling.
 
+Preferred operating patterns:
+- Threat Model Canvas: assets → trust boundaries → data flows → STRIDE/LINDDUN threats → control gaps → residual risk.
+- ATT&CK Detection Engineering: tactic/technique → ATT&CK data source + data component → analytic logic → Sigma/KQL/SPL → test telemetry.
+- Exposure Risk Prioritization: internet exposure + asset criticality + CISA KEV/NVD/CVSS/EPSS context → remediation SLA → compensating controls.
+- Incident Response PICERL: Preparation → Identification → Containment → Eradication → Recovery → Lessons learned, with evidence preservation.
+- Control Crosswalk: map each finding to NIST CSF 2.0 GV/ID/PR/DE/RS/RC plus NIS2/DORA/ISO 27001 where relevant.
+
+Data surfaces (use when provided; otherwise ask for them or mark assumptions):
+- Asset/IAM: CMDB, cloud inventory, IdP groups, privileged accounts, service principals, exposed endpoints.
+- Telemetry: EDR process/file/network events, SIEM, DNS, proxy, email security, firewall/VPN, cloud audit logs.
+- Vulnerability intelligence: scanner output, SBOM, CVE/NVD, CISA KEV, vendor advisories, exploit maturity, compensating controls.
+- Control evidence: policies, audit logs, backup tests, IR tabletop notes, supplier attestations, NIS2/DORA/ISO mappings.
+
 Operating principles:
 - Default frameworks (vælg det rigtige, brug ID'er):
   - Threat modeling: STRIDE, LINDDUN (privacy), PASTA, attack trees.
@@ -123,6 +132,48 @@ ${PLATFORM_CONTRACT}`,
       {
         title: "Phishing IR playbook",
         body: "Skriv en SANS PICERL incident response playbook for en aktiv credential-phishing-kampagne mod M365. Inkluder konkrete PowerShell/Graph-kommandoer i Containment og Eradication.",
+      },
+    ],
+    patterns: [
+      {
+        title: "Threat Model Canvas",
+        summary: "Assets, trust boundaries, STRIDE/LINDDUN threats, controls and residual risk.",
+      },
+      {
+        title: "ATT&CK Detection Engineering",
+        summary: "Technique → data source/component → analytic logic → Sigma/KQL/SPL validation.",
+      },
+      {
+        title: "Exposure Prioritization",
+        summary:
+          "Asset criticality, internet exposure, CISA KEV/NVD/CVSS/EPSS and remediation SLA.",
+      },
+      {
+        title: "PICERL Response",
+        summary: "Incident playbooks with evidence preservation and concrete containment steps.",
+      },
+    ],
+    dataSurfaces: [
+      {
+        title: "Asset & identity",
+        examples: [
+          "CMDB/cloud inventory",
+          "IdP groups",
+          "privileged accounts",
+          "external endpoints",
+        ],
+      },
+      {
+        title: "Detection telemetry",
+        examples: ["EDR events", "SIEM", "DNS/proxy", "email security", "cloud audit logs"],
+      },
+      {
+        title: "Vulnerability intel",
+        examples: ["scanner output", "SBOM", "NVD/CVSS", "CISA KEV", "vendor advisories"],
+      },
+      {
+        title: "Control evidence",
+        examples: ["NIS2/DORA mappings", "backup tests", "IR notes", "supplier attestations"],
       },
     ],
   },
@@ -186,6 +237,20 @@ ${PLATFORM_CONTRACT}`,
 
 Mission: omdan rå selectors og spørgsmål til struktureret intelligens — med ekspliciterede pivots, kildevurdering og kalibreret konfidens.
 
+Preferred operating patterns:
+- PIR-led Collection Plan: define priority intelligence requirements, selectors, lawful collection boundaries, source classes and stop conditions.
+- Selector Pivot Graph: selector → source surface → observed relation → confidence → next pivot, rendered as flow/knowledge-graph.
+- Verification Ledger: preserve source URL/class, capture time, hash/notes, Admiralty reliability/credibility and corroboration state.
+- GEO/IMINT Verification: visual clues → metadata → map/satellite/street-level checks → chronolocation → confidence statement.
+- ACH Analysis: competing hypotheses, indicators, disconfirming evidence, confidence and intelligence gaps.
+
+Data surfaces (use only lawful/open or user-provided data; never invent live findings):
+- Network/domain: RDAP/WHOIS, DNS, passive DNS class, certificate transparency, ASN/BGP, favicon/JARM/JA3.
+- People/selectors: usernames, emails, public profiles, breach-corpus references only when lawful/authorized, organization registries.
+- Media/geospatial: EXIF, image/video frames, landmarks, sun/shadow, maps, satellite, AIS/ADS-B, public transport/geotags.
+- Web/social/archive: websites, archived pages, public posts, forums, Telegram/channel archives, news, company filings.
+- Evidence workspace: source ledger, screenshots, hashes, timestamps, citation map, confidence and bias notes.
+
 Operating principles:
 - Følg intelligence-cyklussen: PIR (Priority Intelligence Requirements) → Collection plan → Processing → Analysis → Dissemination → Feedback.
 - Pivot-discipliner (default toolset, navngiv altid teknik + værktøjsklasse — ikke fabrikerede URLs):
@@ -220,6 +285,42 @@ ${PLATFORM_CONTRACT}`,
       {
         title: "BLUF threat-actor rapport",
         body: "Lav en IC-style BLUF rapport-skabelon for en threat actor profile — med felter for aliaser, TTPs (ATT&CK), infrastruktur, victimology, attribution-konfidens og intelligence gaps. Mærk kilder med Admiralty.",
+      },
+    ],
+    patterns: [
+      {
+        title: "PIR Collection Plan",
+        summary: "Questions, selectors, lawful boundaries, source classes and stop conditions.",
+      },
+      {
+        title: "Selector Pivot Graph",
+        summary: "Domain/email/username/media pivots as traceable entity and evidence graphs.",
+      },
+      {
+        title: "Verification Ledger",
+        summary: "Source class, timestamp, capture note, Admiralty score and corroboration state.",
+      },
+      {
+        title: "ACH Hypothesis Matrix",
+        summary: "Competing hypotheses, indicators, disconfirming evidence and confidence gaps.",
+      },
+    ],
+    dataSurfaces: [
+      {
+        title: "Network & domains",
+        examples: ["RDAP/WHOIS", "DNS/passive DNS", "certificate transparency", "ASN/BGP"],
+      },
+      {
+        title: "Selectors & people",
+        examples: ["usernames", "emails", "public profiles", "company registries"],
+      },
+      {
+        title: "Media & geospatial",
+        examples: ["EXIF", "frames", "landmarks", "sun/shadow", "satellite", "AIS/ADS-B"],
+      },
+      {
+        title: "Web & evidence",
+        examples: ["archives", "public posts", "forums", "screenshots", "hashes", "citation map"],
       },
     ],
   },

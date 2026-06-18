@@ -31,17 +31,15 @@ export function GraphErrorBlock({
             Kunne ikke rendere <code className="font-mono text-xs">{label}</code>-blok
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            LLM-svaret indeholdt ugyldigt {`{nodes, edges}`}-JSON. Diagrammet er
-            sprunget over for ikke at fejle stille.
+            LLM-svaret indeholdt ugyldigt {`{nodes, edges}`}-JSON. Diagrammet er sprunget over for
+            ikke at fejle stille.
           </p>
           <ul className="mt-2 space-y-1 text-xs text-foreground/90 list-disc pl-4">
             {errors.slice(0, 8).map((e, i) => (
               <li key={i}>{e}</li>
             ))}
             {errors.length > 8 && (
-              <li className="text-muted-foreground">
-                …og {errors.length - 8} flere
-              </li>
+              <li className="text-muted-foreground">…og {errors.length - 8} flere</li>
             )}
           </ul>
           <button

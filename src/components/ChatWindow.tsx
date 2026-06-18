@@ -403,7 +403,7 @@ export function ChatWindow({
                   gem.accent ?? "from-primary to-primary",
                 )}
               >
-                Gem · {gem.name}
+                Widget · {gem.name}
               </div>
             ) : null}
             <span className="text-sm text-muted-foreground">via WidgeTDC</span>
@@ -811,6 +811,9 @@ type ReasoningMeta = {
   qualityScore?: number;
   reflectionAttempted?: boolean;
   reflectionKept?: boolean;
+  intentTool?: string;
+  intentScore?: number;
+  intentCandidates?: string[];
 };
 
 function ReasoningPanel({ meta }: { meta: ReasoningMeta }) {
@@ -823,6 +826,9 @@ function ReasoningPanel({ meta }: { meta: ReasoningMeta }) {
   const model = meta.model ?? null;
   const domain = meta.domain ?? null;
   const latency = typeof meta.latencyMs === "number" ? Math.round(meta.latencyMs) : null;
+  const intent = meta.intentTool ?? null;
+  const intentScore =
+    typeof meta.intentScore === "number" ? Number(meta.intentScore.toFixed(2)) : null;
 
   return (
     <details
@@ -846,6 +852,12 @@ function ReasoningPanel({ meta }: { meta: ReasoningMeta }) {
         {meta.reflectionKept && (
           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
             refleksion anvendt
+          </span>
+        )}
+        {intent && (
+          <span className="max-w-[14rem] truncate rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+            intent {intent}
+            {intentScore != null ? ` · ${intentScore}` : ""}
           </span>
         )}
         {provider && (
