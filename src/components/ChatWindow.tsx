@@ -844,9 +844,9 @@ function Message({
   const validation = useMemo<ValidationResult | null>(() => {
     if (skipValidation) return null;
     if (message.role !== "assistant") return null;
-    if (!gemId) return null;
     if (!text.trim()) return null;
-    return validateGemResponse(text, gemId);
+    // Use "default" McKinsey storyline rules when no gem is active
+    return validateGemResponse(text, gemId ?? "default");
   }, [text, gemId, message.role, skipValidation]);
 
   if (message.role === "user") {

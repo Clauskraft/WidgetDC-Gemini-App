@@ -270,6 +270,14 @@ const OEE_RE = /\bOEE\b|\b(availability|performance|quality)\s*[×x*]\b/i;
 const BLUF_RE = /\bBLUF\b|bottom line up front/i;
 const KEY_JUDG_RE = /key judgments?/i;
 
+// McKinsey Pyramid Principle detection
+// Governing thought = bold/italic first sentence OR heading at top of response
+const GOVERNING_THOUGHT_RE =
+  /^(?:\s*#{1,3}\s+.{10,}|\*\*[^*]{10,}\*\*|__[^_]{10,}__)\s*\n/m;
+// Three-pillar structure: 3+ distinct H2/H3 sections OR numbered sections
+const THREE_PILLAR_RE =
+  /(?:^#{2,3}\s+.+$\s*){3,}|(?:^\d+\.\s+\*{0,2}.{5,}\*{0,2}$\s*){3,}/m;
+
 type Rule = (a: ValidationArtifacts, text: string) => ValidationIssue[];
 
 const COMMON_RULES: Rule[] = [
@@ -453,6 +461,57 @@ const GEM_RULES: Record<string, Rule[]> = {
     },
   ],
 
+  "default": [
+    (_, text) => {
+      // McKinsey Pyramid: answer must lead with a governing thought (bold/heading)
+      if (text.length < 200) return []; // skip trivial responses
+      const hasGoverningThought = GOVERNING_THOUGHT_RE.test(text);
+      if (!hasGoverningThought) {
+        return [
+          {
+            code: "missing_governing_thought",
+            severity: "warn",
+            message:
+              "Svaret mangler en 'governing thought' — McKinsey Pyramid Principle kræver at konklusionen kommer FØRST (bold åbningssætning eller H1/H2 overskrift).",
+          },
+        ];
+      }
+      return [];
+    },
+    (_, text) => {
+      // McKinsey three-pillar: substantive responses need ≥3 distinct sections
+      if (text.length < 400) return []; // only for longer responses
+      const hasThreePillars = THREE_PILLAR_RE.test(text);
+      if (!hasThreePillars) {
+        return [
+          {
+            code: "missing_three_pillar_structure",
+            severity: "warn",
+            message:
+              "Svaret mangler 3-søjle-struktur — McKinsey-svar bør have mindst 3 tydelige sektioner (## overskrifter eller nummererede punkter).",
+          },
+        ];
+      }
+      return [];
+    },
+    (_, text) => {
+      // Evidence grounding: longer responses should cite at least one source
+      if (text.length < 500) return [];
+      const hasCitation = /\[\d+\]|\[source\]|\bkilde\b|\bsource\b|\bper\s+\w+\b/i.test(text);
+      if (!hasCitation) {
+        return [
+          {
+            code: "missing_evidence_citation",
+            severity: "warn",
+            message:
+              "Svaret mangler kildehenvisning — McKinsey-standard kræver at alle claims er forankret i data/kilder ([n] eller inline kilde-reference).",
+          },
+        ];
+      }
+      return [];
+    },
+  ],
+
   "osint-analyst": [
     (a, text) => {
       const hasPivotGraph = a.flowBlocks.some(
@@ -547,7 +606,8 @@ export function validateGemResponse(text: string, gemId: string): ValidationResu
 
   const ruleIssues: ValidationIssue[] = [];
   for (const rule of COMMON_RULES) ruleIssues.push(...rule(artifacts, text));
-  const gemRules = GEM_RULES[gemId] ?? [];
+  // Fall back to "default" McKinsey-storyline rules when no specific gem matches
+  const gemRules = GEM_RULES[gemId] ?? GEM_RULES["default"] ?? [];
   for (const rule of gemRules) ruleIssues.push(...rule(artifacts, text));
 
   const issues = [...flowIssues, ...ruleIssues];

@@ -49,6 +49,58 @@ Style:
 - Default to Danish if the user writes Danish, otherwise English.
 - When the provided WidgeTDC knowledge context is relevant, ground your answer in it and cite sources as [n].`;
 
+// Gap 3: Intent-differentiated system prompt overlays.
+// The base SYSTEM_PROMPT is always active; these are appended when the intent
+// detector signals a specific category from the top candidate.
+const INTENT_PROMPT_OVERLAYS: Record<string, string> = {
+  strategy: `
+STORYLINE MODE — STRATEGY:
+Structure your answer as a McKinsey Situation-Complication-Question-Answer (SCQA):
+1. **Governing Thought** (bold, 1 sentence) — the key conclusion up front
+2. **Situation** — what is the context (1 short paragraph)
+3. **Complication** — what is the challenge/tension
+4. **Answer** — your recommendation with 3 supporting pillars (## headers)
+5. **Next steps** — 3 concrete actions with owner and timeline
+Include a \`\`\`flow\`\`\` issue-tree if the question is analytical.`,
+
+  architecture: `
+STORYLINE MODE — ARCHITECTURE:
+Structure as: Decision Record (ADR-lite):
+1. **Decision** (bold) — what you are recommending
+2. **Context** — the forces at play
+3. **Consequences** — trade-offs (pros/cons table)
+4. **Alternatives considered** — 2-3 other options with why rejected
+Show system interactions with a \`\`\`flow\`\`\` or \`\`\`mermaid\`\`\` diagram.`,
+
+  operations: `
+STORYLINE MODE — OPERATIONS:
+Structure as: Current State → Root Cause → Fix → Verify:
+1. **Finding** (bold) — the key operational insight
+2. **Root cause** — the specific mechanism (not symptoms)
+3. **Fix** — concrete steps with commands/code where relevant
+4. **Verification** — how to confirm the fix worked
+Be specific: include actual tool names, config keys, endpoint URLs from context.`,
+
+  knowledge: `
+STORYLINE MODE — KNOWLEDGE:
+Structure as: Concept → Why it matters → How it works → When to use it:
+1. **Core insight** (bold) — the one thing to remember
+2. **Conceptual model** — explain the mechanism clearly
+3. **Practical application** — concrete example in the WidgeTDC context
+4. **Trade-offs** — when NOT to use this approach
+Cite sources as [n] when drawing from the knowledge context.`,
+};
+
+/** Select intent overlay based on the top intent candidate's tool/category name. */
+function selectIntentOverlay(toolName: string, category?: string): string {
+  const key = (category ?? toolName ?? "").toLowerCase();
+  if (/strateg|consult|growth|market|compet|business/i.test(key)) return INTENT_PROMPT_OVERLAYS.strategy ?? "";
+  if (/architect|design|system|graph|schema|service|api/i.test(key)) return INTENT_PROMPT_OVERLAYS.architecture ?? "";
+  if (/ops|deploy|cron|monitor|health|incident|fix|debug|error/i.test(key)) return INTENT_PROMPT_OVERLAYS.operations ?? "";
+  if (/knowledge|search|explain|learn|concept|pattern|rag/i.test(key)) return INTENT_PROMPT_OVERLAYS.knowledge ?? "";
+  return "";
+}
+
 const BodySchema = z.object({
   messages: z.array(z.unknown()),
   model: z.string().optional(),
@@ -253,6 +305,12 @@ export const Route = createFileRoute("/api/chat")({
               const systemAdditions: string[] = [];
               if (intentDetection) {
                 systemAdditions.push(formatIntentContext(intentDetection));
+                // Gap 3: inject storyline overlay based on top intent candidate
+                const top = intentDetection.candidates[0];
+                if (top) {
+                  const overlay = selectIntentOverlay(top.tool, top.category ?? undefined);
+                  if (overlay) systemAdditions.push(overlay);
+                }
               }
               if (grounding && grounding.context) {
                 sources = grounding.sources;
@@ -268,8 +326,13 @@ export const Route = createFileRoute("/api/chat")({
               { role: "system", content: groundedSystem },
               ...baseMessages,
             ];
-            if (sources.length > 0) {
-              writer.write({ type: "data-sources", id: crypto.randomUUID(), data: { sources } });
+            // Gap 1: filter RAG error envelopes — do not surface internal AuraDB
+            // permission errors ("Executing procedure is not allowed") to the client.
+            const cleanSources = sources.filter(
+              (s) => s.text && !/not allowed|permission denied|executing procedure/i.test(s.text),
+            );
+            if (cleanSources.length > 0) {
+              writer.write({ type: "data-sources", id: crypto.randomUUID(), data: { sources: cleanSources } });
             }
 
             const topIntent = intentDetection?.candidates[0];
