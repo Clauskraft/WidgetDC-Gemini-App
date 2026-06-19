@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MODEL_OPTIONS, getModelMeta, useModelPreference } from "@/lib/modelPreference";
 import { cn } from "@/lib/utils";
+import { CostBadge } from "@/components/CostBadge";
+import { useCostBudget } from "@/hooks/useCostBudget";
 
 export function ModelPicker({
   variant = "compact",
@@ -20,6 +22,7 @@ export function ModelPicker({
 }) {
   const [model, setModel] = useModelPreference();
   const meta = getModelMeta(model);
+  const cost = useCostBudget();
 
   const grouped = useMemo(() => {
     const g = new Map<string, typeof MODEL_OPTIONS>();
@@ -42,6 +45,9 @@ export function ModelPicker({
       >
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="truncate max-w-[180px]">{meta?.label ?? model}</span>
+        {!cost.loading && !cost.error && cost.pct < 80 && (
+          <CostBadge pct={cost.pct} usedDKK={cost.used} compact />
+        )}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">

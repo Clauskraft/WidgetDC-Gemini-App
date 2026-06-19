@@ -9,9 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StorylineRouteImport } from './routes/storyline'
-import { Route as ConsultingRouteImport } from './routes/consulting'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
 import { Route as MondayReviewRouteImport } from './routes/monday-review'
@@ -21,6 +20,7 @@ import { Route as GemsRouteImport } from './routes/gems'
 import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConsultingRouteImport } from './routes/consulting'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GemsIndexRouteImport } from './routes/gems.index'
@@ -28,37 +28,34 @@ import { Route as VisualGraphRouteImport } from './routes/visual.graph'
 import { Route as GemsGemIdRouteImport } from './routes/gems.$gemId'
 import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
+import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
 import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
+import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
-import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiDeliverableExportRouteImport } from './routes/api/deliverable.export'
+import { Route as ApiConsultingAssembleRouteImport } from './routes/api/consulting.assemble'
 import { Route as ApiApprovalsOrchestratorRouteImport } from './routes/api/approvals.orchestrator'
 import { Route as ApiApprovalsBackendRouteImport } from './routes/api/approvals.backend'
 import { Route as ApiAdoptionMetricsRouteImport } from './routes/api/adoption.metrics'
 import { Route as ApiMrpCanvasResolveRouteImport } from './routes/api/mrp.canvas.resolve'
+import { Route as ApiEngagementsIdSourcesRouteImport } from './routes/api/engagements.$id.sources'
 import { Route as ApiEngagementsIdPatternsRouteImport } from './routes/api/engagements.$id.patterns'
 import { Route as ApiEngagementsIdDeliverableRouteImport } from './routes/api/engagements.$id.deliverable'
-import { Route as ApiConsultingAssembleRouteImport } from './routes/api/consulting.assemble'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const StorylineRoute = StorylineRouteImport.update({
   id: '/storyline',
   path: '/storyline',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConsultingRoute = ConsultingRouteImport.update({
-  id: '/consulting',
-  path: '/consulting',
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatternsRoute = PatternsRouteImport.update({
@@ -106,6 +103,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsultingRoute = ConsultingRouteImport.update({
+  id: '/consulting',
+  path: '/consulting',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdoptionRoute = AdoptionRouteImport.update({
   id: '/adoption',
   path: '/adoption',
@@ -141,6 +143,11 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
   path: '/c/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStorylineRoute = ApiStorylineRouteImport.update({
+  id: '/api/storyline',
+  path: '/api/storyline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPatternsRoute = ApiPatternsRouteImport.update({
   id: '/api/patterns',
   path: '/api/patterns',
@@ -154,6 +161,11 @@ const ApiMondayReviewRoute = ApiMondayReviewRouteImport.update({
 const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
   id: '/api/engagements',
   path: '/api/engagements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCostRoute = ApiCostRouteImport.update({
+  id: '/api/cost',
+  path: '/api/cost',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -181,19 +193,14 @@ const ApiDeliverableGenerateRoute = ApiDeliverableGenerateRouteImport.update({
   path: '/api/deliverable/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiStorylineRoute = ApiStorylineRouteImport.update({
-  id: '/api/storyline',
-  path: '/api/storyline',
+const ApiDeliverableExportRoute = ApiDeliverableExportRouteImport.update({
+  id: '/api/deliverable/export',
+  path: '/api/deliverable/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiConsultingAssembleRoute = ApiConsultingAssembleRouteImport.update({
   id: '/api/consulting/assemble',
   path: '/api/consulting/assemble',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDeliverableExportRoute = ApiDeliverableExportRouteImport.update({
-  id: '/api/deliverable/export',
-  path: '/api/deliverable/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiApprovalsOrchestratorRoute =
@@ -217,6 +224,11 @@ const ApiMrpCanvasResolveRoute = ApiMrpCanvasResolveRouteImport.update({
   path: '/api/mrp/canvas/resolve',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEngagementsIdSourcesRoute = ApiEngagementsIdSourcesRouteImport.update({
+  id: '/$id/sources',
+  path: '/$id/sources',
+  getParentRoute: () => ApiEngagementsRoute,
+} as any)
 const ApiEngagementsIdPatternsRoute =
   ApiEngagementsIdPatternsRouteImport.update({
     id: '/$id/patterns',
@@ -233,6 +245,7 @@ const ApiEngagementsIdDeliverableRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
@@ -243,10 +256,13 @@ export interface FileRoutesByFullPath {
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
+  '/storyline': typeof StorylineRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -255,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
@@ -262,29 +279,29 @@ export interface FileRoutesByFullPath {
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
+  '/api/engagements/$id/sources': typeof ApiEngagementsIdSourcesRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
-  '/storyline': typeof StorylineRoute
-  '/api/storyline': typeof ApiStorylineRoute
-  '/consulting': typeof ConsultingRoute
-  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
-  '/gems': typeof GemsRouteWithChildren
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/monday-review': typeof MondayReviewRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
+  '/storyline': typeof StorylineRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -293,6 +310,7 @@ export interface FileRoutesByTo {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
@@ -300,16 +318,14 @@ export interface FileRoutesByTo {
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
+  '/api/engagements/$id/sources': typeof ApiEngagementsIdSourcesRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
-  '/storyline': typeof StorylineRoute
-  '/api/storyline': typeof ApiStorylineRoute
-  '/consulting': typeof ConsultingRoute
-  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
@@ -320,10 +336,13 @@ export interface FileRoutesById {
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
+  '/storyline': typeof StorylineRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/debug/logs': typeof DebugLogsRoute
   '/gems/$gemId': typeof GemsGemIdRoute
@@ -332,6 +351,7 @@ export interface FileRoutesById {
   '/api/adoption/metrics': typeof ApiAdoptionMetricsRoute
   '/api/approvals/backend': typeof ApiApprovalsBackendRoute
   '/api/approvals/orchestrator': typeof ApiApprovalsOrchestratorRoute
+  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
@@ -339,17 +359,15 @@ export interface FileRoutesById {
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
   '/api/engagements/$id/patterns': typeof ApiEngagementsIdPatternsRoute
+  '/api/engagements/$id/sources': typeof ApiEngagementsIdSourcesRoute
   '/api/mrp/canvas/resolve': typeof ApiMrpCanvasResolveRoute
-  '/storyline': typeof StorylineRoute
-  '/api/storyline': typeof ApiStorylineRoute
-  '/consulting': typeof ConsultingRoute
-  '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/adoption'
+    | '/consulting'
     | '/dashboard'
     | '/deliverable'
     | '/engagements'
@@ -360,10 +378,13 @@ export interface FileRouteTypes {
     | '/observability'
     | '/patterns'
     | '/settings'
+    | '/storyline'
     | '/api/chat'
+    | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
     | '/api/patterns'
+    | '/api/storyline'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -372,6 +393,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
@@ -379,29 +401,29 @@ export interface FileRouteTypes {
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
+    | '/api/engagements/$id/sources'
     | '/api/mrp/canvas/resolve'
-    | '/storyline'
-    | '/api/storyline'
-    | '/consulting'
-    | '/api/consulting/assemble'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/adoption'
+    | '/consulting'
     | '/dashboard'
     | '/deliverable'
     | '/engagements'
-    | '/gems'
     | '/graph'
     | '/health'
     | '/monday-review'
     | '/observability'
     | '/patterns'
     | '/settings'
+    | '/storyline'
     | '/api/chat'
+    | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
     | '/api/patterns'
+    | '/api/storyline'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -410,6 +432,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
@@ -417,15 +440,13 @@ export interface FileRouteTypes {
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
+    | '/api/engagements/$id/sources'
     | '/api/mrp/canvas/resolve'
-    | '/storyline'
-    | '/api/storyline'
-    | '/consulting'
-    | '/api/consulting/assemble'
   id:
     | '__root__'
     | '/'
     | '/adoption'
+    | '/consulting'
     | '/dashboard'
     | '/deliverable'
     | '/engagements'
@@ -436,10 +457,13 @@ export interface FileRouteTypes {
     | '/observability'
     | '/patterns'
     | '/settings'
+    | '/storyline'
     | '/api/chat'
+    | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
     | '/api/patterns'
+    | '/api/storyline'
     | '/c/$threadId'
     | '/debug/logs'
     | '/gems/$gemId'
@@ -448,6 +472,7 @@ export interface FileRouteTypes {
     | '/api/adoption/metrics'
     | '/api/approvals/backend'
     | '/api/approvals/orchestrator'
+    | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
@@ -455,16 +480,14 @@ export interface FileRouteTypes {
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
     | '/api/engagements/$id/patterns'
+    | '/api/engagements/$id/sources'
     | '/api/mrp/canvas/resolve'
-    | '/storyline'
-    | '/api/storyline'
-    | '/consulting'
-    | '/api/consulting/assemble'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdoptionRoute: typeof AdoptionRoute
+  ConsultingRoute: typeof ConsultingRoute
   DashboardRoute: typeof DashboardRoute
   DeliverableRoute: typeof DeliverableRoute
   EngagementsRoute: typeof EngagementsRoute
@@ -475,30 +498,37 @@ export interface RootRouteChildren {
   ObservabilityRoute: typeof ObservabilityRoute
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
+  StorylineRoute: typeof StorylineRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiCostRoute: typeof ApiCostRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
   ApiMondayReviewRoute: typeof ApiMondayReviewRoute
   ApiPatternsRoute: typeof ApiPatternsRoute
+  ApiStorylineRoute: typeof ApiStorylineRoute
   CThreadIdRoute: typeof CThreadIdRoute
   DebugLogsRoute: typeof DebugLogsRoute
   VisualGraphRoute: typeof VisualGraphRoute
   ApiAdoptionMetricsRoute: typeof ApiAdoptionMetricsRoute
   ApiApprovalsBackendRoute: typeof ApiApprovalsBackendRoute
   ApiApprovalsOrchestratorRoute: typeof ApiApprovalsOrchestratorRoute
+  ApiConsultingAssembleRoute: typeof ApiConsultingAssembleRoute
   ApiDeliverableExportRoute: typeof ApiDeliverableExportRoute
   ApiDeliverableGenerateRoute: typeof ApiDeliverableGenerateRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   ApiObservabilitySummaryRoute: typeof ApiObservabilitySummaryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
   ApiMrpCanvasResolveRoute: typeof ApiMrpCanvasResolveRoute
-  StorylineRoute: typeof StorylineRoute
-  ApiStorylineRoute: typeof ApiStorylineRoute
-  ConsultingRoute: typeof ConsultingRoute
-  ApiConsultingAssembleRoute: typeof ApiConsultingAssembleRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/storyline': {
+      id: '/storyline'
+      path: '/storyline'
+      fullPath: '/storyline'
+      preLoaderRoute: typeof StorylineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -569,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/consulting': {
+      id: '/consulting'
+      path: '/consulting'
+      fullPath: '/consulting'
+      preLoaderRoute: typeof ConsultingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/adoption': {
       id: '/adoption'
       path: '/adoption'
@@ -618,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/storyline': {
+      id: '/api/storyline'
+      path: '/api/storyline'
+      fullPath: '/api/storyline'
+      preLoaderRoute: typeof ApiStorylineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/patterns': {
       id: '/api/patterns'
       path: '/api/patterns'
@@ -637,6 +681,13 @@ declare module '@tanstack/react-router' {
       path: '/api/engagements'
       fullPath: '/api/engagements'
       preLoaderRoute: typeof ApiEngagementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cost': {
+      id: '/api/cost'
+      path: '/api/cost'
+      fullPath: '/api/cost'
+      preLoaderRoute: typeof ApiCostRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -681,6 +732,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDeliverableExportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/consulting/assemble': {
+      id: '/api/consulting/assemble'
+      path: '/api/consulting/assemble'
+      fullPath: '/api/consulting/assemble'
+      preLoaderRoute: typeof ApiConsultingAssembleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/approvals/orchestrator': {
       id: '/api/approvals/orchestrator'
       path: '/api/approvals/orchestrator'
@@ -709,6 +767,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMrpCanvasResolveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/engagements/$id/sources': {
+      id: '/api/engagements/$id/sources'
+      path: '/$id/sources'
+      fullPath: '/api/engagements/$id/sources'
+      preLoaderRoute: typeof ApiEngagementsIdSourcesRouteImport
+      parentRoute: typeof ApiEngagementsRoute
+    }
     '/api/engagements/$id/patterns': {
       id: '/api/engagements/$id/patterns'
       path: '/$id/patterns'
@@ -722,34 +787,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/engagements/$id/deliverable'
       preLoaderRoute: typeof ApiEngagementsIdDeliverableRouteImport
       parentRoute: typeof ApiEngagementsRoute
-    }
-    '/storyline': {
-      id: '/storyline'
-      path: '/storyline'
-      fullPath: '/storyline'
-      preLoaderRoute: typeof StorylineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/storyline': {
-      id: '/api/storyline'
-      path: '/api/storyline'
-      fullPath: '/api/storyline'
-      preLoaderRoute: typeof ApiStorylineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/consulting': {
-      id: '/consulting'
-      path: '/consulting'
-      fullPath: '/consulting'
-      preLoaderRoute: typeof ConsultingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/consulting/assemble': {
-      id: '/api/consulting/assemble'
-      path: '/api/consulting/assemble'
-      fullPath: '/api/consulting/assemble'
-      preLoaderRoute: typeof ApiConsultingAssembleRouteImport
-      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -769,11 +806,13 @@ const GemsRouteWithChildren = GemsRoute._addFileChildren(GemsRouteChildren)
 interface ApiEngagementsRouteChildren {
   ApiEngagementsIdDeliverableRoute: typeof ApiEngagementsIdDeliverableRoute
   ApiEngagementsIdPatternsRoute: typeof ApiEngagementsIdPatternsRoute
+  ApiEngagementsIdSourcesRoute: typeof ApiEngagementsIdSourcesRoute
 }
 
 const ApiEngagementsRouteChildren: ApiEngagementsRouteChildren = {
   ApiEngagementsIdDeliverableRoute: ApiEngagementsIdDeliverableRoute,
   ApiEngagementsIdPatternsRoute: ApiEngagementsIdPatternsRoute,
+  ApiEngagementsIdSourcesRoute: ApiEngagementsIdSourcesRoute,
 }
 
 const ApiEngagementsRouteWithChildren = ApiEngagementsRoute._addFileChildren(
@@ -783,6 +822,7 @@ const ApiEngagementsRouteWithChildren = ApiEngagementsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
+  ConsultingRoute: ConsultingRoute,
   DashboardRoute: DashboardRoute,
   DeliverableRoute: DeliverableRoute,
   EngagementsRoute: EngagementsRoute,
@@ -793,27 +833,37 @@ const rootRouteChildren: RootRouteChildren = {
   ObservabilityRoute: ObservabilityRoute,
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
+  StorylineRoute: StorylineRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiCostRoute: ApiCostRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
   ApiMondayReviewRoute: ApiMondayReviewRoute,
   ApiPatternsRoute: ApiPatternsRoute,
+  ApiStorylineRoute: ApiStorylineRoute,
   CThreadIdRoute: CThreadIdRoute,
   DebugLogsRoute: DebugLogsRoute,
   VisualGraphRoute: VisualGraphRoute,
   ApiAdoptionMetricsRoute: ApiAdoptionMetricsRoute,
   ApiApprovalsBackendRoute: ApiApprovalsBackendRoute,
   ApiApprovalsOrchestratorRoute: ApiApprovalsOrchestratorRoute,
+  ApiConsultingAssembleRoute: ApiConsultingAssembleRoute,
   ApiDeliverableExportRoute: ApiDeliverableExportRoute,
   ApiDeliverableGenerateRoute: ApiDeliverableGenerateRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
   ApiObservabilitySummaryRoute: ApiObservabilitySummaryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
   ApiMrpCanvasResolveRoute: ApiMrpCanvasResolveRoute,
-  StorylineRoute: StorylineRoute,
-  ApiStorylineRoute: ApiStorylineRoute,
-  ConsultingRoute: ConsultingRoute,
-  ApiConsultingAssembleRoute: ApiConsultingAssembleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
