@@ -5,6 +5,12 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Update Playwright snapshots and commit'
+        type: boolean
+        default: false
 
 jobs:
   e2e:
@@ -14,6 +20,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Need write access to commit updated snapshots
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -26,7 +35,21 @@ jobs:
       - name: Install Playwright browsers
         run: npm run test:e2e:install
 
+      - name: Update snapshots
+        if: ${{ inputs.update_snapshots == true }}
+        run: npm run test:e2e -- --update-snapshots
+
+      - name: Commit updated snapshots
+        if: ${{ inputs.update_snapshots == true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add e2e/**-snapshots/
+          git diff --staged --quiet || git commit -m "chore(e2e): update Playwright snapshots [skip ci]"
+          git push
+
       - name: Run Playwright e2e tests
+        if: ${{ inputs.update_snapshots != true }}
         run: npm run test:e2e
 
       - name: Upload Playwright report
@@ -36,4 +59,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
-
