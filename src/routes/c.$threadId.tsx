@@ -10,11 +10,15 @@ export const Route = createFileRoute("/c/$threadId")({
       { name: "description", content: `Aurora samtale ${params.threadId}` },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    prompt: typeof search.prompt === "string" ? search.prompt : undefined,
+  }),
   component: ThreadRoute,
 });
 
 function ThreadRoute() {
   const { threadId } = Route.useParams();
+  const { prompt } = Route.useSearch();
 
   // Læs beskeder synkront pr. threadId. `readThreadMessages` er SSR-sikker
   // (returnerer [] uden window), så vi behøver IKKE et `hydrated`-gate — og må
@@ -24,5 +28,5 @@ function ThreadRoute() {
 
   // Key=threadId (KUN) tvinger remount ved tråd-SKIFT, men ikke ved hydrering,
   // så et streamende svar i den nye tråd overlever.
-  return <ChatWindow key={threadId} threadId={threadId} initialMessages={initial} />;
+  return <ChatWindow key={threadId} threadId={threadId} initialMessages={initial} initialInput={prompt} />;
 }

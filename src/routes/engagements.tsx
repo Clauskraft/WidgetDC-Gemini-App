@@ -16,8 +16,11 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
+import { useActiveEngagement } from "@/routes/__root";
 import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
 import type {
   DeliverableKind,
@@ -206,34 +209,23 @@ function EngagementsRoute() {
       {/* Left panel */}
       <div className={cn("flex flex-col overflow-hidden transition-all", selected || showCreate ? "w-1/2" : "flex-1")}>
         {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-border px-6 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <Briefcase className="h-4 w-4 text-white" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">Engagements</h1>
-            <p className="text-xs text-muted-foreground">
-              {engagements.length > 0
-                ? `${engagements.length}${hasMore ? "+" : ""} engagements`
-                : "WidgeTDC knowledge graph"}
-            </p>
-          </div>
-          <button
-            onClick={() => { setShowCreate(true); setSelected(null); }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Nyt engagement
-          </button>
-          <button
-            onClick={() => void fetchEngagements(q, domain, 0, true)}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Opdatér
-          </button>
-        </div>
+        <PageHeader
+          icon={<Briefcase className="h-4 w-4 text-white" />}
+          title="Engagements"
+          subtitle={engagements.length > 0 ? "engagements" : "WidgeTDC knowledge graph"}
+          count={engagements.length > 0 ? `${engagements.length}${hasMore ? "+" : ""}` : undefined}
+          onRefresh={() => void fetchEngagements(q, domain, 0, true)}
+          refreshing={loading}
+          action={
+            <button
+              onClick={() => { setShowCreate(true); setSelected(null); }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nyt engagement
+            </button>
+          }
+        />
 
         {/* Search bar */}
         <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
@@ -272,7 +264,20 @@ function EngagementsRoute() {
         {/* Grid */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {engagements.length === 0 && !loading && !error && (
-            <p className="py-12 text-center text-sm text-muted-foreground">Ingen engagements fundet.</p>
+            <EmptyState
+              icon={<Briefcase className="h-7 w-7" />}
+              title="Ingen engagements fundet"
+              description="Opret dit første engagement for at komme i gang med pattern-kobling og deliverable-generering."
+              action={
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Nyt engagement
+                </button>
+              }
+            />
           )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {engagements.map((eng) => (
@@ -884,9 +889,11 @@ function EngagementCard({
   const level = scoreToLevel(health);
   const meta = CONFIDENCE_META[level];
   const navigate = useNavigate();
+  const { setActiveEngagement } = useActiveEngagement();
 
   const handleStoryline = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setActiveEngagement(engagement);
     const briefParts = [engagement.name, engagement.client, engagement.domain].filter(Boolean);
     const params = new URLSearchParams({
       brief: briefParts.join(" – "),
@@ -897,10 +904,10 @@ function EngagementCard({
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => { setActiveEngagement(engagement); onClick(); }}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setActiveEngagement(engagement); onClick(); } }}
       className={cn(
         "group flex flex-col gap-2 rounded-2xl border p-4 text-left transition cursor-pointer hover:border-primary/40 hover:bg-accent/40",
         active ? "border-primary bg-accent/60 ring-1 ring-primary/20" : "border-border bg-card",

@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, Search, RefreshCw, Loader2, Code2, ChevronRight, Link2, CheckCircle2, X } from "lucide-react";
+import { BookOpen, Search, RefreshCw, Loader2, Code2, ChevronRight, Link2, CheckCircle2, X, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import type { PatternRow, PatternsResponse } from "./api/patterns";
 
 type EngagementHit = { id: string; name: string; client?: string };
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/patterns")({
 const LIMIT = 24;
 
 function PatternsRoute() {
+  const navigate = useNavigate();
   const [patterns, setPatterns] = useState<PatternRow[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [skip, setSkip] = useState(0);
@@ -84,25 +87,14 @@ function PatternsRoute() {
       {/* Left panel: search + grid */}
       <div className={cn("flex flex-col overflow-hidden transition-all", selected ? "w-1/2" : "flex-1")}>
         {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-border px-6 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <BookOpen className="h-4 w-4 text-white" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">Pattern Library</h1>
-            <p className="text-xs text-muted-foreground">
-              {patterns.length > 0 ? `${patterns.length}${hasMore ? "+" : ""} patterns` : "WidgeTDC knowledge graph"}
-            </p>
-          </div>
-          <button
-            onClick={() => void fetchPatterns(q, domain, 0, true)}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Opdatér
-          </button>
-        </div>
+        <PageHeader
+          icon={<BookOpen className="h-4 w-4 text-white" />}
+          title="Pattern Library"
+          subtitle={patterns.length > 0 ? "patterns" : "WidgeTDC knowledge graph"}
+          count={patterns.length > 0 ? `${patterns.length}${hasMore ? "+" : ""}` : undefined}
+          onRefresh={() => void fetchPatterns(q, domain, 0, true)}
+          refreshing={loading}
+        />
 
         {/* Search bar */}
         <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
@@ -141,7 +133,11 @@ function PatternsRoute() {
         {/* Grid */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {patterns.length === 0 && !loading && !error && (
-            <p className="py-12 text-center text-sm text-muted-foreground">Ingen patterns fundet.</p>
+            <EmptyState
+              icon={<BookOpen className="h-7 w-7" />}
+              title="Ingen patterns fundet"
+              description="Prøv en anden søgning, eller reset filtre for at se alle 2.800+ patterns."
+            />
           )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {patterns.map((p) => (
@@ -178,13 +174,30 @@ function PatternsRoute() {
         <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
           <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
             <h2 className="truncate text-base font-semibold">{selected.name}</h2>
-            <button
-              onClick={() => setSelected(null)}
-              className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent"
-              aria-label="Luk"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            <div className="ml-2 flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => {
+                  const threadId = `thread-${Date.now()}`;
+                  void navigate({
+                    to: "/c/$threadId",
+                    params: { threadId },
+                    search: { prompt: `Brug pattern: ${selected.name}` },
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20"
+                title="Pre-udfyld chat med dette pattern"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Brug i chat
+              </button>
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+                aria-label="Luk"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
             {/* Meta pills */}

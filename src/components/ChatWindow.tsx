@@ -124,16 +124,18 @@ export type GemContext = {
 export function ChatWindow({
   threadId,
   initialMessages,
+  initialInput,
   gem,
   onFirstMessage,
 }: {
   threadId: string;
   initialMessages: UIMessage[];
+  initialInput?: string;
   gem?: GemContext;
   onFirstMessage?: () => void;
 }) {
   const { upsertThread } = useThreads();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput ?? "");
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
