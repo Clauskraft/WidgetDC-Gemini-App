@@ -37,6 +37,7 @@ import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAudioOverviewRouteImport } from './routes/api/audio-overview'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiNewsRefreshRouteImport } from './routes/api/news.refresh'
@@ -192,6 +193,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAudioOverviewRoute = ApiAudioOverviewRouteImport.update({
+  id: '/api/audio-overview',
+  path: '/api/audio-overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmbedCanvasCanvasIdRoute = EmbedCanvasCanvasIdRouteImport.update({
   id: '/embed/canvas/$canvasId',
   path: '/embed/canvas/$canvasId',
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
+  '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
+  '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
+  '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/storyline'
+    | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/storyline'
+    | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/patterns'
     | '/settings'
     | '/storyline'
+    | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
@@ -548,6 +560,7 @@ export interface RootRouteChildren {
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
   StorylineRoute: typeof StorylineRoute
+  ApiAudioOverviewRoute: typeof ApiAudioOverviewRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiCostRoute: typeof ApiCostRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
@@ -769,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/audio-overview': {
+      id: '/api/audio-overview'
+      path: '/api/audio-overview'
+      fullPath: '/api/audio-overview'
+      preLoaderRoute: typeof ApiAudioOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/embed/canvas/$canvasId': {
       id: '/embed/canvas/$canvasId'
       path: '/embed/canvas/$canvasId'
@@ -925,6 +945,7 @@ const rootRouteChildren: RootRouteChildren = {
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
   StorylineRoute: StorylineRoute,
+  ApiAudioOverviewRoute: ApiAudioOverviewRoute,
   ApiChatRoute: ApiChatRoute,
   ApiCostRoute: ApiCostRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,

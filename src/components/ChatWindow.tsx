@@ -20,6 +20,7 @@ import {
   Briefcase,
   ChevronDown,
   BookmarkPlus,
+  Headphones,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
@@ -30,6 +31,7 @@ import { useModelPreference } from "@/lib/modelPreference";
 import type { EngagementRow } from "@/routes/api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
 import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSourcesPanel";
+import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
 
 const SUGGESTIONS = [
   {
@@ -141,6 +143,7 @@ export function ChatWindow({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [ingestedSources, setIngestedSources] = useState<IngestedSource[]>([]);
+  const [audioOverviewOpen, setAudioOverviewOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -667,6 +670,22 @@ export function ChatWindow({
               <PanelRightOpen className="h-3.5 w-3.5" />
               Canvas
             </button>
+            {ingestedSources.length > 0 && (
+              <button
+                onClick={() => setAudioOverviewOpen((v) => !v)}
+                aria-pressed={audioOverviewOpen}
+                title="Audio Overview — lyt til en podcast-sammenfatning af dine dokumenter"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
+                  audioOverviewOpen
+                    ? "bg-primary/10 text-primary border-primary/40"
+                    : "text-muted-foreground",
+                )}
+              >
+                <Headphones className="h-3.5 w-3.5" />
+                Audio
+              </button>
+            )}
           </div>
         </header>
 
@@ -861,6 +880,15 @@ export function ChatWindow({
       </div>
 
       {canvasOpen && <CanvasPanel messages={messages} onClose={() => setCanvasOpen(false)} />}
+
+      {audioOverviewOpen && ingestedSources.length > 0 && (
+        <div className="absolute bottom-24 right-4 z-40 w-[380px] max-w-[calc(100vw-2rem)]">
+          <AudioOverviewPanel
+            sources={ingestedSources}
+            onClose={() => setAudioOverviewOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Image preview modal */}
       {previewAttachment && (
