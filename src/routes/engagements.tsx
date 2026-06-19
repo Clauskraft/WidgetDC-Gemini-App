@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
-import { useActiveEngagement } from "@/routes/__root";
+import { useActiveEngagement } from "@/lib/engagement-context";
 import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
 import type {
   DeliverableKind,

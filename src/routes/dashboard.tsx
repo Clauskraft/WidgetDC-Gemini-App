@@ -252,6 +252,7 @@ function Dashboard() {
                       <Link
                         to="/c/$threadId"
                         params={{ threadId: t.id }}
+                        search={{ prompt: undefined }}
                         className="group flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40"
                       >
                         <div className="min-w-0">
@@ -308,6 +309,7 @@ function Dashboard() {
                       <Link
                         to="/c/$threadId"
                         params={{ threadId: gemThreadId(gem.id) }}
+                        search={{ prompt: undefined }}
                         className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40"
                       >
                         <span

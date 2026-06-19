@@ -27,7 +27,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
 
   const startNew = () => {
     const id = newId();
-    navigate({ to: "/c/$threadId", params: { threadId: id } });
+    navigate({ to: "/c/$threadId", params: { threadId: id }, search: { prompt: undefined as string | undefined } });
   };
 
   const navLinkBase =
@@ -176,6 +176,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
                 <Link
                   to="/c/$threadId"
                   params={{ threadId: t.id }}
+                  search={{ prompt: undefined }}
                   className={cn(
                     "block truncate rounded-xl px-3 py-2 pr-9 text-sm transition-all duration-150",
                     active === t.id

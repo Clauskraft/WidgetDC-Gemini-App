@@ -28,7 +28,7 @@ import { validateGemResponse, type ValidationResult } from "@/lib/gemResponseVal
 import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
 import type { EngagementRow } from "@/routes/api/engagements";
-import { useActiveEngagement } from "@/routes/__root";
+import { useActiveEngagement } from "@/lib/engagement-context";
 
 const SUGGESTIONS = [
   {
