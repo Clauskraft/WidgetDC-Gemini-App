@@ -15,6 +15,7 @@ import {
   fetchRagGrounding,
   modelPolicyPreflight,
   storeChatMemory,
+  retrieveChatMemory,
   emitChatBOMItem,
   type ChatIntentDetection,
   type ChatMessage,
@@ -297,12 +298,19 @@ export const Route = createFileRoute("/api/chat")({
             let intentDetection: ChatIntentDetection | null = null;
             let groundedSystem = system;
             if (lastUser) {
-              const [intent, grounding] = await Promise.all([
+              const [intent, grounding, priorMemory] = await Promise.all([
                 fetchIntentDetection(lastUser.content, correlationId),
                 fetchRagGrounding(lastUser.content, correlationId),
+                // AUR-6: hydrate prior session memory for cross-session continuity.
+                retrieveChatMemory(lastUser.content, correlationId),
               ]);
               intentDetection = intent;
               const systemAdditions: string[] = [];
+              if (priorMemory) {
+                systemAdditions.push(
+                  `# Prior session context (from platform memory)\n${priorMemory}`,
+                );
+              }
               if (intentDetection) {
                 systemAdditions.push(formatIntentContext(intentDetection));
                 // Gap 3: inject storyline overlay based on top intent candidate
@@ -448,11 +456,18 @@ export const Route = createFileRoute("/api/chat")({
             writer.write({ type: "finish" });
 
             // AUR-6: best-effort memory persistence (does not block the stream).
+            // Store the full Q+A so retrieveChatMemory can surface relevant prior context.
             if (produced && lastUser) {
               void storeChatMemory(
                 "widgetdc-aurora-chat",
                 `turn/${correlationId}`,
-                { query: lastUser.content.slice(0, 200), provider: meta.provider ?? "platform" },
+                {
+                  query: lastUser.content.slice(0, 300),
+                  provider: meta.provider ?? "platform",
+                  model: meta.model,
+                  has_grounding: sources.length > 0,
+                  intent: topIntent?.tool,
+                },
                 correlationId,
               ).catch(() => {});
             }

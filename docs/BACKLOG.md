@@ -129,15 +129,14 @@ ship the experience without chaining; revisit verify/judge if/when they appear
 on this route.
 **Tools used:** `reason_deeply` (with `reflect: true`).
 
-### AUR-6 — Agent memory persistence (cross-session continuity)
+### AUR-6 — Agent memory persistence (cross-session continuity) ✅ DONE (2026-06-20)
 
-**Why:** Threads persist in Supabase, but no agent memory / lessons feed the
-platform flywheel.
-**Build:** On meaningful turns, `memory_store` insights/closures; on session
-start, `memory_search` / `memory_retrieve` to hydrate context. Surface a
-"Memory" panel.
-**Tools:** `memory_store`, `memory_search`, `memory_retrieve`,
-`memory_consolidate`.
+**Done:** `storeChatMemory` persists each turn's query + provider + intent (fire-and-forget,
+never blocks the stream). `retrieveChatMemory` runs in parallel with intent+grounding at
+the start of each turn; if the platform returns relevant prior context it is injected into
+the system prompt as `# Prior session context (from platform memory)`. All three run in
+`Promise.all` so there is zero added latency vs. the pre-existing grounding fetch.
+**Tools used:** `memory_store`, `memory_search`.
 
 ### AUR-7 — Deploy target (Railway) + auto-deploy ✅ DONE (2026-06-07)
 
@@ -151,15 +150,14 @@ manual `railway up`.
 as a pre-merge gate; `commit_sha` in `/health` is "unknown" on CLI deploys but
 populated on GitHub-trigger deploys (`RAILWAY_GIT_COMMIT_SHA`).
 
-### AUR-8 — Platform health & live dashboard data
+### AUR-8 — Platform health & live dashboard data ✅ DONE (2026-06-08)
 
-**Why:** `dashboard.tsx` is local-only (threads/gems). The old app's "live vs
-preview" gating is gone.
-**Build:** A `serverReachable`-style probe via `get_platform_health` +
-`system_metrics_summary`; show real platform/service status and (read-only)
-`tool_metrics` / `flywheel_metrics` cards.
-**Tools:** `get_platform_health`, `system_metrics_summary`, `tool_metrics`,
-`flywheel_metrics`, `runtime_summary`.
+**Done:** `api/observability.summary.ts` — `GET /api/observability/summary` fetches
+`runtime_summary` + `data_graph_stats` in parallel and returns a normalized fleet
+snapshot (totalAgents, totalRequests, successRate, per-tool error rates + avgMs) plus
+graph size (nodes, relationships). Rendered in the Observability Monitor (Phase 3).
+**Tools used:** `runtime_summary`, `data_graph_stats`, `audit.adoption_metrics`,
+`intent.stats` (auto-discovered fallback chain).
 
 ---
 
