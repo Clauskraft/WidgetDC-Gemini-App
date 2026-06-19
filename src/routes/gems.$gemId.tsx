@@ -53,7 +53,7 @@ function GemChatRoute() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b border-border/60 bg-background/60 px-6 py-2 backdrop-blur">
+      <div className="border-b border-border/60 bg-background/60 px-6 py-2 backdrop-blur flex items-center gap-4">
         <Link
           to="/gems"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -61,6 +61,7 @@ function GemChatRoute() {
           <ChevronLeft className="h-3.5 w-3.5" />
           Alle widgets
         </Link>
+        <span className="text-xs text-muted-foreground/70">Widget · {gem.name}</span>
       </div>
       <ChatWindow
         key={`${threadId}:${hydrated}`}
