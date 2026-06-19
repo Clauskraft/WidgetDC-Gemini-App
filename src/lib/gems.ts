@@ -27,6 +27,7 @@ WidgeTDC Aurora rendering-kontrakt (brug aktivt når relevant):
 - \`\`\`mermaid\`\`\` fences renderes stabilt med Mermaid default-layout og family-detect (BPMN/C4/ArchiMate/Sequence/ERD/DFD/State/Capability/ValueStream/DecisionTree). Brug til sekvens/state/ER/Gantt og simple flowcharts.
 - \`\`\`graph\`\`\` fences renderes som robust interaktiv SVG/React-graf (pan, zoom, selection). JSON: {nodes:[{id,label,type?,x?,y?}], edges:[{source,target,label?}], layout?:"dagre"|"manual"|"elk-layered", direction?:"RIGHT"|"DOWN"|"LEFT"|"UP", caption?}. Brug til pipelines, agent-flows og procesdiagrammer punkt-for-punkt hvor brugeren skal kunne klikke/zoome.
 - \`\`\`knowledge-graph\`\`\` (alias \`\`\`kg\`\`\`) fences renderes som robust radial/layered relationsgraf — bygget til entitet/relations-grafer (GraphRAG, Neo4j-stil). JSON: {nodes:[{id,label,type?}], edges:[{source,target,label?}], layout?:"concentric"|"breadthfirst"|"circle"|"grid"|"dagre", caption?}. Brug når der er mange noder og fokus er relationer/connectivity frem for sekvens.
+- \`\`\`mindmap\`\`\` fences renderes som interaktivt markmap mindmap-træ. Brug markdown-indented liste format: rod-node på første linje (ingen prefix), grenene indenteret med 2 mellemrum eller tab, blade yderligere indenteret. Brug til brainstorm, issue-træer, feature-breakdown og hierarkiske strukturer.
 - Markér pin'bare indsigter med en linje der starter med "Canvas notes:" efterfulgt af 2-5 bullets.
 - Default til dansk hvis brugeren skriver dansk.
 `.trim();

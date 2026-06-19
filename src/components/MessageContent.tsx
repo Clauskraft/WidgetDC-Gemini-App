@@ -45,6 +45,7 @@ import { Chart, CHART_SERIES_VARS } from "@/components/Chart";
 import { parseBlocks, tableToChartSpec, type ChartSpec, type Block } from "@/lib/figureBlocks";
 import { FlowFigure } from "@/components/FlowFigure";
 import { MermaidBlock } from "@/components/MermaidBlock";
+import { MindmapBlock } from "@/components/MindmapBlock";
 import { GraphBlock } from "@/components/GraphBlock";
 import { KnowledgeGraphBlock } from "@/components/KnowledgeGraphBlock";
 import { GraphErrorBlock } from "@/components/GraphErrorBlock";
@@ -267,6 +268,7 @@ export function MessageContent({
       t === "chart" ||
       t === "flow" ||
       t === "mermaid" ||
+      t === "mindmap" ||
       t === "svg" ||
       t === "graph" ||
       t === "knowledge-graph"
@@ -294,6 +296,8 @@ export function MessageContent({
             return wrap(<FlowFigure content={b.content} />);
           case "mermaid":
             return wrap(<MermaidBlock content={b.content} />);
+          case "mindmap":
+            return wrap(<MindmapBlock content={b.content} />);
           case "svg":
             return wrap(<SvgBlock content={b.content} />);
           case "figure":

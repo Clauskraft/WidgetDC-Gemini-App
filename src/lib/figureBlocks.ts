@@ -69,6 +69,7 @@ export type Block =
   | { type: "chart"; spec: ChartSpec; raw: string }
   | { type: "flow"; content: string }
   | { type: "mermaid"; content: string }
+  | { type: "mindmap"; content: string }
   | { type: "svg"; content: string }
   | { type: "figure"; content: string }
   | { type: "graph"; spec: GraphSpec; raw: string }
@@ -144,7 +145,7 @@ function normalizeGraphLikeSpec<T extends GraphSpec | KnowledgeGraphSpec>(value:
 }
 
 const FENCE_RE =
-  /^([ \t]*)```(chart|flow|mermaid|clak|ckak|svg|figure|graph|knowledge-graph|kg)\b[^\n]*\n([\s\S]*?)\n\1```/gim;
+  /^([ \t]*)```(chart|flow|mermaid|mindmap|clak|ckak|svg|figure|graph|knowledge-graph|kg)\b[^\n]*\n([\s\S]*?)\n\1```/gim;
 
 export function parseBlocks(text: string): Block[] {
   if (!text) return [];
@@ -172,6 +173,8 @@ export function parseBlocks(text: string): Block[] {
     } else if (lang === "mermaid" || lang === "clak" || lang === "ckak") {
       // Mermaid + Aurora-aliaser → renderes via mermaid.js
       blocks.push({ type: "mermaid", content: body });
+    } else if (lang === "mindmap") {
+      blocks.push({ type: "mindmap", content: body });
     } else if (lang === "svg") {
       blocks.push({ type: "svg", content: body });
     } else if (lang === "figure") {
