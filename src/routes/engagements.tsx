@@ -14,6 +14,8 @@ import {
   FileText,
   Sparkles,
   Info,
+  Pin,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
@@ -22,6 +24,7 @@ import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
 import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
+import type { PinnedSource, EngagementSourcesResponse, PinSourceBody, PinSourceResponse } from "./api/engagements.$id.sources";
 import type {
   DeliverableKind,
   WorkArtifactRow,
@@ -678,6 +681,142 @@ function CitationsPanel({ engagementId, count }: { engagementId: string; count: 
   );
 }
 
+// ─── SourcesPanel BOM-item ───────────────────────────────────────────────────
+// Reusable atom: viser + lader brugeren pinne AssemblyBlock-sources (HAS_SOURCE).
+// Komplement til CitationsPanel (som viser HAS_PATTERN). Samme lazy-load mønster.
+// BOM-spine: GROUNDED_BY edge — engagement er grounded_by disse kildeblokke.
+
+function SourcesPanel({ engagementId }: { engagementId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [sources, setSources] = useState<PinnedSource[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const [pinText, setPinText] = useState("");
+  const [pinning, setPinning] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (fetched) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/sources`);
+      const body = (await res.json()) as EngagementSourcesResponse;
+      if (res.ok) setSources(body.sources.slice(0, 12));
+      setFetched(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [engagementId, fetched]);
+
+  const toggle = () => {
+    if (!expanded && !fetched) void load();
+    setExpanded((v) => !v);
+  };
+
+  const pinSource = async () => {
+    if (!pinText.trim()) return;
+    setPinning(true);
+    setPinError(null);
+    try {
+      const body: PinSourceBody = { text: pinText.trim() };
+      const res = await fetch(`/api/engagements/${encodeURIComponent(engagementId)}/sources`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as PinSourceResponse;
+      if (!res.ok || !data.pinned) {
+        setPinError(data.error ?? `Fejl (${res.status})`);
+      } else {
+        const newSource: PinnedSource = {
+          id: data.block_id,
+          title: pinText.slice(0, 80),
+          content_preview: pinText.slice(0, 200),
+          domain: null,
+          quality_score: 0.7,
+          pinned_at: new Date().toISOString(),
+        };
+        setSources((prev) => [newSource, ...prev]);
+        setPinText("");
+      }
+    } finally {
+      setPinning(false);
+    }
+  };
+
+  const sourceCount = fetched ? sources.length : null;
+
+  return (
+    <div>
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition"
+      >
+        <Pin className="h-3 w-3" />
+        <span>
+          {sourceCount !== null ? `${sourceCount} kilde${sourceCount === 1 ? "" : "r"}` : "kilder"}
+        </span>
+        <ChevronRight
+          className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+
+          {!loading && fetched && sources.length === 0 && (
+            <p className="text-[10px] text-muted-foreground">Ingen pinnede kilder endnu</p>
+          )}
+
+          {sources.map((s) => (
+            <div
+              key={s.id}
+              className="rounded-md border border-border bg-muted/30 px-2.5 py-1.5 space-y-0.5"
+            >
+              {s.title && (
+                <p className="text-[11px] font-medium text-foreground truncate">{s.title}</p>
+              )}
+              <p className="text-[10px] text-muted-foreground line-clamp-2">{s.content_preview}</p>
+              <div className="flex items-center gap-2">
+                {s.domain && (
+                  <span className="text-[9px] bg-muted rounded px-1 text-muted-foreground">{s.domain}</span>
+                )}
+                <span className="text-[9px] text-muted-foreground">
+                  score {s.quality_score.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* Pin ny kilde */}
+          <div className="space-y-1.5 pt-1 border-t border-border">
+            <p className="text-[10px] text-muted-foreground font-medium">Pin ny kilde</p>
+            <textarea
+              value={pinText}
+              onChange={(e) => setPinText(e.target.value)}
+              placeholder="Indsæt kildetekst, citat eller observation…"
+              rows={2}
+              className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+            {pinError && (
+              <p className="text-[10px] text-destructive">{pinError}</p>
+            )}
+            <button
+              onClick={() => void pinSource()}
+              disabled={pinning || !pinText.trim()}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+            >
+              {pinning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pin className="h-3 w-3" />}
+              {pinning ? "Pinner…" : "Pin kilde"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DELIVERABLE_KINDS: { id: DeliverableKind; label: string }[] = [
   { id: "analysis", label: "Analyse" },
   { id: "roadmap", label: "Roadmap" },
@@ -802,7 +941,10 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
             <MessageContent text={preview.markdown} />
           </div>
           <div className="border-t border-border px-3 py-2 flex items-start justify-between gap-3">
-            <CitationsPanel engagementId={engagementId} count={preview.citations} />
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
+              <CitationsPanel engagementId={engagementId} count={preview.citations} />
+              <SourcesPanel engagementId={engagementId} />
+            </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               {preview.signed_status ? (
                 <span className="text-[10px] text-muted-foreground">{preview.signed_status}</span>
