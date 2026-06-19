@@ -29,6 +29,7 @@ import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
 import type { EngagementRow } from "@/routes/api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
+import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSourcesPanel";
 
 const SUGGESTIONS = [
   {
@@ -139,6 +140,7 @@ export function ChatWindow({
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [ingestedSources, setIngestedSources] = useState<IngestedSource[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -403,27 +405,106 @@ export function ChatWindow({
     }
   };
 
+  const INGEST_TYPES = new Set([
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "application/json",
+  ]);
+
+  const isIngestable = (file: File) =>
+    INGEST_TYPES.has(file.type) ||
+    file.name.endsWith(".md") ||
+    file.name.endsWith(".txt") ||
+    file.name.toLowerCase().endsWith(".pdf");
+
   const onPickFiles = async (list: FileList | null) => {
     if (!list) return;
-    const next: Attachment[] = [];
+    const nextAttachments: Attachment[] = [];
+    const toIngest: File[] = [];
+
     for (const file of Array.from(list)) {
       if (file.size > MAX_FILE_BYTES) {
         console.warn(`Skipper ${file.name}: over 8 MB`);
         continue;
       }
-      try {
-        const dataUrl = await fileToDataUrl(file);
-        next.push({ file, dataUrl });
-      } catch (err) {
-        console.error("Kunne ikke læse fil:", err);
+      if (file.type.startsWith("image/")) {
+        // Images stay as LLM vision parts
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          nextAttachments.push({ file, dataUrl });
+        } catch (err) {
+          console.error("Kunne ikke læse fil:", err);
+        }
+      } else if (isIngestable(file)) {
+        // Documents go to persistent RAG ingest
+        toIngest.push(file);
+      } else {
+        // Fallback: treat as vision attachment
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          nextAttachments.push({ file, dataUrl });
+        } catch (err) {
+          console.error("Kunne ikke læse fil:", err);
+        }
       }
     }
-    setAttachments((prev) => [...prev, ...next]);
+
+    if (nextAttachments.length > 0) {
+      setAttachments((prev) => [...prev, ...nextAttachments]);
+    }
+
+    if (toIngest.length > 0) {
+      // Add as pending immediately so the user sees feedback
+      const pending: IngestedSource[] = toIngest.map((f) => ({
+        id: f.name,
+        filename: f.name,
+        status: "pending" as const,
+      }));
+      setIngestedSources((prev) => [...prev, ...pending]);
+
+      // Fire ingest requests in background
+      const form = new FormData();
+      toIngest.forEach((f) => form.append("file", f));
+      fetch("/api/ingest", { method: "POST", body: form })
+        .then((r) => r.json())
+        .then((data: { results?: Array<{ id: string; filename: string; status: "ok" | "error"; error?: string }> }) => {
+          if (!data.results) return;
+          setIngestedSources((prev) =>
+            prev.map((src) => {
+              const result = data.results!.find((r) => r.filename === src.filename);
+              if (!result) return src;
+              return {
+                id: result.id || src.filename,
+                filename: src.filename,
+                status: result.status,
+                error: result.error,
+              };
+            }),
+          );
+        })
+        .catch((err) => {
+          console.error("Ingest fejlede:", err);
+          setIngestedSources((prev) =>
+            prev.map((src) =>
+              toIngest.some((f) => f.name === src.filename)
+                ? { ...src, status: "error" as const, error: "Netværksfejl" }
+                : src,
+            ),
+          );
+        });
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeAttachment = (idx: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeIngestedSource = (id: string) => {
+    setIngestedSources((prev) => prev.filter((s) => s.id !== id && s.filename !== id));
   };
 
   const empty = messages.length === 0;
@@ -664,6 +745,12 @@ export function ChatWindow({
           }}
         >
           <div className="mx-auto max-w-3xl">
+            <IngestSourcesPanel
+              sources={ingestedSources}
+              onRemove={removeIngestedSource}
+              onDropFiles={(files) => onPickFiles(files)}
+              className="mb-2"
+            />
             {attachments.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-2">
                 {attachments.map((a, i) => {
@@ -758,7 +845,7 @@ export function ChatWindow({
               ) : (
                 <button
                   onClick={() => submit()}
-                  disabled={!input.trim() && attachments.length === 0}
+                  disabled={!input.trim() && attachments.length === 0 && ingestedSources.length === 0}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-aurora text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
                   aria-label="Send"
                 >

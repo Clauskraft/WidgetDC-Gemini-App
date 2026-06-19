@@ -33,6 +33,7 @@ import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
+import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -171,6 +172,11 @@ const ApiMondayReviewRoute = ApiMondayReviewRouteImport.update({
   path: '/api/monday-review',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIngestRoute = ApiIngestRouteImport.update({
+  id: '/api/ingest',
+  path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
   id: '/api/engagements',
   path: '/api/engagements',
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
@@ -365,6 +373,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
+  '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
+    | '/api/ingest'
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
+    | '/api/ingest'
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/cost'
     | '/api/engagements'
+    | '/api/ingest'
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
@@ -539,6 +551,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiCostRoute: typeof ApiCostRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
+  ApiIngestRoute: typeof ApiIngestRoute
   ApiMondayReviewRoute: typeof ApiMondayReviewRoute
   ApiNewsRoute: typeof ApiNewsRouteWithChildren
   ApiPatternsRoute: typeof ApiPatternsRoute
@@ -728,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMondayReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ingest': {
+      id: '/api/ingest'
+      path: '/api/ingest'
+      fullPath: '/api/ingest'
+      preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/engagements': {
       id: '/api/engagements'
       path: '/api/engagements'
@@ -908,6 +928,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiCostRoute: ApiCostRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
+  ApiIngestRoute: ApiIngestRoute,
   ApiMondayReviewRoute: ApiMondayReviewRoute,
   ApiNewsRoute: ApiNewsRouteWithChildren,
   ApiPatternsRoute: ApiPatternsRoute,
