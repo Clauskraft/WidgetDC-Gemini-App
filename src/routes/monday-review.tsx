@@ -50,7 +50,8 @@ function engagementScore(e: EngagementSummary): number {
   else if (e.pattern_count >= 1) s += 0.15;
   if (e.client) s += 0.20;
   if (e.domain) s += 0.20;
-  if (e.artifact_count >= 1) s += 0.25;
+  if (e.artifact_count >= 1) s += 0.20;
+  if (e.description_length >= 50) s += 0.05;
   return s;
 }
 

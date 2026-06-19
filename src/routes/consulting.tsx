@@ -14,7 +14,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AssemblyBlockRow, AssembleResponse, CpListResponse } from "./api/consulting.assemble";
+import type { AssemblyBlockRow, AssembleResponse, CpListResponse, FallbackMode } from "./api/consulting.assemble";
 
 export const Route = createFileRoute("/consulting")({
   head: () => ({
@@ -62,7 +62,10 @@ function PreviewDrawer({ block, onClose, onCopy, copiedId }: PreviewDrawerProps)
                   {block.domain}
                 </span>
               )}
-              <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", badge.className)}>
+              <span
+                className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", badge.className)}
+                title={`Quality score ${block.quality_score} — ≥70% = velbelagt, 40-70% = indikativt, <40% = eksplorativt`}
+              >
                 Quality {badge.label}
               </span>
             </div>
@@ -102,10 +105,15 @@ function PreviewDrawer({ block, onClose, onCopy, copiedId }: PreviewDrawerProps)
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-border px-5 py-3">
+        <div className="shrink-0 border-t border-border px-5 py-3 flex items-center justify-between">
           <p className="text-[10px] text-muted-foreground/60">
             BOM-item · AssemblyBlock · Knowledge Graph
           </p>
+          {block.content_truncated && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400">
+              Indhold afkortet (vises 800 tegn)
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -150,7 +158,10 @@ function BomCard({
                 {block.domain}
               </span>
             )}
-            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+            <span
+              className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}
+              title={`Quality score: ${block.quality_score} — baseret på indholdsrigdom, strukturering og relevans i WidgeTDC knowledge graph`}
+            >
               {badge.label}
             </span>
           </div>
@@ -210,6 +221,7 @@ function ConsultingRoute() {
   const [cpError, setCpError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewBlock, setPreviewBlock] = useState<AssemblyBlockRow | null>(null);
+  const [fallbackMode, setFallbackMode] = useState<FallbackMode | null>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchCps = useCallback(async () => {
@@ -244,6 +256,7 @@ function ConsultingRoute() {
     setError(null);
     setBom(null);
     setPreviewBlock(null);
+    setFallbackMode(null);
     try {
       const res = await fetch("/api/consulting/assemble", {
         method: "POST",
@@ -260,9 +273,10 @@ function ConsultingRoute() {
         setError(body.error ?? `Fejl (${res.status})`);
       } else {
         setBom(body.bom);
+        setFallbackMode(body.fallback_mode ?? null);
         if (body.bom.length === 0) {
           setError(
-            "Konfigurér REQUIRES-edges i backend for at se blocks. G5-gap aktiv — CP→AB edges ikke seeded endnu."
+            "Ingen relevante blocks fundet for denne proces og opgave — prøv et bredere brief eller et andet domain filter."
           );
         }
       }
@@ -432,6 +446,16 @@ function ConsultingRoute() {
           <div className="mx-6 mt-4 shrink-0 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
             <AlertTriangle className="mb-0.5 mr-1.5 inline h-4 w-4" />
             {error}
+          </div>
+        )}
+
+        {/* Fallback mode banner */}
+        {fallbackMode && fallbackMode !== "requires" && bom && bom.length > 0 && (
+          <div className="mx-6 mt-3 shrink-0 rounded-lg border border-amber-500/25 bg-amber-500/8 px-4 py-2 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            {fallbackMode === "domain_match"
+              ? "Viser blocks baseret på domain-match — REQUIRES-edges ikke tilgængelige for denne CP."
+              : "Viser bredt udvalg fra knowledge graph — ingen specifik CP valgt."}
           </div>
         )}
 

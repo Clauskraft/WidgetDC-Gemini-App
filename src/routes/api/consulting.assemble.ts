@@ -14,19 +14,25 @@ export type AssemblyBlockRow = {
   domain: string | null;
   quality_score: number;
   title: string | null;
+  relevance_score?: number;
+  content_truncated?: boolean;
 };
+
+export type FallbackMode = "requires" | "domain_match" | "global_quality";
 
 export type AssembleBody = {
   cp_name?: string;
   brief: string;
   max_blocks?: number;
   domain_filter?: string;
+  engagement_id?: string;
 };
 
 export type AssembleResponse = {
   bom: AssemblyBlockRow[];
   cp_name: string;
   total: number;
+  fallback_mode?: FallbackMode;
   error?: string;
 };
 
@@ -51,6 +57,24 @@ function jsonRes(body: unknown, status: number): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function briefRelevanceScore(brief: string, title: string | null, content: string): number {
+  const terms = brief.toLowerCase().split(/\s+/).filter((t) => t.length > 3);
+  if (terms.length === 0) return 0;
+  const haystack = `${(title ?? "").toLowerCase()} ${content.slice(0, 400).toLowerCase()}`;
+  const hits = terms.filter((t) => haystack.includes(t)).length;
+  return hits / terms.length;
+}
+
+function reRankByBrief(brief: string, blocks: AssemblyBlockRow[]): AssemblyBlockRow[] {
+  return blocks
+    .map((b) => ({ ...b, relevance_score: briefRelevanceScore(brief, b.title, b.content) }))
+    .sort((a, b) => {
+      const relevanceDiff = (b.relevance_score ?? 0) - (a.relevance_score ?? 0);
+      if (Math.abs(relevanceDiff) > 0.05) return relevanceDiff;
+      return b.quality_score - a.quality_score;
+    });
 }
 
 export const Route = createFileRoute("/api/consulting/assemble")({
@@ -152,14 +176,16 @@ export const Route = createFileRoute("/api/consulting/assemble")({
           const boI = (boR.result as Record<string, unknown>) ?? boR;
           const boRaw: unknown = boI.results ?? boI.rows ?? boI.records ?? boI.data;
           const boRows = Array.isArray(boRaw) ? (boRaw as Array<Record<string, unknown>>) : [];
-          const boBom: AssemblyBlockRow[] = boRows.map((row) => ({
+          const boBomRaw: AssemblyBlockRow[] = boRows.map((row) => ({
             id: String(row.id ?? ""),
             content: String(row.content ?? "").slice(0, 800),
             domain: row.domain != null ? String(row.domain) : null,
             quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
             title: row.title != null ? String(row.title).slice(0, 120) : null,
+            content_truncated: String(row.content ?? "").length > 800,
           }));
-          return jsonRes({ bom: boBom, cp_name: "", total: boBom.length } satisfies AssembleResponse, 200);
+          const boBom = reRankByBrief(brief, boBomRaw);
+          return jsonRes({ bom: boBom, cp_name: "", total: boBom.length, fallback_mode: "global_quality" } satisfies AssembleResponse, 200);
         }
 
         // First try REQUIRES edges (seeded by legofactory.seed_cp_ab_edges)
@@ -233,27 +259,29 @@ export const Route = createFileRoute("/api/consulting/assemble")({
             const fbRaw: unknown = fi.results ?? fi.rows ?? fi.records ?? fi.data;
             const fbRows = Array.isArray(fbRaw) ? (fbRaw as Array<Record<string, unknown>>) : [];
 
-            const bom: AssemblyBlockRow[] = fbRows.map((row) => ({
+            const fbBomRaw: AssemblyBlockRow[] = fbRows.map((row) => ({
               id: String(row.id ?? ""),
               content: String(row.content ?? "").slice(0, 800),
               domain: row.domain != null ? String(row.domain) : null,
               quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
               title: row.title != null ? String(row.title).slice(0, 120) : null,
             }));
+            const bom = reRankByBrief(brief, fbBomRaw);
 
-            return jsonRes({ bom, cp_name: cpName, total: bom.length } satisfies AssembleResponse, 200);
+            return jsonRes({ bom, cp_name: cpName, total: bom.length, fallback_mode: "domain_match" } satisfies AssembleResponse, 200);
           }
         }
 
-        const bom: AssemblyBlockRow[] = rows.map((row) => ({
+        const bomRaw: AssemblyBlockRow[] = rows.map((row) => ({
           id: String(row.id ?? ""),
           content: String(row.content ?? "").slice(0, 800),
           domain: row.domain != null ? String(row.domain) : null,
           quality_score: Math.round(neo4jNum(row.quality_score) * 100) / 100,
           title: row.title != null ? String(row.title).slice(0, 120) : null,
         }));
+        const bom = reRankByBrief(brief, bomRaw);
 
-        return jsonRes({ bom, cp_name: cpName, total: bom.length } satisfies AssembleResponse, 200);
+        return jsonRes({ bom, cp_name: cpName, total: bom.length, fallback_mode: "requires" } satisfies AssembleResponse, 200);
       },
     },
   },
