@@ -9,10 +9,11 @@ import {
   ArrowUpRight,
   Inbox,
   Cpu,
-  Layers,
-  StickyNote,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
+import { CostBadge } from "@/components/CostBadge";
+import { useCostBudget } from "@/hooks/useCostBudget";
 import { useThreads, type Thread } from "@/hooks/useThreads";
 import { GEMS, getGem, gemThreadId } from "@/lib/gems";
 import { ModelPicker } from "@/components/ModelPicker";
@@ -53,6 +54,7 @@ function Dashboard() {
   const { threads, hydrated } = useThreads();
   const [model] = useModelPreference();
   const modelMeta = getModelMeta(model);
+  const cost = useCostBudget();
 
   const stats = useMemo(() => {
     const now = Date.now();
@@ -109,36 +111,29 @@ function Dashboard() {
   }, [threads]);
 
   const recent = useMemo(() => threads.slice(0, 6), [threads]);
-  const totalFigures =
-    stats.fenceCounts.mermaid +
-    stats.fenceCounts.flow +
-    stats.fenceCounts.graph +
-    stats.fenceCounts.kg;
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-6xl px-8 py-10">
-        <header className="flex items-end justify-between gap-4">
+        <header className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="bg-gradient-aurora bg-clip-text text-3xl font-semibold text-transparent">
-              Mission Control
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Live overblik over dine samtaler, widgets og platform-aktivitet.
+            <h1 className="text-2xl font-semibold tracking-tight">Overblik</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Dine samtaler, widgets og platform-aktivitet.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <ModelPicker variant="full" />
             <Link
               to="/adoption"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-soft hover:bg-accent"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[13px] font-medium hover:bg-accent"
             >
               <TrendingUp className="h-3.5 w-3.5" />
-              Runtime adoption
+              Adoption
             </Link>
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-soft hover:bg-accent"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground hover:opacity-90"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Ny samtale
@@ -147,7 +142,7 @@ function Dashboard() {
         </header>
 
         {/* Live metrics */}
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric
             icon={Cpu}
             label="Aktiv model"
@@ -174,32 +169,47 @@ function Dashboard() {
           />
         </div>
 
-        {/* Platform-mix */}
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metric
-            icon={Layers}
-            label="Mermaid"
-            value={hydrated ? String(stats.fenceCounts.mermaid) : "—"}
-            hint="diagrammer"
-          />
-          <Metric
-            icon={Layers}
-            label="Flow"
-            value={hydrated ? String(stats.fenceCounts.flow) : "—"}
-            hint="CFDS-blokke"
-          />
-          <Metric
-            icon={Layers}
-            label="Graph / KG"
-            value={hydrated ? String(stats.fenceCounts.graph + stats.fenceCounts.kg) : "—"}
-            hint={`${totalFigures} figurer i alt`}
-          />
-          <Metric
-            icon={StickyNote}
-            label="Canvas-noter"
-            value={hydrated ? String(stats.canvasNotes) : "—"}
-            hint="pinbare indsigter"
-          />
+        {/* Cost budget panel */}
+        <div className="mt-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <Wallet className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                Dagligt budget
+              </span>
+            </div>
+            {!cost.loading && !cost.error && (
+              <div className="flex items-center gap-2 shrink-0">
+                <CostBadge pct={cost.pct} usedDKK={cost.used} />
+                <span className="text-[11px] text-muted-foreground/60">
+                  af {cost.budget} DKK
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 h-2 w-full rounded-full bg-muted overflow-hidden">
+            {cost.loading ? (
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-muted-foreground/20" />
+            ) : (
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${100 - cost.pct}%`,
+                  background:
+                    cost.pct > 50
+                      ? "oklch(72% 0.19 160)"
+                      : cost.pct > 20
+                        ? "oklch(78% 0.17 70)"
+                        : "oklch(63% 0.22 25)",
+                }}
+              />
+            )}
+          </div>
+          {!cost.loading && !cost.error && cost.costPer1K > 0 && (
+            <p className="mt-2 text-[11px] text-muted-foreground/50">
+              Aktuel model: {cost.costPer1K.toFixed(4)} DKK / 1K tokens
+            </p>
+          )}
         </div>
 
         {/* Approval queues — backend humanApprovalService + orchestrator HyperAgent (LIN-1911) */}
@@ -207,12 +217,12 @@ function Dashboard() {
           <ApprovalQueuePanel approverIdentity="clauskraft@gmail.com" />
         </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-5">
+        <div className="mt-8 grid gap-4 lg:grid-cols-5">
           {/* Recent threads */}
-          <section className="lg:col-span-3 rounded-2xl border border-border bg-card shadow-soft">
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <h2 className="text-sm font-medium">Seneste samtaler</h2>
-              <span className="text-xs text-muted-foreground">
+          <section className="lg:col-span-3 rounded-2xl border border-border/60 bg-card shadow-soft">
+            <div className="flex items-center justify-between border-b border-border/60 px-5 py-3.5">
+              <h2 className="text-[13px] font-semibold">Seneste samtaler</h2>
+              <span className="text-[11px] text-muted-foreground/70">
                 {hydrated ? `${threads.length} i alt` : ""}
               </span>
             </div>
@@ -242,6 +252,7 @@ function Dashboard() {
                       <Link
                         to="/c/$threadId"
                         params={{ threadId: t.id }}
+                        search={{ prompt: undefined }}
                         className="group flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40"
                       >
                         <div className="min-w-0">
@@ -269,8 +280,8 @@ function Dashboard() {
           </section>
 
           {/* Gem leaderboard */}
-          <section className="lg:col-span-2 rounded-2xl border border-border bg-card shadow-soft">
-            <div className="border-b border-border px-5 py-3 text-sm font-medium">
+          <section className="lg:col-span-2 rounded-2xl border border-border/60 bg-card shadow-soft">
+            <div className="border-b border-border/60 px-5 py-3.5 text-[13px] font-semibold">
               Mest brugte widgets
             </div>
             {!hydrated ? (
@@ -298,6 +309,7 @@ function Dashboard() {
                       <Link
                         to="/c/$threadId"
                         params={{ threadId: gemThreadId(gem.id) }}
+                        search={{ prompt: undefined }}
                         className="flex items-center gap-3 px-5 py-3 hover:bg-accent/40"
                       >
                         <span
@@ -344,13 +356,13 @@ function Metric({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft transition hover:border-border">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+        <Icon className="h-3 w-3" />
         {label}
       </div>
-      <div className="mt-2 truncate text-lg font-semibold">{value}</div>
-      <div className="truncate text-xs text-muted-foreground">{hint}</div>
+      <div className="mt-2.5 truncate text-xl font-semibold tracking-tight">{value}</div>
+      <div className="mt-0.5 truncate text-xs text-muted-foreground/70">{hint}</div>
     </div>
   );
 }

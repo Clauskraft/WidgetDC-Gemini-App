@@ -5,29 +5,54 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Update Playwright snapshots and commit'
+        type: boolean
+        default: false
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          # Need write access to commit updated snapshots
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci --legacy-peer-deps
 
       - name: Install Playwright browsers
-        run: bun run test:e2e:install
+        run: npm run test:e2e:install
+
+      - name: Update snapshots
+        if: ${{ inputs.update_snapshots == true }}
+        run: npm run test:e2e -- --update-snapshots
+
+      - name: Commit updated snapshots
+        if: ${{ inputs.update_snapshots == true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add e2e/**-snapshots/
+          git diff --staged --quiet || git commit -m "chore(e2e): update Playwright snapshots [skip ci]"
+          git push
 
       - name: Run Playwright e2e tests
-        run: bun run test:e2e
+        if: ${{ inputs.update_snapshots != true }}
+        run: npm run test:e2e
 
       - name: Upload Playwright report
         if: always()

@@ -17,6 +17,9 @@ import {
   Wrench,
   Brain,
   Users,
+  Briefcase,
+  ChevronDown,
+  BookmarkPlus,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
@@ -24,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { validateGemResponse, type ValidationResult } from "@/lib/gemResponseValidator";
 import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
+import type { EngagementRow } from "@/routes/api/engagements";
+import { useActiveEngagement } from "@/lib/engagement-context";
 
 const SUGGESTIONS = [
   {
@@ -119,16 +124,18 @@ export type GemContext = {
 export function ChatWindow({
   threadId,
   initialMessages,
+  initialInput,
   gem,
   onFirstMessage,
 }: {
   threadId: string;
   initialMessages: UIMessage[];
+  initialInput?: string;
   gem?: GemContext;
   onFirstMessage?: () => void;
 }) {
   const { upsertThread } = useThreads();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput ?? "");
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
@@ -137,12 +144,37 @@ export function ChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const healAttemptsRef = useRef<Map<string, number>>(new Map());
   const healChainRef = useRef(0);
+  const engDropdownRef = useRef<HTMLDivElement>(null);
   // Chain-scoped trace of every failed attempt, reset when the chain closes
   // (success or max retries). Used to render the diff on the final message.
   const healChainTraceRef = useRef<HealAttempt[]>([]);
   const [healingMessageId, setHealingMessageId] = useState<string | null>(null);
   const [healHistory, setHealHistory] = useState<Record<string, HealSummary>>({});
   const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [engagements, setEngagements] = useState<EngagementRow[]>([]);
+  // Use global engagement context from __root so context-bar and chat stay in sync
+  const { activeEngagement, setActiveEngagement } = useActiveEngagement();
+  const [engSelectorOpen, setEngSelectorOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/engagements?limit=10")
+      .then((r) => r.json())
+      .then((data: { engagements?: EngagementRow[] }) => {
+        if (Array.isArray(data.engagements)) setEngagements(data.engagements);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!engSelectorOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (engDropdownRef.current && !engDropdownRef.current.contains(e.target as Node)) {
+        setEngSelectorOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [engSelectorOpen]);
 
   const [model] = useModelPreference();
   // AUR-5: "Reason deeply" toggle — persisted across reloads, sent with each
@@ -192,16 +224,35 @@ export function ChatWindow({
     deep: deepMode,
     council: councilMode,
     system: gem?.systemPrompt,
+    activeEngagement,
   });
   requestMetaRef.current = {
     model,
     deep: deepMode,
     council: councilMode,
     system: gem?.systemPrompt,
+    activeEngagement,
   };
   const buildRequestBody = useCallback(() => {
-    const { model: m, deep, council, system } = requestMetaRef.current;
-    return { model: m, deep, council, ...(system ? { system } : {}) };
+    const { model: m, deep, council, system, activeEngagement: eng } = requestMetaRef.current;
+    return {
+      model: m,
+      deep,
+      council,
+      ...(system ? { system } : {}),
+      ...(eng
+        ? {
+            engagement_context: {
+              id: eng.id,
+              name: eng.name,
+              client: eng.client,
+              domain: eng.domain,
+              description: eng.description,
+              pattern_count: eng.pattern_count,
+            },
+          }
+        : {}),
+    };
   }, []);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
 
@@ -394,32 +445,123 @@ export function ChatWindow({
       )}
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
-        <header className="flex items-center justify-between border-b border-border/60 bg-background/80 px-6 py-3 backdrop-blur">
+        <header className="flex items-center justify-between border-b border-border/40 bg-background/90 px-5 py-2.5 backdrop-blur-md">
           <div className="flex items-center gap-2">
             {gem ? (
               <div
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium text-white bg-gradient-to-br",
+                  "rounded-full px-2.5 py-1 text-xs font-semibold text-white bg-gradient-to-br",
                   gem.accent ?? "from-primary to-primary",
                 )}
               >
-                Widget · {gem.name}
+                {gem.name}
               </div>
-            ) : null}
-            <span className="text-sm text-muted-foreground">via WidgeTDC</span>
+            ) : (
+              <span className="text-[13px] font-medium text-muted-foreground/70">Aurora</span>
+            )}
+            {activeEngagement && (
+              <div className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-2.5 py-1 text-xs text-primary">
+                <Briefcase className="h-3 w-3 flex-none" />
+                <span className="max-w-[14rem] truncate font-medium">{activeEngagement.name}</span>
+                <button
+                  onClick={() => setActiveEngagement(null)}
+                  className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-primary/60 transition hover:bg-primary/15 hover:text-primary"
+                  aria-label="Fjern engagement-kontekst"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {engagements.length > 0 && (
+              <div className="relative" ref={engDropdownRef}>
+                <button
+                  onClick={() => setEngSelectorOpen((v) => !v)}
+                  aria-expanded={engSelectorOpen}
+                  title="Vælg engagement-kontekst"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
+                    activeEngagement && "border-primary/40 bg-primary/8 text-primary",
+                  )}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Kontekst
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform",
+                      engSelectorOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+                {engSelectorOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-2xl border border-border bg-card shadow-lg">
+                    <div className="border-b border-border/60 px-4 py-2.5">
+                      <p className="text-xs font-medium text-foreground">Engagement-kontekst</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        AI'en kender casen og giver case-specifikke svar.
+                      </p>
+                    </div>
+                    <ul className="max-h-64 overflow-y-auto py-1.5">
+                      {engagements.map((eng) => (
+                        <li key={eng.id}>
+                          <button
+                            onClick={() => {
+                              setActiveEngagement(
+                                activeEngagement?.id === eng.id ? null : eng,
+                              );
+                              setEngSelectorOpen(false);
+                            }}
+                            className={cn(
+                              "flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition hover:bg-accent",
+                              activeEngagement?.id === eng.id && "bg-primary/8",
+                            )}
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                {eng.name}
+                              </span>
+                              {activeEngagement?.id === eng.id && (
+                                <Check className="h-3.5 w-3.5 flex-none text-primary" />
+                              )}
+                            </span>
+                            {(eng.client ?? eng.domain) && (
+                              <span className="truncate text-[11px] text-muted-foreground">
+                                {[eng.client, eng.domain].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {activeEngagement && (
+                      <div className="border-t border-border/60 px-4 py-2">
+                        <button
+                          onClick={() => {
+                            setActiveEngagement(null);
+                            setEngSelectorOpen(false);
+                          }}
+                          className="text-xs text-muted-foreground transition hover:text-foreground"
+                        >
+                          Fjern kontekst
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <ModelPicker />
             <button
               onClick={toggleDeep}
               aria-pressed={deepMode}
               title="Reason deeply — RLM reflektion + reasoning chain"
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
-                deepMode && "bg-primary/10 text-primary border-primary/40",
+                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
+                deepMode ? "bg-primary/10 text-primary border-primary/40" : "text-muted-foreground",
               )}
             >
-              <Brain className="h-4 w-4" />
+              <Brain className="h-3.5 w-3.5" />
               Deep
             </button>
             <button
@@ -427,21 +569,21 @@ export function ChatWindow({
               aria-pressed={councilMode}
               title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
-                councilMode && "bg-primary/10 text-primary border-primary/40",
+                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
+                councilMode ? "bg-primary/10 text-primary border-primary/40" : "text-muted-foreground",
               )}
             >
-              <Users className="h-4 w-4" />
+              <Users className="h-3.5 w-3.5" />
               Council
             </button>
             <button
               onClick={() => setCanvasOpen((v) => !v)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm transition hover:bg-accent",
-                canvasOpen && "bg-accent text-accent-foreground",
+                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
+                canvasOpen ? "bg-accent text-foreground border-border" : "text-muted-foreground",
               )}
             >
-              <PanelRightOpen className="h-4 w-4" />
+              <PanelRightOpen className="h-3.5 w-3.5" />
               Canvas
             </button>
           </div>
@@ -450,10 +592,10 @@ export function ChatWindow({
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {empty ? (
-            <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-6 text-center">
+            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 text-center">
               <div
                 className={cn(
-                  "mb-6 flex h-16 w-16 items-center justify-center rounded-2xl shadow-glow",
+                  "mb-6 flex h-[72px] w-[72px] items-center justify-center rounded-3xl shadow-glow",
                   gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
                 )}
               >
@@ -461,24 +603,24 @@ export function ChatWindow({
               </div>
               <h1
                 className={cn(
-                  "bg-clip-text text-4xl font-semibold text-transparent",
+                  "bg-clip-text text-[2.2rem] font-semibold tracking-tight text-transparent leading-tight",
                   gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
                 )}
               >
                 {gem ? gem.name : "Hej. Hvad arbejder vi på i dag?"}
               </h1>
-              <p className="mt-3 text-muted-foreground">
+              <p className="mt-2.5 text-[15px] text-muted-foreground">
                 {gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen."}
               </p>
-              <div className="mt-10 grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="mt-8 grid w-full grid-cols-1 gap-2.5 md:grid-cols-2">
                 {(gem?.starters ?? SUGGESTIONS).map((s) => (
                   <button
                     key={s.title}
                     onClick={() => submit(s.body)}
-                    className="group rounded-2xl border border-border bg-card p-4 text-left transition hover:border-primary/40 hover:bg-accent hover:shadow-soft"
+                    className="group rounded-2xl border border-border/60 bg-card/70 p-4 text-left transition-all duration-150 hover:border-primary/30 hover:bg-card hover:shadow-soft active:scale-[0.99]"
                   >
-                    <div className="text-sm font-medium text-card-foreground">{s.title}</div>
-                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{s.body}</div>
+                    <div className="text-sm font-semibold text-foreground">{s.title}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">{s.body}</div>
                   </button>
                 ))}
               </div>
@@ -624,8 +766,8 @@ export function ChatWindow({
                 </button>
               )}
             </div>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Aurora kan tage fejl. Verificer vigtige svar. Træk filer ind eller indsæt billeder.
+            <p className="mt-2 text-center text-[11px] text-muted-foreground/50">
+              Aurora kan tage fejl — verificer vigtige svar.
             </p>
           </div>
         </div>
@@ -677,6 +819,7 @@ function Message({
 }) {
   const text = getText(message);
   const [copied, setCopied] = useState(false);
+  const [activeCitation, setActiveCitation] = useState<number | null>(null);
 
   const fileParts = message.parts.filter((p) => p.type === "file") as Array<{
     type: "file";
@@ -748,8 +891,8 @@ function Message({
         <Sparkles className="h-3.5 w-3.5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <MessageContent text={text} />
-        {sources.length > 0 && <SourcesPanel sources={sources} />}
+        <MessageContent text={text} onCitationClick={sources.length > 0 ? (n) => setActiveCitation(n) : undefined} />
+        {sources.length > 0 && <SourcesPanel sources={sources} activeCitation={activeCitation} onCitationClick={setActiveCitation} />}
         {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
@@ -772,8 +915,48 @@ function Message({
 // AUR-14: client-side mirror of the server's RagSource shape (data-sources part).
 type ChatSource = { text: string; source?: string; score?: number };
 
-function SourcesPanel({ sources }: { sources: ChatSource[] }) {
+function SourcesPanel({
+  sources,
+  activeCitation,
+  onCitationClick,
+}: {
+  sources: ChatSource[];
+  activeCitation?: number | null;
+  onCitationClick?: (n: number | null) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState<Record<number, "idle" | "loading" | "done">>({});
+  const { activeEngagement } = useActiveEngagement();
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+  useEffect(() => {
+    if (activeCitation != null) {
+      setOpen(true);
+      const el = itemRefs.current[activeCitation - 1];
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [activeCitation]);
+
+  async function pinSource(i: number, s: ChatSource) {
+    if (!activeEngagement || pinned[i] === "loading" || pinned[i] === "done") return;
+    setPinned((p) => ({ ...p, [i]: "loading" }));
+    try {
+      const res = await fetch(`/api/engagements/${activeEngagement.id}/sources`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: s.text, source_label: s.source }),
+      });
+      if (res.ok) {
+        setPinned((p) => ({ ...p, [i]: "done" }));
+        setTimeout(() => setPinned((p) => ({ ...p, [i]: "idle" })), 3500);
+      } else {
+        setPinned((p) => ({ ...p, [i]: "idle" }));
+      }
+    } catch {
+      setPinned((p) => ({ ...p, [i]: "idle" }));
+    }
+  }
+
   return (
     <details
       open={open}
@@ -788,12 +971,38 @@ function SourcesPanel({ sources }: { sources: ChatSource[] }) {
         </span>
       </summary>
       <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted-foreground">
-        {sources.map((s, i) => (
-          <li key={i} className="leading-snug">
-            {s.source && <span className="font-medium text-foreground">{s.source}: </span>}
-            {s.text}
-          </li>
-        ))}
+        {sources.map((s, i) => {
+          const isActive = activeCitation === i + 1;
+          return (
+            <li
+              key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
+              className={cn(
+                "group/src flex items-start gap-2 leading-snug rounded px-1 -mx-1 transition-colors",
+                isActive && "bg-primary/8 text-foreground",
+              )}
+            >
+              <span className="flex-1">
+                {s.source && <span className="font-medium text-foreground">{s.source}: </span>}
+                {s.text}
+              </span>
+              {activeEngagement && (
+                <button
+                  type="button"
+                  title="Gem til engagement"
+                  onClick={() => pinSource(i, s)}
+                  className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover/src:opacity-100"
+                >
+                  {pinned[i] === "done" ? (
+                    <Check className="h-3 w-3 text-emerald-500" />
+                  ) : (
+                    <BookmarkPlus className="h-3 w-3" />
+                  )}
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </details>
   );

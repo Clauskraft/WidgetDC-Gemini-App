@@ -4,6 +4,7 @@ import { Loader2, Network, RefreshCw, ChevronRight, Home } from "lucide-react";
 import { GraphBlock } from "@/components/GraphBlock";
 import { KnowledgeGraphBlock } from "@/components/KnowledgeGraphBlock";
 import { GraphErrorBlock } from "@/components/GraphErrorBlock";
+import { EmptyState } from "@/components/EmptyState";
 import type { GraphSpec, KnowledgeGraphSpec } from "@/lib/figureBlocks";
 
 export const Route = createFileRoute("/graph")({
@@ -187,9 +188,12 @@ function GraphExplorer() {
         ) : data?.kind === "graph" ? (
           <GraphBlock spec={data.spec} onNodeActivate={onNodeActivate} />
         ) : (
-          <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-            Ingen data.
-          </div>
+          <EmptyState
+            icon={<Network className="h-7 w-7" />}
+            title="Ingen graph-data"
+            description="Vælg en visning ovenfor og tryk Refresh for at hente data fra Neo4j."
+            className="h-[400px] border-0 shadow-none bg-transparent"
+          />
         )}
       </div>
     </div>

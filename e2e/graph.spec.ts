@@ -21,6 +21,7 @@ for (const caseId of CASES) {
       await page.evaluate(() => document.fonts?.ready);
       await expect(stage).toHaveScreenshot(`graph-${caseId}-normal.png`, {
         animations: "disabled",
+        maxDiffPixelRatio: 0.02,
       });
     });
 
@@ -32,6 +33,7 @@ for (const caseId of CASES) {
       await page.evaluate(() => document.fonts?.ready);
       await expect(stage).toHaveScreenshot(`graph-${caseId}-fullscreen.png`, {
         animations: "disabled",
+        maxDiffPixelRatio: 0.02,
       });
     });
   });

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
+import { EmptyState } from "@/components/EmptyState";
 import type {
   MondayReviewResponse,
   EngagementSummary,
@@ -185,15 +186,20 @@ function MondayReviewRoute() {
 
       {/* Empty state */}
       {!loading && !data && !error && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <Calendar className="h-12 w-12 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">Ingen data tilgængeligt endnu.</p>
-          <button
-            onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Hent data
-          </button>
+        <div className="flex flex-1 items-center justify-center p-8">
+          <EmptyState
+            icon={<Calendar className="h-7 w-7" />}
+            title="Ingen review-data tilgængeligt"
+            description="Data genereres fra aktive engagements i knowledge graph. Prøv at opdatere."
+            action={
+              <button
+                onClick={() => void load()}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+              >
+                Hent data
+              </button>
+            }
+          />
         </div>
       )}
     </div>
