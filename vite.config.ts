@@ -35,6 +35,9 @@ export default defineConfig({
         "react-markdown",
         "recharts",
       ],
+      // markmap packages are ESM-only and import from each other via bare specifiers;
+      // esbuild can't resolve them during pre-bundling — exclude and let Vite serve them raw.
+      exclude: ["markmap-lib", "markmap-view", "markmap-common", "markmap-html-parser"],
     },
   },
 });
