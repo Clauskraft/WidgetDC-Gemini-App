@@ -13,6 +13,7 @@ import { Route as StorylineRouteImport } from './routes/storyline'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PatternsRouteImport } from './routes/patterns'
 import { Route as ObservabilityRouteImport } from './routes/observability'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as MondayReviewRouteImport } from './routes/monday-review'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GraphRouteImport } from './routes/graph'
@@ -30,12 +31,14 @@ import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
+import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
+import { Route as ApiNewsRefreshRouteImport } from './routes/api/news.refresh'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
 import { Route as ApiDeliverableExportRouteImport } from './routes/api/deliverable.export'
@@ -66,6 +69,11 @@ const PatternsRoute = PatternsRouteImport.update({
 const ObservabilityRoute = ObservabilityRouteImport.update({
   id: '/observability',
   path: '/observability',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MondayReviewRoute = MondayReviewRouteImport.update({
@@ -153,6 +161,11 @@ const ApiPatternsRoute = ApiPatternsRouteImport.update({
   path: '/api/patterns',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNewsRoute = ApiNewsRouteImport.update({
+  id: '/api/news',
+  path: '/api/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMondayReviewRoute = ApiMondayReviewRouteImport.update({
   id: '/api/monday-review',
   path: '/api/monday-review',
@@ -182,6 +195,11 @@ const ApiObservabilitySummaryRoute = ApiObservabilitySummaryRouteImport.update({
   id: '/api/observability/summary',
   path: '/api/observability/summary',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNewsRefreshRoute = ApiNewsRefreshRouteImport.update({
+  id: '/refresh',
+  path: '/refresh',
+  getParentRoute: () => ApiNewsRoute,
 } as any)
 const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
   id: '/api/graph/query',
@@ -253,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/monday-review': typeof MondayReviewRoute
+  '/news': typeof NewsRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
@@ -261,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -275,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
@@ -292,6 +313,7 @@ export interface FileRoutesByTo {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/monday-review': typeof MondayReviewRoute
+  '/news': typeof NewsRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
@@ -300,6 +322,7 @@ export interface FileRoutesByTo {
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -314,6 +337,7 @@ export interface FileRoutesByTo {
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
@@ -333,6 +357,7 @@ export interface FileRoutesById {
   '/graph': typeof GraphRoute
   '/health': typeof HealthRoute
   '/monday-review': typeof MondayReviewRoute
+  '/news': typeof NewsRoute
   '/observability': typeof ObservabilityRoute
   '/patterns': typeof PatternsRoute
   '/settings': typeof SettingsRoute
@@ -341,6 +366,7 @@ export interface FileRoutesById {
   '/api/cost': typeof ApiCostRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/monday-review': typeof ApiMondayReviewRoute
+  '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -355,6 +381,7 @@ export interface FileRoutesById {
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
+  '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
   '/embed/canvas/$canvasId': typeof EmbedCanvasCanvasIdRoute
   '/api/engagements/$id/deliverable': typeof ApiEngagementsIdDeliverableRoute
@@ -375,6 +402,7 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/monday-review'
+    | '/news'
     | '/observability'
     | '/patterns'
     | '/settings'
@@ -383,6 +411,7 @@ export interface FileRouteTypes {
     | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
+    | '/api/news'
     | '/api/patterns'
     | '/api/storyline'
     | '/c/$threadId'
@@ -397,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/news/refresh'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
@@ -414,6 +444,7 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/monday-review'
+    | '/news'
     | '/observability'
     | '/patterns'
     | '/settings'
@@ -422,6 +453,7 @@ export interface FileRouteTypes {
     | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
+    | '/api/news'
     | '/api/patterns'
     | '/api/storyline'
     | '/c/$threadId'
@@ -436,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/news/refresh'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
@@ -454,6 +487,7 @@ export interface FileRouteTypes {
     | '/graph'
     | '/health'
     | '/monday-review'
+    | '/news'
     | '/observability'
     | '/patterns'
     | '/settings'
@@ -462,6 +496,7 @@ export interface FileRouteTypes {
     | '/api/cost'
     | '/api/engagements'
     | '/api/monday-review'
+    | '/api/news'
     | '/api/patterns'
     | '/api/storyline'
     | '/c/$threadId'
@@ -476,6 +511,7 @@ export interface FileRouteTypes {
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
     | '/api/graph/query'
+    | '/api/news/refresh'
     | '/api/observability/summary'
     | '/embed/canvas/$canvasId'
     | '/api/engagements/$id/deliverable'
@@ -495,6 +531,7 @@ export interface RootRouteChildren {
   GraphRoute: typeof GraphRoute
   HealthRoute: typeof HealthRoute
   MondayReviewRoute: typeof MondayReviewRoute
+  NewsRoute: typeof NewsRoute
   ObservabilityRoute: typeof ObservabilityRoute
   PatternsRoute: typeof PatternsRoute
   SettingsRoute: typeof SettingsRoute
@@ -503,6 +540,7 @@ export interface RootRouteChildren {
   ApiCostRoute: typeof ApiCostRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
   ApiMondayReviewRoute: typeof ApiMondayReviewRoute
+  ApiNewsRoute: typeof ApiNewsRouteWithChildren
   ApiPatternsRoute: typeof ApiPatternsRoute
   ApiStorylineRoute: typeof ApiStorylineRoute
   CThreadIdRoute: typeof CThreadIdRoute
@@ -548,6 +586,13 @@ declare module '@tanstack/react-router' {
       path: '/observability'
       fullPath: '/observability'
       preLoaderRoute: typeof ObservabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monday-review': {
@@ -669,6 +714,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPatternsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/news': {
+      id: '/api/news'
+      path: '/api/news'
+      fullPath: '/api/news'
+      preLoaderRoute: typeof ApiNewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/monday-review': {
       id: '/api/monday-review'
       path: '/api/monday-review'
@@ -710,6 +762,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/observability/summary'
       preLoaderRoute: typeof ApiObservabilitySummaryRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/news/refresh': {
+      id: '/api/news/refresh'
+      path: '/refresh'
+      fullPath: '/api/news/refresh'
+      preLoaderRoute: typeof ApiNewsRefreshRouteImport
+      parentRoute: typeof ApiNewsRoute
     }
     '/api/graph/query': {
       id: '/api/graph/query'
@@ -819,6 +878,17 @@ const ApiEngagementsRouteWithChildren = ApiEngagementsRoute._addFileChildren(
   ApiEngagementsRouteChildren,
 )
 
+interface ApiNewsRouteChildren {
+  ApiNewsRefreshRoute: typeof ApiNewsRefreshRoute
+}
+
+const ApiNewsRouteChildren: ApiNewsRouteChildren = {
+  ApiNewsRefreshRoute: ApiNewsRefreshRoute,
+}
+
+const ApiNewsRouteWithChildren =
+  ApiNewsRoute._addFileChildren(ApiNewsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
@@ -830,6 +900,7 @@ const rootRouteChildren: RootRouteChildren = {
   GraphRoute: GraphRoute,
   HealthRoute: HealthRoute,
   MondayReviewRoute: MondayReviewRoute,
+  NewsRoute: NewsRoute,
   ObservabilityRoute: ObservabilityRoute,
   PatternsRoute: PatternsRoute,
   SettingsRoute: SettingsRoute,
@@ -838,6 +909,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCostRoute: ApiCostRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
   ApiMondayReviewRoute: ApiMondayReviewRoute,
+  ApiNewsRoute: ApiNewsRouteWithChildren,
   ApiPatternsRoute: ApiPatternsRoute,
   ApiStorylineRoute: ApiStorylineRoute,
   CThreadIdRoute: CThreadIdRoute,

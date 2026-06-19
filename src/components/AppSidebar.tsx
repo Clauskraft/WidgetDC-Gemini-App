@@ -14,6 +14,7 @@ import {
   Calendar,
   Presentation,
   Boxes,
+  Newspaper,
 } from "lucide-react";
 import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
@@ -147,6 +148,14 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
         >
           <Presentation className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Storyline Builder</span>}
+        </Link>
+        <Link
+          to="/news"
+          className={navLinkBase}
+          activeProps={{ className: navLinkActive }}
+        >
+          <Newspaper className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Intelligence Feed</span>}
         </Link>
       </nav>
 

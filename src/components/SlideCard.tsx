@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { GripVertical, Edit3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HeadlineSlide } from "@/routes/api/storyline";
+import { OutlineEditor } from "@/components/OutlineEditor";
 
 export function SlideCard({
   slide,
@@ -20,7 +21,6 @@ export function SlideCard({
   onMoveDown: () => void;
   onDrop?: (fromIndex: number, toIndex: number) => void;
 }) {
-  const [editingGT, setEditingGT] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [dragOver, setDragOver] = useState<"top" | "bottom" | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -122,27 +122,11 @@ export function SlideCard({
           </div>
 
           <div className="mb-2 ml-7">
-            {editingGT ? (
-              <textarea
-                autoFocus
-                value={slide.governing_thought}
-                onChange={(e) => onUpdate({ ...slide, governing_thought: e.target.value })}
-                onBlur={() => setEditingGT(false)}
-                rows={2}
-                placeholder="Governing thought — hvad er konklusionen på denne slide?"
-                className="w-full resize-none rounded border border-primary/50 bg-background px-2 py-1 text-sm text-primary outline-none"
-              />
-            ) : (
-              <button
-                onClick={() => setEditingGT(true)}
-                className="w-full text-left text-sm text-primary font-medium italic"
-              >
-                {slide.governing_thought || (
-                  <span className="text-muted-foreground not-italic">"Klik for at tilføje governing thought…"</span>
-                )}
-                <Edit3 className="ml-1 inline h-3 w-3 opacity-0 group-hover:opacity-60" />
-              </button>
-            )}
+            <OutlineEditor
+              value={slide.governing_thought}
+              onChange={(text) => onUpdate({ ...slide, governing_thought: text })}
+              placeholder="Governing thought — hvad er konklusionen på denne slide?"
+            />
           </div>
 
           <ul className="ml-7 space-y-1">
