@@ -21,6 +21,7 @@ import {
   ChevronDown,
   BookmarkPlus,
   Headphones,
+  FileSearch,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
@@ -32,6 +33,7 @@ import type { EngagementRow } from "@/routes/api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
 import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSourcesPanel";
 import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
+import { DeepResearchPanel } from "@/components/DeepResearchPanel";
 
 const SUGGESTIONS = [
   {
@@ -144,6 +146,7 @@ export function ChatWindow({
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [ingestedSources, setIngestedSources] = useState<IngestedSource[]>([]);
   const [audioOverviewOpen, setAudioOverviewOpen] = useState(false);
+  const [deepResearchOpen, setDeepResearchOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -686,6 +689,20 @@ export function ChatWindow({
                 Audio
               </button>
             )}
+            <button
+              onClick={() => setDeepResearchOpen((v) => !v)}
+              aria-pressed={deepResearchOpen}
+              title="Deep Research — autonomt multi-step forskningsagent"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
+                deepResearchOpen
+                  ? "bg-primary/10 text-primary border-primary/40"
+                  : "text-muted-foreground",
+              )}
+            >
+              <FileSearch className="h-3.5 w-3.5" />
+              Research
+            </button>
           </div>
         </header>
 
@@ -886,6 +903,20 @@ export function ChatWindow({
           <AudioOverviewPanel
             sources={ingestedSources}
             onClose={() => setAudioOverviewOpen(false)}
+          />
+        </div>
+      )}
+
+      {deepResearchOpen && (
+        <div className="w-[400px] flex-none border-l border-border/40 bg-background overflow-hidden flex flex-col">
+          <DeepResearchPanel
+            sources={ingestedSources}
+            onClose={() => setDeepResearchOpen(false)}
+            onInsertReport={(md) => {
+              setInput((prev) => (prev ? prev + "\n\n" + md : md));
+              setDeepResearchOpen(false);
+              inputRef.current?.focus();
+            }}
           />
         </div>
       )}

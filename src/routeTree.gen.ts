@@ -35,6 +35,7 @@ import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
+import { Route as ApiDeepResearchRouteImport } from './routes/api/deep-research'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAudioOverviewRouteImport } from './routes/api/audio-overview'
@@ -183,6 +184,11 @@ const ApiEngagementsRoute = ApiEngagementsRouteImport.update({
   path: '/api/engagements',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDeepResearchRoute = ApiDeepResearchRouteImport.update({
+  id: '/api/deep-research',
+  path: '/api/deep-research',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCostRoute = ApiCostRouteImport.update({
   id: '/api/cost',
   path: '/api/cost',
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
+  '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
+  '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/api/audio-overview': typeof ApiAudioOverviewRoute
   '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
+  '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
   '/api/ingest': typeof ApiIngestRoute
   '/api/monday-review': typeof ApiMondayReviewRoute
@@ -428,6 +437,7 @@ export interface FileRouteTypes {
     | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
+    | '/api/deep-research'
     | '/api/engagements'
     | '/api/ingest'
     | '/api/monday-review'
@@ -472,6 +482,7 @@ export interface FileRouteTypes {
     | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
+    | '/api/deep-research'
     | '/api/engagements'
     | '/api/ingest'
     | '/api/monday-review'
@@ -517,6 +528,7 @@ export interface FileRouteTypes {
     | '/api/audio-overview'
     | '/api/chat'
     | '/api/cost'
+    | '/api/deep-research'
     | '/api/engagements'
     | '/api/ingest'
     | '/api/monday-review'
@@ -563,6 +575,7 @@ export interface RootRouteChildren {
   ApiAudioOverviewRoute: typeof ApiAudioOverviewRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiCostRoute: typeof ApiCostRoute
+  ApiDeepResearchRoute: typeof ApiDeepResearchRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
   ApiIngestRoute: typeof ApiIngestRoute
   ApiMondayReviewRoute: typeof ApiMondayReviewRoute
@@ -768,6 +781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEngagementsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/deep-research': {
+      id: '/api/deep-research'
+      path: '/api/deep-research'
+      fullPath: '/api/deep-research'
+      preLoaderRoute: typeof ApiDeepResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cost': {
       id: '/api/cost'
       path: '/api/cost'
@@ -948,6 +968,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAudioOverviewRoute: ApiAudioOverviewRoute,
   ApiChatRoute: ApiChatRoute,
   ApiCostRoute: ApiCostRoute,
+  ApiDeepResearchRoute: ApiDeepResearchRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
   ApiIngestRoute: ApiIngestRoute,
   ApiMondayReviewRoute: ApiMondayReviewRoute,
