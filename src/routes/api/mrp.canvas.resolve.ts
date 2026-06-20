@@ -5,6 +5,11 @@
  * får tilbage en signeret embed_url som klient-siden kan iframe'e. Token'et
  * indeholder hele FlowSpec'en så embed-siden ikke behøver server-state.
  *
+ * AUR-3: after local intent detection the handler calls the platform
+ * `canvas_builder` MCP tool in parallel with a graph query so the platform
+ * can override the family/standard and enrich the FlowSpec from its knowledge
+ * graph. The HMAC embed-token contract is preserved regardless.
+ *
  * Kontrakten matcher @widgetdc/contracts (snake_case wire-format).
  */
 import { createFileRoute } from "@tanstack/react-router";
@@ -19,6 +24,7 @@ import {
   VISUALIZATION_STANDARDS,
   type VisualizationIntent,
 } from "@/lib/visualizationIntent";
+import { callCanvasBuilder, queryGraph } from "@/lib/widgetdc.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,23 +73,52 @@ export const Route = createFileRoute("/api/mrp/canvas/resolve")({
         }
         const { brief, flow_spec, node_types, prefer_family, title } = validation.data;
 
-        // Intent-resolver: honorér prefer_family hvis legal, ellers detect.
+        // Local intent detection — always runs so we have a fast fallback.
         const preferred = preferIntent(prefer_family);
         const detection = detectIntent(brief, node_types ?? []);
-        const intent = preferred ?? detection.intent;
-        const standard = VISUALIZATION_STANDARDS[intent];
+        const localIntent = preferred ?? detection.intent;
 
-        const canvas_id = deriveCanvasId(brief, intent);
+        // AUR-3: call platform canvas_builder + query graph for existing
+        // FlowSpec in parallel. Both are best-effort; failures fall back to
+        // local resolution so the contract always returns a valid response.
+        const correlationId = crypto.randomUUID();
+        const [platformCanvas, graphRows] = await Promise.allSettled([
+          callCanvasBuilder(brief, localIntent, node_types ?? [], correlationId),
+          queryGraph(
+            `MATCH (c:Canvas {brief_hash: $hash}) RETURN c.flow_spec AS flow_spec, c.family AS family LIMIT 1`,
+            correlationId,
+          ),
+        ]);
+
+        const platform =
+          platformCanvas.status === "fulfilled" ? platformCanvas.value : null;
+        const graphResult =
+          graphRows.status === "fulfilled" ? graphRows.value : null;
+
+        // Resolve intent + standard: prefer platform, then local.
+        const resolvedIntent = (platform?.intent as VisualizationIntent | undefined) ?? localIntent;
+        const standard =
+          VISUALIZATION_STANDARDS[resolvedIntent] ?? VISUALIZATION_STANDARDS[localIntent];
+
+        // FlowSpec: prefer explicit caller input, then platform enrichment,
+        // then graph-persisted spec (if found).
+        const graphFlowSpec =
+          Array.isArray(graphResult) && graphResult[0]?.flow_spec
+            ? (graphResult[0].flow_spec as Record<string, unknown>)
+            : undefined;
+        const resolvedFlowSpec = flow_spec ?? platform?.flow_spec ?? graphFlowSpec;
+
+        const canvas_id = deriveCanvasId(brief, resolvedIntent);
         const exp = Math.floor(Date.now() / 1000) + ttlSeconds();
         const token = signCanvasToken({
           canvas_id,
-          intent,
-          family: standard.family,
-          mermaid_type: standard.mermaidType,
-          drawio_type: standard.drawioType,
+          intent: resolvedIntent,
+          family: platform?.family ?? standard.family,
+          mermaid_type: platform?.mermaid_type ?? standard.mermaidType,
+          drawio_type: platform?.drawio_type ?? standard.drawioType,
           title,
           brief,
-          flow_spec,
+          flow_spec: resolvedFlowSpec,
           exp,
         });
 
@@ -93,10 +128,10 @@ export const Route = createFileRoute("/api/mrp/canvas/resolve")({
         const body: ResolveCanvasResponse = {
           canvas_id,
           embed_url,
-          family: standard.family,
-          intent,
-          mermaid_type: standard.mermaidType,
-          drawio_type: standard.drawioType,
+          family: platform?.family ?? standard.family,
+          intent: resolvedIntent,
+          mermaid_type: platform?.mermaid_type ?? standard.mermaidType,
+          drawio_type: platform?.drawio_type ?? standard.drawioType,
           confidence: detection.confidence,
           expires_at: new Date(exp * 1000).toISOString(),
           contract_version: "widgetdc.contracts.v1",

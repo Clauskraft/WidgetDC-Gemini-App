@@ -87,14 +87,16 @@ AgentMemory 204K, :Agent neighbors, typed-edge subgraph).
 **Tool used:** `data_graph_read`. **Follow-up:** `build_communities`,
 `decision_lineage` as richer views.
 
-### AUR-3 — Wire the canvas resolver to the platform `canvas_builder`
+### AUR-3 — Wire the canvas resolver to the platform `canvas_builder` ✅ DONE (2026-06-20)
 
-**Why:** `api/mrp.canvas.resolve.ts` resolves intent + signs a token locally but
-never calls the platform; FlowSpecs aren't persisted or graph-derived.
-**Build:** After local `detectIntent`, call platform `canvas_builder` (and
-`intent_detect`) so the family/standard decision is the platform's, and allow a
-FlowSpec to be hydrated from `query_graph`. Keep the HMAC embed-token contract.
-**Tools:** `canvas_builder`, `intent_detect`, `query_graph`.
+**Done:** `callCanvasBuilder()` added to `widgetdc.server.ts` — calls the platform
+`canvas_builder` MCP tool (6s timeout, best-effort). `mrp.canvas.resolve.ts` now
+runs `callCanvasBuilder` + a graph query for existing FlowSpecs in parallel via
+`Promise.allSettled`; platform family/standard/mermaid_type/drawio_type override
+local detection when available. A persisted `:Canvas` node FlowSpec is used as
+tertiary fallback. Local intent detection and the HMAC embed-token contract are
+unchanged — the endpoint stays fully functional if the platform is unavailable.
+**Tools used:** `canvas_builder`, `data_graph_read` (via `queryGraph`).
 
 ---
 

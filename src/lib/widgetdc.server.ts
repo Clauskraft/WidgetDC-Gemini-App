@@ -934,6 +934,48 @@ export async function retrieveChatMemory(
   }
 }
 
+export interface CanvasBuilderResult {
+  family: string;
+  intent: string;
+  mermaid_type?: string;
+  drawio_type?: string;
+  flow_spec?: Record<string, unknown>;
+  confidence?: number;
+}
+
+/**
+ * AUR-3: call the platform `canvas_builder` MCP tool to let the platform
+ * decide the visualization family + enrich the FlowSpec from the knowledge
+ * graph. Returns null if the tool is unavailable — caller falls back to the
+ * local intent resolver. Best-effort, 6s timeout.
+ */
+export async function callCanvasBuilder(
+  brief: string,
+  localIntent: string,
+  nodeTypes: string[],
+  correlationId?: string,
+): Promise<CanvasBuilderResult | null> {
+  const result = await callMcpTool<unknown>(
+    "canvas_builder",
+    { brief, intent: localIntent, node_types: nodeTypes },
+    { correlationId, timeoutMs: 6000 },
+  );
+  if (result == null || isFailedMcpEnvelope(result as Record<string, unknown>)) return null;
+  const r = result as Record<string, unknown>;
+  const inner = (r.result as Record<string, unknown>) ?? r;
+  const family = (inner.family as string) ?? (r.family as string);
+  const intent = (inner.intent as string) ?? (r.intent as string) ?? localIntent;
+  if (!family) return null;
+  return {
+    family,
+    intent,
+    mermaid_type: (inner.mermaid_type as string) ?? (r.mermaid_type as string),
+    drawio_type: (inner.drawio_type as string) ?? (r.drawio_type as string),
+    flow_spec: (inner.flow_spec as Record<string, unknown>) ?? (r.flow_spec as Record<string, unknown>),
+    confidence: typeof inner.confidence === "number" ? inner.confidence : undefined,
+  };
+}
+
 /** Normalize Neo4j integer objects ({low,high}) to plain numbers, recursively. */
 function normalizeNeo(value: unknown): unknown {
   if (value && typeof value === "object") {
