@@ -468,22 +468,20 @@ export async function orchestratorChat(
     })
     .join("\n\n");
 
-  // The platform RLM occasionally returns a transient 5xx; retry once before
-  // giving up so a single flaky moment doesn't surface as a hard error.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await callMcpTool<unknown>(
-      "reason_deeply",
-      {
-        task,
-        mode: "reason",
-        ...(opts.deep ? { reflect: true } : {}),
-      },
-      { correlationId: opts.correlationId, timeoutMs: 90000 },
-    );
-    if (result != null) {
-      const extracted = extractChatResult(result);
-      if (extracted?.text) return extracted;
-    }
+  // Single attempt with a tight timeout — the retry loop was causing 180s hangs
+  // when the platform was unreachable. One shot, 20s, then fail fast.
+  const result = await callMcpTool<unknown>(
+    "reason_deeply",
+    {
+      task,
+      mode: "reason",
+      ...(opts.deep ? { reflect: true } : {}),
+    },
+    { correlationId: opts.correlationId, timeoutMs: 20000 },
+  );
+  if (result != null) {
+    const extracted = extractChatResult(result);
+    if (extracted?.text) return extracted;
   }
   return null;
 }
@@ -865,7 +863,7 @@ export async function llmChatCompletion(
       max_tokens: opts.maxTokens ?? 4096,
       ...(model ? { model } : {}),
     },
-    { correlationId: opts.correlationId, timeoutMs: 60000 },
+    { correlationId: opts.correlationId, timeoutMs: 20000 },
   );
   if (result == null) return null;
   const extracted = extractChatResult(result);

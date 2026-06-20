@@ -298,11 +298,23 @@ export const Route = createFileRoute("/api/chat")({
             let intentDetection: ChatIntentDetection | null = null;
             let groundedSystem = system;
             if (lastUser) {
-              const [intent, grounding, priorMemory] = await Promise.all([
-                fetchIntentDetection(lastUser.content, correlationId),
-                fetchRagGrounding(lastUser.content, correlationId),
-                // AUR-6: hydrate prior session memory for cross-session continuity.
-                retrieveChatMemory(lastUser.content, correlationId),
+              // Hard 6s cap on all platform preflight (intent + grounding + memory).
+              // When the platform is unreachable the sequential RAG fallback chain
+              // can block for 22s+ before any text is emitted — this makes chat
+              // appear broken. We always produce an answer; platform signals are
+              // best-effort enrichment only.
+              const PREFLIGHT_TIMEOUT_MS = 6000;
+              const preflightTimeout = new Promise<[null, null, null]>((resolve) =>
+                setTimeout(() => resolve([null, null, null]), PREFLIGHT_TIMEOUT_MS),
+              );
+              const [intent, grounding, priorMemory] = await Promise.race([
+                Promise.all([
+                  fetchIntentDetection(lastUser.content, correlationId),
+                  fetchRagGrounding(lastUser.content, correlationId),
+                  // AUR-6: hydrate prior session memory for cross-session continuity.
+                  retrieveChatMemory(lastUser.content, correlationId),
+                ]),
+                preflightTimeout,
               ]);
               intentDetection = intent;
               const systemAdditions: string[] = [];
@@ -405,15 +417,21 @@ export const Route = createFileRoute("/api/chat")({
             }
 
             // ── Path B: platform (council MoA, deep RLM reflection, or llm_chat) ──
+            // Hard 25s cap: llmChatCompletion (20s) + orchestratorChat (20s) back-to-back
+            // was causing ~40s hangs when both timed out. Cap the whole path.
             if (!produced && !request.signal.aborted && isPlatformConfigured()) {
-              const chatResult = council
-                ? await councilChat(chatMessages, { correlationId })
+              const PLATFORM_TIMEOUT_MS = 25000;
+              const platformTimeout = new Promise<null>((resolve) =>
+                setTimeout(() => resolve(null), PLATFORM_TIMEOUT_MS),
+              );
+              const platformCall = council
+                ? councilChat(chatMessages, { correlationId })
                 : deep
-                  ? await orchestratorChat(chatMessages, { correlationId, deep: true })
-                  : ((await llmChatCompletion(chatMessages, {
-                      correlationId,
-                      model: body.model,
-                    })) ?? (await orchestratorChat(chatMessages, { correlationId, deep: false })));
+                  ? orchestratorChat(chatMessages, { correlationId, deep: true })
+                  : llmChatCompletion(chatMessages, { correlationId, model: body.model }).then(
+                      (r) => r ?? orchestratorChat(chatMessages, { correlationId, deep: false }),
+                    );
+              const chatResult = await Promise.race([platformCall, platformTimeout]);
               if (chatResult?.text) {
                 for (const piece of chunkText(chatResult.text)) {
                   writer.write({ type: "text-delta", id: textId, delta: piece });
