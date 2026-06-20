@@ -443,40 +443,45 @@ export type ChatResult = {
 };
 
 /**
- * Run a chat turn through the WidgeTDC backend `reason_deeply` (RLM) tool —
- * the LLM surface this backend MCP route (`/api/mcp/route`) actually exposes.
- * Provider/model is platform-routed (RLM picks gemini/deepseek/claude per
- * domain). Returns the assistant text plus rich reasoning metadata, or null
- * on any failure.
+ * Run a chat turn through the platform intelligence stack.
  *
- * The full prior conversation is flattened into the `task` string so the RLM
- * has context (this tool is single-shot, not message-array based).
+ * Normal mode: `llm_chat` (canonical platform tool, messages array, provider
+ * routed via LlmMatrix: gemini → deepseek → qwen). Fast, stateless, 20s cap.
  *
- * `mode: "reason"` (default) runs the standard pass; pass `deep: true` to ask
- * the RLM to attempt reflection (AUR-5 "Reason deeply" toggle) — this triples
- * the rendered metadata's value without changing the wire contract.
+ * Deep mode (`deep: true`): `reason_deeply` with reflect=true (RLM reflection
+ * pipeline, AUR-5 "Reason deeply" toggle). Returns richer metadata
+ * (reasoning_chain, confidence, quality) but is backend-only.
  */
 export async function orchestratorChat(
   messages: ChatMessage[],
   opts: { correlationId?: string; deep?: boolean } = {},
 ): Promise<ChatResult | null> {
-  const task = messages
-    .map((m) => {
-      const who =
-        m.role === "system" ? "INSTRUCTIONS" : m.role === "assistant" ? "ASSISTANT" : "USER";
-      return `${who}:\n${m.content}`;
-    })
-    .join("\n\n");
+  if (opts.deep) {
+    // AUR-5 deep-reasoning path: single RLM reflection pass, 20s cap.
+    const task = flattenConversation(messages);
+    const result = await callMcpTool<unknown>(
+      "reason_deeply",
+      { task, mode: "reason", reflect: true },
+      { correlationId: opts.correlationId, timeoutMs: 20000 },
+    );
+    if (result != null) {
+      const extracted = extractChatResult(result);
+      if (extracted?.text) return extracted;
+    }
+    return null;
+  }
 
-  // Single attempt with a tight timeout — the retry loop was causing 180s hangs
-  // when the platform was unreachable. One shot, 20s, then fail fast.
+  // Standard path: orchestrator native /api/llm/chat (direct, no MCP).
+  const direct = await orchestratorLlmChat(messages, {
+    correlationId: opts.correlationId,
+    provider: "gemini",
+  });
+  if (direct?.text) return direct;
+
+  // Fallback: llm_chat MCP tool (backend, when available).
   const result = await callMcpTool<unknown>(
-    "reason_deeply",
-    {
-      task,
-      mode: "reason",
-      ...(opts.deep ? { reflect: true } : {}),
-    },
+    "llm_chat",
+    { messages, provider: "gemini", max_tokens: 4096 },
     { correlationId: opts.correlationId, timeoutMs: 20000 },
   );
   if (result != null) {
@@ -824,8 +829,8 @@ function packGrounding(sources: RagSource[]): RagGrounding {
 
 /**
  * Map a UI model id (`vendor/model`) to a platform provider + bare model.
- * `llm.generate` accepts provider/model hints; unknown
- * or platform models route to gemini (the platform's healthy default).
+ * `llm_chat` accepts provider/model hints; unknown or platform models route
+ * to gemini (the platform's healthy default per LlmMatrix chain).
  */
 export function llmChatProvider(model?: string): { provider: string; model?: string } {
   if (!model) return { provider: "gemini" };
@@ -838,27 +843,130 @@ export function llmChatProvider(model?: string): { provider: string; model?: str
     case "google":
       return { provider: "gemini", model: bare };
     case "anthropic":
-      return { provider: "claude", model: bare };
+      return { provider: "anthropic", model: bare };
+    case "deepseek":
+      return { provider: "deepseek", model: bare };
+    case "qwen":
+      return { provider: "qwen", model: bare };
     default:
       return { provider: "gemini" };
   }
 }
 
 /**
- * Completion via the platform `llm.generate` tool — the catalogued chat
- * primitive on the backend MCP route. Passes provider/model hints (derived from
- * the model id) and a generous `max_tokens` so answers are full-length.
- * Returns the assistant text + light meta, or null on failure.
+ * Call the orchestrator's native `/api/llm/chat` endpoint directly.
+ * This bypasses the MCP tool-discovery layer and hits the orchestrator's own
+ * LLM proxy (with its own Gemini/DeepSeek/Qwen API keys) directly.
+ * Response: `{ success: true, data: { provider, model, content, usage } }`.
+ * Falls back to `llm_chat` MCP tool if the orchestrator URL is not set.
+ */
+async function orchestratorLlmChat(
+  messages: ChatMessage[],
+  opts: {
+    correlationId?: string;
+    provider?: string;
+    model?: string;
+    maxTokens?: number;
+    env?: NodeJS.ProcessEnv;
+  } = {},
+): Promise<ChatResult | null> {
+  const env = opts.env ?? process.env;
+  const base = env.WIDGETDC_ORCHESTRATOR_URL
+    ? env.WIDGETDC_ORCHESTRATOR_URL.replace(/\/+$/, "")
+    : "";
+  const key =
+    env.WIDGETDC_ORCHESTRATOR_API_KEY ??
+    env.ORCHESTRATOR_API_KEY ??
+    env.WIDGETDC_BEARER_TOKEN ??
+    env.WIDGETDC_API_KEY ??
+    env.MCP_AGENT_API_KEY;
+  if (!base || !key) return null;
+
+  const provider = opts.provider ?? "gemini";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  const started = Date.now();
+  try {
+    const res = await fetch(`${base}/api/llm/chat`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${key}`,
+        ...(opts.correlationId ? { "x-correlation-id": opts.correlationId } : {}),
+      },
+      body: JSON.stringify({
+        provider,
+        messages,
+        max_tokens: opts.maxTokens ?? 4096,
+        broadcast: false,
+        ...(opts.model ? { model: opts.model } : {}),
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      logServer(res.status >= 500 ? "error" : "warn", {
+        event: "orchestrator_llm_chat_non_2xx",
+        requestId: opts.correlationId,
+        provider,
+        status: res.status,
+        durationMs: Date.now() - started,
+      });
+      return null;
+    }
+    const json = (await res.json()) as Record<string, unknown>;
+    // Unwrap `{ success: true, data: { provider, model, content, usage } }`
+    const data = (json.data as Record<string, unknown>) ?? json;
+    return extractChatResult(data);
+  } catch (error) {
+    logServer("error", {
+      event: "orchestrator_llm_chat_failed",
+      requestId: opts.correlationId,
+      provider,
+      durationMs: Date.now() - started,
+    }, error);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Completion via the canonical platform `llm_chat` tool.
+ * Primary path: orchestrator native `/api/llm/chat` (direct provider call,
+ * bypasses MCP tool discovery — works even when backend MCP is down).
+ * Fallback: `llm_chat` MCP tool (backend, when available).
+ *
+ * Response envelope: `{ provider, model, content, usage }` → text in `content`.
  */
 export async function llmChatCompletion(
   messages: ChatMessage[],
   opts: { correlationId?: string; model?: string; maxTokens?: number } = {},
 ): Promise<ChatResult | null> {
   const { provider, model } = llmChatProvider(opts.model);
+
+  // Primary: orchestrator native /api/llm/chat (own provider keys, no MCP).
+  const direct = await orchestratorLlmChat(messages, {
+    correlationId: opts.correlationId,
+    provider,
+    model,
+    maxTokens: opts.maxTokens,
+  });
+  if (direct?.text) {
+    return {
+      text: direct.text,
+      meta: {
+        provider: `orchestrator:llm_chat:${direct.meta.provider ?? provider}`,
+        ...(direct.meta.model ? { model: direct.meta.model } : model ? { model } : {}),
+        ...direct.meta,
+      },
+    };
+  }
+
+  // Fallback: llm_chat MCP tool (backend, when available).
   const result = await callMcpTool<unknown>(
-    "llm.generate",
+    "llm_chat",
     {
-      prompt: flattenConversation(messages),
+      messages,
       provider,
       max_tokens: opts.maxTokens ?? 4096,
       ...(model ? { model } : {}),
@@ -868,11 +976,10 @@ export async function llmChatCompletion(
   if (result == null) return null;
   const extracted = extractChatResult(result);
   if (!extracted) return null;
-  // Surface which provider/model actually answered (reasoning panel).
   return {
     text: extracted.text,
     meta: {
-      provider: `platform:llm.generate:${provider}`,
+      provider: `platform:llm_chat:${provider}`,
       ...(model ? { model } : {}),
       ...extracted.meta,
     },
@@ -1298,10 +1405,10 @@ async function generateDeliverableMarkdown(
 ): Promise<string | null> {
   const model = deliverableWriterModel();
   const result = await callMcpToolIfCatalogued<unknown>(
-    "llm.generate",
+    "llm_chat",
     {
+      messages: [{ role: "user", content: prompt }],
       provider: deliverableWriterProvider(),
-      prompt,
       max_tokens: deliverableWriterMaxTokens(),
       ...(model ? { model } : {}),
     },
