@@ -33,12 +33,22 @@ const resolveCanvasToken = createServerFn({ method: "GET" })
     if (!payload || payload.canvas_id !== data.canvas_id) {
       throw new Error("Invalid or expired canvas token");
     }
+    // AUR-10: parse CANVAS_EMBED_ALLOWED_ORIGINS (comma-separated) server-side
+    // so the list never leaks into the bundle as a build-time constant.
+    const rawOrigins = process.env.CANVAS_EMBED_ALLOWED_ORIGINS;
+    const allowedOrigins = rawOrigins
+      ? rawOrigins
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
     return {
       payload: {
         ...payload,
         flow_spec_json: payload.flow_spec ? JSON.stringify(payload.flow_spec) : null,
         flow_spec: undefined,
       } as Omit<CanvasTokenPayload, "flow_spec"> & { flow_spec_json: string | null },
+      allowedOrigins,
     };
   });
 
@@ -67,6 +77,11 @@ export const Route = createFileRoute("/embed/canvas/$canvasId")({
 
 export type CanvasEmbedPayload = Omit<CanvasTokenPayload, "flow_spec"> & {
   flow_spec_json: string | null;
+};
+
+export type CanvasEmbedLoaderData = {
+  payload: CanvasEmbedPayload;
+  allowedOrigins?: string[];
 };
 
 export function postToHost(message: BridgeMessage) {
@@ -157,9 +172,9 @@ export function useCanvasBridge(
 }
 
 function CanvasEmbedPage() {
-  const { payload } = Route.useLoaderData() as { payload: CanvasEmbedPayload };
+  const { payload, allowedOrigins } = Route.useLoaderData() as CanvasEmbedLoaderData;
   const flowContent = useMemo(() => payload.flow_spec_json, [payload.flow_spec_json]);
-  useCanvasBridge(payload);
+  useCanvasBridge(payload, { allowedOrigins });
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -171,15 +171,21 @@ Supabase publishable key + URL currently live in `.env` (and were committed in
 the source `.env`). **Rotate the Supabase anon key**, confirm RLS on the
 `threads` table, and verify `auth-middleware` enforces ownership server-side.
 
-### AUR-10 — Embed/bridge origin allow-list for production
+### AUR-10 — Embed/bridge origin allow-list for production ✅ DONE (2026-06-20)
 
-`isAllowedOrigin` defaults must be tightened for prod (no `*`). Set the canvas
-embed origin allow-list from env and keep `docs/mcp-bridge-origins.md` accurate.
+**Done:** `resolveCanvasToken` server function reads `CANVAS_EMBED_ALLOWED_ORIGINS`
+(comma-separated env var) server-side and returns it in loader data alongside the
+canvas payload. `CanvasEmbedPage` now passes `{ allowedOrigins }` to `useCanvasBridge`
+so origin enforcement is active in production. When the env var is unset the hook
+runs in legacy/dev mode (no origin filter). Setting `CANVAS_EMBED_ALLOWED_ORIGINS=*`
+explicitly allows all origins. The env var is never exposed in the client bundle.
 
-### AUR-11 — `CANVAS_SIGNING_SECRET` must be set in prod
+### AUR-11 — `CANVAS_SIGNING_SECRET` must be set in prod ✅ DONE (2026-06-20)
 
-The token signer falls back to `WIDGETDC_API_KEY` then a dev default. Make a real
-`CANVAS_SIGNING_SECRET` required in production (fail-fast if missing).
+**Done:** `getSecret()` in `widgetdcContracts.server.ts` now throws if `NODE_ENV === "production"`
+and neither `CANVAS_SIGNING_SECRET` nor `WIDGETDC_API_KEY` is set — preventing the insecure
+dev fallback (`widgetdc-dev-secret-do-not-use-in-prod`) from being used in production.
+The fallback chain is: `CANVAS_SIGNING_SECRET` → `WIDGETDC_API_KEY` → dev fallback (dev only).
 
 ### AUR-12 — Observability: ship structured logs to the platform
 
@@ -192,10 +198,11 @@ The token signer falls back to `WIDGETDC_API_KEY` then a dev default. Make a rea
 `recharts@2.15.4` is EOL (deprecation warning on install). Plan the v3 migration
 for `src/components/Chart.tsx` + `ui/chart.tsx`.
 
-### AUR-14 — Drop the `@types/dompurify` stub
+### AUR-14 — Drop the `@types/dompurify` stub ✅ DONE (2026-06-20)
 
-dompurify now ships its own types; remove the redundant `@types/dompurify`
-devDependency.
+**Done:** `@types/dompurify@^3.2.0` removed via `npm uninstall @types/dompurify`.
+`dompurify@^3.4.8` ships its own bundled types so the stub was redundant and
+caused a type-conflict warning.
 
 ---
 

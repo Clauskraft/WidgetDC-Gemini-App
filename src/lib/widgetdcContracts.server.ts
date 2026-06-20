@@ -8,12 +8,23 @@ import type { CanvasTokenPayload } from "./widgetdcContracts";
 
 const DEFAULT_TTL_SECONDS = 60 * 60;
 
+const DEV_FALLBACK_SECRET = "widgetdc-dev-secret-do-not-use-in-prod";
+
 function getSecret(): string {
-  return (
+  const secret =
     process.env.CANVAS_SIGNING_SECRET ??
     process.env.WIDGETDC_API_KEY ??
-    "widgetdc-dev-secret-do-not-use-in-prod"
-  );
+    DEV_FALLBACK_SECRET;
+
+  // AUR-11: refuse to sign with the insecure dev fallback in production.
+  if (process.env.NODE_ENV === "production" && secret === DEV_FALLBACK_SECRET) {
+    throw new Error(
+      "CANVAS_SIGNING_SECRET (or WIDGETDC_API_KEY) must be set in production. " +
+        "Refusing to sign canvas tokens with the insecure dev fallback.",
+    );
+  }
+
+  return secret;
 }
 
 function b64urlEncode(buf: Buffer): string {
