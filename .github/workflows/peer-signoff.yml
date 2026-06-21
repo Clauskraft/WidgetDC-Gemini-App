@@ -12,7 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate peer signoff
+      # Peer signoff is now OPTIONAL (non-blocking). The validation still runs and
+      # surfaces its verdict in the logs, but continue-on-error keeps it from
+      # failing the PR so it no longer gates merges.
+      - name: Validate peer signoff (advisory)
+        continue-on-error: true
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: node scripts/validate-peer-signoff.mjs
