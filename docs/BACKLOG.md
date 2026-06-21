@@ -165,11 +165,25 @@ graph size (nodes, relationships). Rendered in the Observability Monitor (Phase 
 
 ## P2 — Polish, safety, hardening
 
-### AUR-9 — Auth hardening
+### AUR-9 — Auth hardening — code-side VERIFIED (2026-06-21); 1 ops follow-up
 
-Supabase publishable key + URL currently live in `.env` (and were committed in
-the source `.env`). **Rotate the Supabase anon key**, confirm RLS on the
-`threads` table, and verify `auth-middleware` enforces ownership server-side.
+Audit of the actual data/auth surface (2026-06-21):
+- **No `threads` table exists server-side.** Threads + messages are stored in the
+  browser via `localStorage` (`src/lib/threadStorage.ts`, key `widgetdc.threads.v1`),
+  so there is no cross-user server data surface to apply RLS to. The original
+  "confirm RLS on the `threads` table" item is therefore N/A by design.
+- **`server_logs` (the only app-written table) is locked down:** RLS is enabled
+  and migration `20260606113514_*` adds explicit deny policies for select/insert/
+  update/delete to all non-service roles — only the service role (server-side
+  `supabaseAdmin`) can read/write it.
+- **`auth-middleware` enforces authentication server-side:** rejects requests with
+  no/`non-Bearer`/empty token, validates via `supabase.auth.getClaims(token)`, and
+  requires `claims.sub`, attaching `userId` to context. (File is code-generated and
+  marked do-not-edit, so no change applied.)
+
+**Remaining (ops, cannot be done from the repo):** rotate the Supabase anon/publishable
+key, since an earlier source `.env` leaked a real-looking value. Do this in the
+Supabase dashboard and update the deploy env. No code change is required.
 
 ### AUR-10 — Embed/bridge origin allow-list for production ✅ DONE (2026-06-20)
 
@@ -199,10 +213,19 @@ by `src/lib/server-logger.test.ts`. Local console + Supabase `server_logs` persi
 is retained as before.
 **Tools:** `eventspine_replay`, `governance_audit_query`, `system_logs_summary`.
 
-### AUR-13 — Recharts v3 migration
+### AUR-13 — Recharts v3 migration ✅ DONE (2026-06-21)
 
-`recharts@2.15.4` is EOL (deprecation warning on install). Plan the v3 migration
-for `src/components/Chart.tsx` + `ui/chart.tsx`.
+**Done:** Bumped `recharts@^2.15.4` → `^3.8.1` and added `react-is@^19` as a
+direct dependency (recharts 3 imports it directly; without it the Vite/Rollup
+build fails to resolve `react-is`). The shadcn chart wrapper (`src/components/ui/chart.tsx`)
+was the only type-level break: recharts 3 no longer surfaces `payload`/`label`/`active`
+through `React.ComponentProps<typeof Tooltip>` (injected at render time), so
+`ChartTooltipContent` / `ChartLegendContent` now declare explicit `TooltipPayloadItem`
+/ `LegendPayloadItem` shapes instead of deriving them from recharts prop types —
+behaviour unchanged. `src/components/Chart.tsx` (pure CSS wrapper) and
+`MessageContent.tsx` (standard Bar/Area/Line/Pie composition) needed no changes.
+**Proof:** `npm run build` green (recharts bundle builds), full vitest suite green
+(206/206), `ui/chart.tsx` lints clean.
 
 ### AUR-14 — Drop the `@types/dompurify` stub ✅ DONE (2026-06-20)
 
