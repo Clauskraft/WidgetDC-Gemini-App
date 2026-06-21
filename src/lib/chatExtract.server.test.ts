@@ -46,7 +46,7 @@ describe("llmChatProvider — model id → platform provider hint", () => {
       model: "gemini-2.5-pro",
     });
     expect(llmChatProvider("anthropic/claude-haiku-4-5")).toEqual({
-      provider: "claude",
+      provider: "anthropic",
       model: "claude-haiku-4-5",
     });
   });
