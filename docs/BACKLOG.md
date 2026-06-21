@@ -187,10 +187,16 @@ and neither `CANVAS_SIGNING_SECRET` nor `WIDGETDC_API_KEY` is set — preventing
 dev fallback (`widgetdc-dev-secret-do-not-use-in-prod`) from being used in production.
 The fallback chain is: `CANVAS_SIGNING_SECRET` → `WIDGETDC_API_KEY` → dev fallback (dev only).
 
-### AUR-12 — Observability: ship structured logs to the platform
+### AUR-12 — Observability: ship structured logs to the platform ✅ DONE (2026-06-21)
 
-`src/lib/server-logger.ts` logs locally. Forward error/audit events to
-`system_logs_summary` / the EventSpine so platform governance can correlate.
+`src/lib/server-logger.ts` now forwards **error-level + audit-flagged** events to
+the platform EventSpine via `governance.emit_spine_event` (deployment-overridable
+through `WIDGETDC_LOG_SINK_TOOL`), so `governance_audit_query` / `eventspine_replay`
+can correlate frontend failures with backend chains. Implemented as a raw fetch
+(not `callMcpTool`) to avoid `logServer` recursion, fire-and-forget, and **opt-in**
+via `WIDGETDC_LOG_FORWARD=1` (production behaviour unchanged until enabled). Covered
+by `src/lib/server-logger.test.ts`. Local console + Supabase `server_logs` persistence
+is retained as before.
 **Tools:** `eventspine_replay`, `governance_audit_query`, `system_logs_summary`.
 
 ### AUR-13 — Recharts v3 migration
