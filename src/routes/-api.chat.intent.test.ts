@@ -27,6 +27,10 @@ vi.mock("@/lib/widgetdc.server", () => ({
   fetchRagGrounding: vi.fn(async () => null),
   modelPolicyPreflight: vi.fn(async () => ({ allowed: true })),
   storeChatMemory: vi.fn(async () => undefined),
+  // AUR-6 memory hydration + BOMItem emit are awaited/called inside the handler;
+  // the mock must provide them or the stream throws before the completion call.
+  retrieveChatMemory: vi.fn(async () => null),
+  emitChatBOMItem: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/providers.server", () => ({

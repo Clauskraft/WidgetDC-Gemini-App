@@ -401,7 +401,7 @@ describe("platform deliverable writer fallback", () => {
   const brief =
     "GraphRAG med Neo4j tilbyder en overlegen tilgang til informationshentning og ræsonnement, når data har komplekse relationer og kontekst er afgørende.";
 
-  it("uses catalogued llm.generate for the live platform writer path", async () => {
+  it("uses catalogued llm_chat for the live platform writer path", async () => {
     vi.stubEnv("WIDGETDC_BACKEND_URL", "https://backend.example");
     vi.stubEnv("WIDGETDC_ORCHESTRATOR_URL", "https://orchestrator.example");
     vi.stubEnv("WIDGETDC_API_KEY", "fixture-backend-auth");
@@ -437,7 +437,7 @@ describe("platform deliverable writer fallback", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "https://backend.example/api/mcp/tools") {
-        return Response.json({ data: { tools: ["srag.query", "llm.generate", "reason_deeply"] } });
+        return Response.json({ data: { tools: ["srag.query", "llm_chat", "reason_deeply"] } });
       }
       if (url === "https://orchestrator.example/api/mcp/tools") {
         return Response.json({ tools: [] });
@@ -457,10 +457,13 @@ describe("platform deliverable writer fallback", () => {
             },
           });
         }
-        if (body.tool === "llm.generate") {
+        if (body.tool === "llm_chat") {
           const payload = body.payload as Record<string, unknown>;
           expect(payload.provider).toBe("deepseek");
           expect(payload.max_tokens).toBe(1600);
+          // The writer prompt now travels inside the llm_chat messages array.
+          const messages = payload.messages as Array<{ role: string; content: string }>;
+          expect(messages[0].role).toBe("user");
           expect(JSON.stringify(payload)).toContain("Available evidence context");
           expect(JSON.stringify(payload)).toContain("RAG-backed consulting draft");
           return Response.json({ result: { content: writerMarkdown } });
@@ -479,7 +482,7 @@ describe("platform deliverable writer fallback", () => {
     const postedTools = fetchMock.mock.calls
       .filter(([, init]) => init?.method === "POST")
       .map(([, init]) => JSON.parse(String(init?.body)).tool);
-    expect(postedTools).toEqual(["srag.query", "llm.generate"]);
+    expect(postedTools).toEqual(["srag.query", "llm_chat"]);
   });
 
   it("uses srag response text as grounding context without legacy rag_route fallback", async () => {
