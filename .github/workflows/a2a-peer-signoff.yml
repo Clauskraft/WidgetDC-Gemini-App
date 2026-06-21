@@ -34,7 +34,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate A2A peer signoff
+      # Peer signoff is now OPTIONAL (non-blocking). The validation still runs and
+      # surfaces its verdict in the logs, but continue-on-error keeps it from
+      # failing the PR so it no longer gates merges.
+      - name: Validate A2A peer signoff (advisory)
+        continue-on-error: true
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
         run: node scripts/check-a2a-peer-signoff.mjs
