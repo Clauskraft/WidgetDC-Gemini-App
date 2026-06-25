@@ -33,13 +33,12 @@ test("WDC Chat ONLY — no model picker, WDC Chat badge visible", async ({ page 
   await expect(wdcBadge).toBeVisible();
 
   // Send a message and verify it goes through
-  await page.locator("textarea").fill("Hej WDC Chat test");
-  await page.locator("textarea").press("Enter");
-
-  // Verify the request was made
   const reqPromise = page.waitForRequest(
     (req) => req.url().endsWith("/api/chat") && req.method() === "POST",
   );
+  await page.locator("textarea").fill("Hej WDC Chat test");
+  await page.getByRole("button", { name: "Send" }).click();
+
   const req = await reqPromise;
   const payload = req.postDataJSON() as { messages?: unknown };
   expect(Array.isArray(payload.messages)).toBe(true);
