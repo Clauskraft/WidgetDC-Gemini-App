@@ -27,7 +27,6 @@ import { useThreads } from "@/hooks/useThreads";
 import { CanvasPanel } from "./CanvasPanel";
 import { cn } from "@/lib/utils";
 import { validateGemResponse, type ValidationResult } from "@/lib/gemResponseValidator";
-import { ModelPicker } from "./ModelPicker";
 import { useModelPreference } from "@/lib/modelPreference";
 import type { EngagementRow } from "@/routes/api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
