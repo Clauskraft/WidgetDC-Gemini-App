@@ -88,7 +88,8 @@ export const Route = createFileRoute("/api/ingest")({
           }
 
           const mime = file.type || "application/octet-stream";
-          const isText = TEXT_TYPES.has(mime) || file.name.endsWith(".md") || file.name.endsWith(".txt");
+          const isText =
+            TEXT_TYPES.has(mime) || file.name.endsWith(".md") || file.name.endsWith(".txt");
           const isPdf = mime === PDF_TYPE || file.name.toLowerCase().endsWith(".pdf");
 
           if (!isText && !isPdf) {
@@ -122,8 +123,8 @@ export const Route = createFileRoute("/api/ingest")({
             );
 
             const nodeId =
-              (result as Record<string, unknown>)?.id as string ??
-              (result as Record<string, unknown>)?.node_id as string ??
+              ((result as Record<string, unknown>)?.id as string) ??
+              ((result as Record<string, unknown>)?.node_id as string) ??
               file.name;
 
             results.push({ id: String(nodeId), filename: file.name, status: "ok" });

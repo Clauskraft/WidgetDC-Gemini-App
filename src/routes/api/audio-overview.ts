@@ -30,7 +30,8 @@ function jsonRes(body: unknown, status: number): Response {
   });
 }
 
-const PROMPT_DA = (sources: string[], context: string) => `
+const PROMPT_DA = (sources: string[], context: string) =>
+  `
 Du er manuskriptforfatter for et 2-vært podcast-format (som NotebookLM's Audio Overview).
 Vært A er entusiastisk og stiller spørgsmål. Vært B er analytisk og forklarer.
 
@@ -53,7 +54,8 @@ OUTPUT FORMAT (JSON, ingen markdown):
 Returnér KUN JSON. Ingen forklaring før eller efter.
 `.trim();
 
-const PROMPT_EN = (sources: string[], context: string) => `
+const PROMPT_EN = (sources: string[], context: string) =>
+  `
 You are a scriptwriter for a 2-host podcast (like NotebookLM's Audio Overview).
 Host A is enthusiastic and asks questions. Host B is analytical and explains.
 
@@ -93,26 +95,22 @@ export const Route = createFileRoute("/api/audio-overview")({
         }
 
         const { sources, context = "", language } = parsed.data;
-        const prompt = language === "da"
-          ? PROMPT_DA(sources, context)
-          : PROMPT_EN(sources, context);
+        const prompt =
+          language === "da" ? PROMPT_DA(sources, context) : PROMPT_EN(sources, context);
 
         let rawJson: string | null = null;
 
         // Try llm_chat via orchestrator MCP first (uses platform LLM matrix)
         try {
-          const result = await callMcpTool<{ content?: string; text?: string }>(
-            "llm_chat",
-            {
-              messages: [{ role: "user", content: prompt }],
-              model: "gemini-2.5-flash",
-              max_tokens: 1500,
-              temperature: 0.7,
-            },
-          );
+          const result = await callMcpTool<{ content?: string; text?: string }>("llm_chat", {
+            messages: [{ role: "user", content: prompt }],
+            model: "gemini-2.5-flash",
+            max_tokens: 1500,
+            temperature: 0.7,
+          });
           rawJson =
-            (result as Record<string, unknown>)?.content as string ??
-            (result as Record<string, unknown>)?.text as string ??
+            ((result as Record<string, unknown>)?.content as string) ??
+            ((result as Record<string, unknown>)?.text as string) ??
             null;
         } catch {
           // fall through to direct Gemini/OpenAI
@@ -145,25 +143,36 @@ export const Route = createFileRoute("/api/audio-overview")({
         }
 
         if (!rawJson) {
-          return jsonRes({ error: "LLM unavailable — no API key configured or all providers failed" }, 503);
+          return jsonRes(
+            { error: "LLM unavailable — no API key configured or all providers failed" },
+            503,
+          );
         }
 
         // Extract JSON from the response (model may wrap it in ```json blocks)
         const jsonMatch = rawJson.match(/\{[\s\S]*"segments"[\s\S]*\}/);
         if (!jsonMatch) {
-          return jsonRes({ error: "LLM returned unparseable response", raw: rawJson.slice(0, 500) }, 502);
+          return jsonRes(
+            { error: "LLM returned unparseable response", raw: rawJson.slice(0, 500) },
+            502,
+          );
         }
 
         let parsed2: { segments?: AudioSegment[] };
         try {
           parsed2 = JSON.parse(jsonMatch[0]) as { segments?: AudioSegment[] };
         } catch {
-          return jsonRes({ error: "Failed to parse LLM JSON", raw: jsonMatch[0].slice(0, 500) }, 502);
+          return jsonRes(
+            { error: "Failed to parse LLM JSON", raw: jsonMatch[0].slice(0, 500) },
+            502,
+          );
         }
 
         const segments = (parsed2.segments ?? []).filter(
           (s): s is AudioSegment =>
-            (s.speaker === "A" || s.speaker === "B") && typeof s.text === "string" && s.text.length > 0,
+            (s.speaker === "A" || s.speaker === "B") &&
+            typeof s.text === "string" &&
+            s.text.length > 0,
         );
 
         if (segments.length === 0) {

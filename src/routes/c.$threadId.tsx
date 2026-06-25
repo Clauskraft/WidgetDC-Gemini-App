@@ -28,5 +28,12 @@ function ThreadRoute() {
 
   // Key=threadId (KUN) tvinger remount ved tråd-SKIFT, men ikke ved hydrering,
   // så et streamende svar i den nye tråd overlever.
-  return <ChatWindow key={threadId} threadId={threadId} initialMessages={initial} initialInput={prompt} />;
+  return (
+    <ChatWindow
+      key={threadId}
+      threadId={threadId}
+      initialMessages={initial}
+      initialInput={prompt}
+    />
+  );
 }

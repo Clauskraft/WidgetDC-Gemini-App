@@ -41,7 +41,8 @@ function neo4jNum(v: unknown): number {
   if (typeof v === "number") return v;
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
-    if (typeof o.low === "number") return o.high ? (o.high as number) * 0x100000000 + (o.low as number) : (o.low as number);
+    if (typeof o.low === "number")
+      return o.high ? (o.high as number) * 0x100000000 + (o.low as number) : (o.low as number);
   }
   return 0;
 }
@@ -53,7 +54,10 @@ function str(v: unknown, fallback = ""): string {
 function jsonRes(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "public, max-age=120, stale-while-revalidate=300" },
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=120, stale-while-revalidate=300",
+    },
   });
 }
 
@@ -111,8 +115,16 @@ export const Route = createFileRoute("/api/news")({
 
         const [patResult, abResult, kdResult] = await Promise.allSettled([
           callMcpTool<unknown>("data_graph_read", { query: patternsCypher }, { timeoutMs: 12000 }),
-          callMcpTool<unknown>("data_graph_read", { query: assemblyBlocksCypher }, { timeoutMs: 12000 }),
-          callMcpTool<unknown>("data_graph_read", { query: knowledgeDocsCypher }, { timeoutMs: 12000 }),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: assemblyBlocksCypher },
+            { timeoutMs: 12000 },
+          ),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: knowledgeDocsCypher },
+            { timeoutMs: 12000 },
+          ),
         ]);
 
         const patRows = patResult.status === "fulfilled" ? extractRows(patResult.value) : [];
@@ -121,12 +133,20 @@ export const Route = createFileRoute("/api/news")({
 
         if (patRows.length === 0 && abRows.length === 0 && kdRows.length === 0) {
           return jsonRes(
-            { items: [], top_domains: [], last_refreshed: null, error: "Ingen data endnu — tryk Opdatér for at starte høst." } satisfies NewsResponse,
+            {
+              items: [],
+              top_domains: [],
+              last_refreshed: null,
+              error: "Ingen data endnu — tryk Opdatér for at starte høst.",
+            } satisfies NewsResponse,
             200,
           );
         }
 
-        const topDomains = [...new Set(patRows.map((r) => str(r.domain)).filter(Boolean))].slice(0, 6);
+        const topDomains = [...new Set(patRows.map((r) => str(r.domain)).filter(Boolean))].slice(
+          0,
+          6,
+        );
 
         // Build pattern name lookup by domain
         const domainToPattern: Record<string, string> = {};
@@ -142,8 +162,11 @@ export const Route = createFileRoute("/api/news")({
           const domain = str(r.domain, "General");
           const srcType = str(r.source_type);
           const source: NewsItem["source"] =
-            srcType === "external" || srcType === "ekstern" ? "ekstern" :
-            srcType === "market" || srcType === "marked" ? "marked" : "intern";
+            srcType === "external" || srcType === "ekstern"
+              ? "ekstern"
+              : srcType === "market" || srcType === "marked"
+                ? "marked"
+                : "intern";
           items.push({
             id: str(r.id),
             title: str(r.title) || "(uden titel)",
@@ -193,7 +216,11 @@ export const Route = createFileRoute("/api/news")({
         const lastRefreshed = deduped.find((i) => i.harvested_at)?.harvested_at ?? null;
 
         return jsonRes(
-          { items: deduped.slice(0, 50), top_domains: topDomains, last_refreshed: lastRefreshed } satisfies NewsResponse,
+          {
+            items: deduped.slice(0, 50),
+            top_domains: topDomains,
+            last_refreshed: lastRefreshed,
+          } satisfies NewsResponse,
           200,
         );
       },

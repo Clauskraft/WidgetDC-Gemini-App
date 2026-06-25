@@ -75,7 +75,10 @@ export const Route = createFileRoute("/api/engagements")({
         const skip = Math.max(0, parseInt(url.searchParams.get("skip") ?? "0", 10) || 0);
         const limit = Math.min(
           MAX_LIMIT,
-          Math.max(1, parseInt(url.searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT),
+          Math.max(
+            1,
+            parseInt(url.searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT,
+          ),
         );
         const fetchCount = limit + 1;
 
@@ -122,7 +125,12 @@ export const Route = createFileRoute("/api/engagements")({
 
         if (result == null) {
           return jsonRes(
-            { engagements: [], total: 0, hasMore: false, error: "Platform utilgængeligt" } satisfies EngagementsResponse,
+            {
+              engagements: [],
+              total: 0,
+              hasMore: false,
+              error: "Platform utilgængeligt",
+            } satisfies EngagementsResponse,
             503,
           );
         }
@@ -146,7 +154,10 @@ export const Route = createFileRoute("/api/engagements")({
           pattern_count: neo4jNum(row.pattern_count),
         }));
 
-        return jsonRes({ engagements, total: engagements.length, hasMore } satisfies EngagementsResponse, 200);
+        return jsonRes(
+          { engagements, total: engagements.length, hasMore } satisfies EngagementsResponse,
+          200,
+        );
       },
 
       POST: async ({ request }: { request: Request }) => {
@@ -185,7 +196,10 @@ export const Route = createFileRoute("/api/engagements")({
         ).catch(() => null);
 
         if (result == null) {
-          return jsonRes({ error: "Platform utilgængeligt" } satisfies CreateEngagementResponse, 503);
+          return jsonRes(
+            { error: "Platform utilgængeligt" } satisfies CreateEngagementResponse,
+            503,
+          );
         }
 
         return jsonRes({ id } satisfies CreateEngagementResponse, 201);

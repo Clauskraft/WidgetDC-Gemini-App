@@ -27,7 +27,11 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
 
   const startNew = () => {
     const id = newId();
-    navigate({ to: "/c/$threadId", params: { threadId: id }, search: { prompt: undefined as string | undefined } });
+    navigate({
+      to: "/c/$threadId",
+      params: { threadId: id },
+      search: { prompt: undefined as string | undefined },
+    });
   };
 
   const navLinkBase =
@@ -69,27 +73,15 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
 
       {/* Primary nav */}
       <nav className="px-2 space-y-0.5">
-        <Link
-          to="/dashboard"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/dashboard" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <LayoutDashboard className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Dashboard</span>}
         </Link>
-        <Link
-          to="/gems"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/gems" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Gem className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Widgets</span>}
         </Link>
-        <Link
-          to="/graph"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/graph" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Network className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Graph</span>}
         </Link>
@@ -101,19 +93,11 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           <Calendar className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Monday Review</span>}
         </Link>
-        <Link
-          to="/engagements"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/engagements" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Briefcase className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Engagements</span>}
         </Link>
-        <Link
-          to="/deliverable"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/deliverable" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <FileText className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Deliverables</span>}
         </Link>
@@ -125,35 +109,19 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           <Activity className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Observability</span>}
         </Link>
-        <Link
-          to="/patterns"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/patterns" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <BookOpen className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Patterns</span>}
         </Link>
-        <Link
-          to="/consulting"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/consulting" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Boxes className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Assembly BOM</span>}
         </Link>
-        <Link
-          to="/storyline"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/storyline" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Presentation className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Storyline Builder</span>}
         </Link>
-        <Link
-          to="/news"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/news" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <Newspaper className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Intelligence Feed</span>}
         </Link>
@@ -166,9 +134,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
             Seneste
           </div>
           {hydrated && threads.length === 0 && (
-            <p className="px-3 py-4 text-xs text-muted-foreground/60">
-              Ingen samtaler endnu.
-            </p>
+            <p className="px-3 py-4 text-xs text-muted-foreground/60">Ingen samtaler endnu.</p>
           )}
           <ul className="space-y-0.5">
             {threads.map((t) => (
@@ -207,11 +173,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
 
       {/* Bottom settings */}
       <div className="border-t border-sidebar-border px-2 py-2">
-        <Link
-          to="/settings"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
+        <Link to="/settings" className={navLinkBase} activeProps={{ className: navLinkActive }}>
           <SettingsIcon className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Indstillinger</span>}
         </Link>

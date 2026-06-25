@@ -72,7 +72,13 @@ export function IngestSourcesPanel({ sources, onRemove, onDropFiles, className }
   );
 }
 
-function SourceChip({ source, onRemove }: { source: IngestedSource; onRemove: (id: string) => void }) {
+function SourceChip({
+  source,
+  onRemove,
+}: {
+  source: IngestedSource;
+  onRemove: (id: string) => void;
+}) {
   return (
     <div
       className={cn(
@@ -80,8 +86,7 @@ function SourceChip({ source, onRemove }: { source: IngestedSource; onRemove: (i
         source.status === "ok" &&
           "border-green-500/25 bg-green-500/8 text-green-700 dark:text-green-400",
         source.status === "pending" && "border-border bg-muted/50 text-muted-foreground",
-        source.status === "error" &&
-          "border-destructive/30 bg-destructive/8 text-destructive",
+        source.status === "error" && "border-destructive/30 bg-destructive/8 text-destructive",
       )}
       title={source.error ?? source.filename}
     >

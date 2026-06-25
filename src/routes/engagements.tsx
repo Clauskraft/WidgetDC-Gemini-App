@@ -24,7 +24,12 @@ import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
 import type { PatternRef, EngagementPatternsResponse } from "./api/engagements.$id.patterns";
-import type { PinnedSource, EngagementSourcesResponse, PinSourceBody, PinSourceResponse } from "./api/engagements.$id.sources";
+import type {
+  PinnedSource,
+  EngagementSourcesResponse,
+  PinSourceBody,
+  PinSourceResponse,
+} from "./api/engagements.$id.sources";
 import type {
   DeliverableKind,
   WorkArtifactRow,
@@ -45,7 +50,10 @@ function scoreToLevel(score: number): ConfidenceLevel {
   return "eksplorativt";
 }
 
-const CONFIDENCE_META: Record<ConfidenceLevel, { dots: string; label: string; color: string; tooltip: string }> = {
+const CONFIDENCE_META: Record<
+  ConfidenceLevel,
+  { dots: string; label: string; color: string; tooltip: string }
+> = {
   velbelagt: {
     dots: "●●●",
     label: "Velbelagt",
@@ -62,7 +70,8 @@ const CONFIDENCE_META: Record<ConfidenceLevel, { dots: string; label: string; co
     dots: "●○○",
     label: "Eksplorativt",
     color: "text-rose-600 dark:text-rose-400",
-    tooltip: "Hypotese-niveau — brug som udgangspunkt for videre analyse, ikke som endegyldigt grundlag.",
+    tooltip:
+      "Hypotese-niveau — brug som udgangspunkt for videre analyse, ikke som endegyldigt grundlag.",
   },
 };
 
@@ -198,9 +207,7 @@ function EngagementsRoute() {
 
   const onPatternLinked = useCallback((engId: string) => {
     setEngagements((prev) =>
-      prev.map((e) =>
-        e.id === engId ? { ...e, pattern_count: e.pattern_count + 1 } : e,
-      ),
+      prev.map((e) => (e.id === engId ? { ...e, pattern_count: e.pattern_count + 1 } : e)),
     );
     setSelected((prev) =>
       prev?.id === engId ? { ...prev, pattern_count: prev.pattern_count + 1 } : prev,
@@ -210,7 +217,12 @@ function EngagementsRoute() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left panel */}
-      <div className={cn("flex flex-col overflow-hidden transition-all", selected || showCreate ? "w-1/2" : "flex-1")}>
+      <div
+        className={cn(
+          "flex flex-col overflow-hidden transition-all",
+          selected || showCreate ? "w-1/2" : "flex-1",
+        )}
+      >
         {/* Header */}
         <PageHeader
           icon={<Briefcase className="h-4 w-4 text-white" />}
@@ -221,7 +233,10 @@ function EngagementsRoute() {
           refreshing={loading}
           action={
             <button
-              onClick={() => { setShowCreate(true); setSelected(null); }}
+              onClick={() => {
+                setShowCreate(true);
+                setSelected(null);
+              }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -336,12 +351,14 @@ function EngagementsRoute() {
                 </span>
               )}
               {selected.status && (
-                <span className={cn(
-                  "rounded-full px-2.5 py-1 text-xs font-medium",
-                  selected.status === "active"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground",
-                )}>
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs font-medium",
+                    selected.status === "active"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
                   {selected.status}
                 </span>
               )}
@@ -485,7 +502,11 @@ function PatternLinkPanel({
           disabled={loading}
           className="rounded-md p-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
         >
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 
@@ -581,23 +602,25 @@ function EngagementConfidence({ engagement }: { engagement: EngagementRow }) {
   let score = 0;
   if (engagement.pattern_count >= 3) score += 0.35;
   else if (engagement.pattern_count >= 1) score += 0.15;
-  if (engagement.client) score += 0.20;
-  if (engagement.domain) score += 0.20;
+  if (engagement.client) score += 0.2;
+  if (engagement.domain) score += 0.2;
   if ((engagement.description?.length ?? 0) >= 50) score += 0.25;
-  else if ((engagement.description?.length ?? 0) >= 10) score += 0.10;
+  else if ((engagement.description?.length ?? 0) >= 10) score += 0.1;
 
   const level = scoreToLevel(score);
 
   return (
     <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
       <div>
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">AI-analyse evidens</p>
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          AI-analyse evidens
+        </p>
         <p className="mt-0.5 text-[10px] text-muted-foreground">
           {level === "velbelagt"
             ? "Engagementet har tilstrækkelig kontekst til at generere velbegrundede analyser."
             : level === "indikativt"
-            ? "Tilføj patterns, klient eller beskrivelse for at øge evidensstyrken."
-            : "Mangler kontekst — tilføj domain, klient og minimum 1 pattern."}
+              ? "Tilføj patterns, klient eller beskrivelse for at øge evidensstyrken."
+              : "Mangler kontekst — tilføj domain, klient og minimum 1 pattern."}
         </p>
       </div>
       <ConfidenceDots score={score} className="ml-4 shrink-0" />
@@ -644,9 +667,7 @@ function CitationsPanel({ engagementId, count }: { engagementId: string; count: 
         <span>
           {count} {count === 1 ? "citation" : "citationer"}
         </span>
-        <ChevronRight
-          className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
-        />
+        <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />
       </button>
 
       {expanded && (
@@ -656,10 +677,7 @@ function CitationsPanel({ engagementId, count }: { engagementId: string; count: 
             <p className="text-[10px] text-muted-foreground">Ingen linkede patterns endnu</p>
           )}
           {patterns.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1"
-            >
+            <div key={p.id} className="flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1">
               <span className="text-[10px] font-medium text-foreground truncate flex-1">
                 {p.name}
               </span>
@@ -669,7 +687,10 @@ function CitationsPanel({ engagementId, count }: { engagementId: string; count: 
                 </span>
               )}
               {p.canonical_ref && (
-                <span className="shrink-0 text-[9px] text-primary font-mono truncate max-w-[80px]" title={p.canonical_ref}>
+                <span
+                  className="shrink-0 text-[9px] text-primary font-mono truncate max-w-[80px]"
+                  title={p.canonical_ref}
+                >
                   {p.canonical_ref.split("/").pop()}
                 </span>
               )}
@@ -756,9 +777,7 @@ function SourcesPanel({ engagementId }: { engagementId: string }) {
         <span>
           {sourceCount !== null ? `${sourceCount} kilde${sourceCount === 1 ? "" : "r"}` : "kilder"}
         </span>
-        <ChevronRight
-          className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")}
-        />
+        <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />
       </button>
 
       {expanded && (
@@ -780,7 +799,9 @@ function SourcesPanel({ engagementId }: { engagementId: string }) {
               <p className="text-[10px] text-muted-foreground line-clamp-2">{s.content_preview}</p>
               <div className="flex items-center gap-2">
                 {s.domain && (
-                  <span className="text-[9px] bg-muted rounded px-1 text-muted-foreground">{s.domain}</span>
+                  <span className="text-[9px] bg-muted rounded px-1 text-muted-foreground">
+                    {s.domain}
+                  </span>
                 )}
                 <span className="text-[9px] text-muted-foreground">
                   score {s.quality_score.toFixed(2)}
@@ -799,9 +820,7 @@ function SourcesPanel({ engagementId }: { engagementId: string }) {
               rows={2}
               className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
-            {pinError && (
-              <p className="text-[10px] text-destructive">{pinError}</p>
-            )}
+            {pinError && <p className="text-[10px] text-destructive">{pinError}</p>}
             <button
               onClick={() => void pinSource()}
               disabled={pinning || !pinText.trim()}
@@ -844,7 +863,9 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
     }
   }, [engagementId]);
 
-  useEffect(() => { void loadArtifacts(); }, [loadArtifacts]);
+  useEffect(() => {
+    void loadArtifacts();
+  }, [loadArtifacts]);
 
   const generate = useCallback(async () => {
     setGenerating(true);
@@ -892,14 +913,20 @@ function DeliverablePanel({ engagementId }: { engagementId: string }) {
           disabled={loadingList}
           className="rounded-md p-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
         >
-          {loadingList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {loadingList ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 
       {/* Existing artifacts */}
       {artifacts.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-medium text-muted-foreground">Produceret ({artifacts.length})</p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Produceret ({artifacts.length})
+          </p>
           <div className="space-y-1">
             {artifacts.map((wa) => (
               <button
@@ -1011,10 +1038,10 @@ function engagementHealthScore(e: EngagementRow): number {
   let s = 0;
   if (e.pattern_count >= 3) s += 0.35;
   else if (e.pattern_count >= 1) s += 0.15;
-  if (e.client) s += 0.20;
-  if (e.domain) s += 0.20;
+  if (e.client) s += 0.2;
+  if (e.domain) s += 0.2;
   if ((e.description?.length ?? 0) >= 50) s += 0.25;
-  else if ((e.description?.length ?? 0) >= 10) s += 0.10;
+  else if ((e.description?.length ?? 0) >= 10) s += 0.1;
   return s;
 }
 
@@ -1046,10 +1073,18 @@ function EngagementCard({
 
   return (
     <div
-      onClick={() => { setActiveEngagement(engagement); onClick(); }}
+      onClick={() => {
+        setActiveEngagement(engagement);
+        onClick();
+      }}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setActiveEngagement(engagement); onClick(); } }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          setActiveEngagement(engagement);
+          onClick();
+        }
+      }}
       className={cn(
         "group flex flex-col gap-2 rounded-2xl border p-4 text-left transition cursor-pointer hover:border-primary/40 hover:bg-accent/40",
         active ? "border-primary bg-accent/60 ring-1 ring-primary/20" : "border-border bg-card",
@@ -1059,7 +1094,10 @@ function EngagementCard({
         <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
           {engagement.name || "Unavngivet engagement"}
         </span>
-        <span className={cn("shrink-0 font-mono text-[10px] tracking-widest", meta.color)} title={meta.label}>
+        <span
+          className={cn("shrink-0 font-mono text-[10px] tracking-widest", meta.color)}
+          title={meta.label}
+        >
           {meta.dots}
         </span>
       </div>
@@ -1071,12 +1109,14 @@ function EngagementCard({
           </span>
         )}
         {engagement.status && (
-          <span className={cn(
-            "rounded-full px-2 py-0.5 text-[11px] font-medium",
-            engagement.status === "active"
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "bg-muted text-muted-foreground",
-          )}>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              engagement.status === "active"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
             {engagement.status}
           </span>
         )}
@@ -1103,7 +1143,11 @@ function EngagementCard({
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            level === "velbelagt" ? "bg-emerald-500" : level === "indikativt" ? "bg-amber-500" : "bg-rose-500",
+            level === "velbelagt"
+              ? "bg-emerald-500"
+              : level === "indikativt"
+                ? "bg-amber-500"
+                : "bg-rose-500",
           )}
           style={{ width: `${Math.round(health * 100)}%` }}
         />
@@ -1120,13 +1164,7 @@ function EngagementCard({
   );
 }
 
-function CreateForm({
-  onCreated,
-  onCancel,
-}: {
-  onCreated: () => void;
-  onCancel: () => void;
-}) {
+function CreateForm({ onCreated, onCancel }: { onCreated: () => void; onCancel: () => void }) {
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [client, setClient] = useState("");
@@ -1166,7 +1204,8 @@ function CreateForm({
     }
   };
 
-  const field = "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+  const field =
+    "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -1208,11 +1247,7 @@ function CreateForm({
 
       <div>
         <label className="mb-1.5 block text-xs font-medium text-foreground">Status</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className={field}
-        >
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className={field}>
           <option value="active">Active</option>
           <option value="planning">Planning</option>
           <option value="on-hold">On hold</option>

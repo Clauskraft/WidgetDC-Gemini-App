@@ -15,8 +15,8 @@ type ExportFormat = "pptx" | "docx" | "xlsx";
 
 const FORMATS: { format: ExportFormat; label: string; ext: string }[] = [
   { format: "pptx", label: "PowerPoint (.html)", ext: "html" },
-  { format: "docx", label: "Word (.doc)",        ext: "doc"  },
-  { format: "xlsx", label: "Excel (.xls)",       ext: "xls"  },
+  { format: "docx", label: "Word (.doc)", ext: "doc" },
+  { format: "xlsx", label: "Excel (.xls)", ext: "xls" },
 ];
 
 export function ExportToolbar({
@@ -62,7 +62,8 @@ export function ExportToolbar({
       <div>
         <h3 className="mb-1 text-sm font-medium">Eksportér</h3>
         <p className="mb-4 text-xs text-muted-foreground">
-          Tema: <strong>{theme}</strong> — genererer direkte i browseren. PowerPoint eksporteres som HTML-slides (åbn i Chrome og print til PDF for bedste kvalitet).
+          Tema: <strong>{theme}</strong> — genererer direkte i browseren. PowerPoint eksporteres som
+          HTML-slides (åbn i Chrome og print til PDF for bedste kvalitet).
         </p>
         <div className="flex flex-wrap gap-3">
           {FORMATS.map(({ format, label }) => (

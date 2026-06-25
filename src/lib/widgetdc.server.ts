@@ -918,12 +918,16 @@ async function orchestratorLlmChat(
     const data = (json.data as Record<string, unknown>) ?? json;
     return extractChatResult(data);
   } catch (error) {
-    logServer("error", {
-      event: "orchestrator_llm_chat_failed",
-      requestId: opts.correlationId,
-      provider,
-      durationMs: Date.now() - started,
-    }, error);
+    logServer(
+      "error",
+      {
+        event: "orchestrator_llm_chat_failed",
+        requestId: opts.correlationId,
+        provider,
+        durationMs: Date.now() - started,
+      },
+      error,
+    );
     return null;
   } finally {
     clearTimeout(timer);
@@ -1076,7 +1080,8 @@ export async function callCanvasBuilder(
     intent,
     mermaid_type: (inner.mermaid_type as string) ?? (r.mermaid_type as string),
     drawio_type: (inner.drawio_type as string) ?? (r.drawio_type as string),
-    flow_spec: (inner.flow_spec as Record<string, unknown>) ?? (r.flow_spec as Record<string, unknown>),
+    flow_spec:
+      (inner.flow_spec as Record<string, unknown>) ?? (r.flow_spec as Record<string, unknown>),
     confidence: typeof inner.confidence === "number" ? inner.confidence : undefined,
   };
 }
@@ -2005,24 +2010,24 @@ export async function emitChatBOMItem(opts: {
   hasGrounding: boolean;
 }): Promise<void> {
   const item_type: string = opts.hasGrounding
-    ? 'grounding'
+    ? "grounding"
     : opts.intentTool
-      ? 'routing'
-      : 'provider_call';
+      ? "routing"
+      : "provider_call";
 
   try {
     await callMcpTool(
-      'governance.emit_spine_event',
+      "governance.emit_spine_event",
       {
-        event_type: 'bomitem_chat_turn',
-        source: 'widgetdc-gemini-frontend',
+        event_type: "bomitem_chat_turn",
+        source: "widgetdc-gemini-frontend",
         correlation_id: opts.correlationId,
-        tenant_id: 'tenant:widgetdc-internal',
-        outcome: 'success',
+        tenant_id: "tenant:widgetdc-internal",
+        outcome: "success",
         payload: {
-          logical_event_type: 'chat_bomitem_recorded',
+          logical_event_type: "chat_bomitem_recorded",
           item_type,
-          provider: opts.provider ?? 'platform',
+          provider: opts.provider ?? "platform",
           model: opts.model,
           intent_tool: opts.intentTool,
           has_grounding: opts.hasGrounding,

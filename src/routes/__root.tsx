@@ -34,15 +34,20 @@ function EngagementContextBar() {
   const [loading, setLoading] = useState(false);
 
   const openPicker = async () => {
-    if (pickerOpen) { setPickerOpen(false); return; }
+    if (pickerOpen) {
+      setPickerOpen(false);
+      return;
+    }
     setPickerOpen(true);
     if (engagements.length > 0) return;
     setLoading(true);
     try {
       const res = await fetch("/api/engagements?limit=20");
-      const data = await res.json() as { engagements?: EngagementRow[] };
+      const data = (await res.json()) as { engagements?: EngagementRow[] };
       setEngagements(data.engagements ?? []);
-    } catch {}
+    } catch {
+      // best-effort: leave the engagement list empty if the fetch fails
+    }
     setLoading(false);
   };
 
@@ -56,7 +61,10 @@ function EngagementContextBar() {
   }, [pickerOpen]);
 
   return (
-    <div id="aurora-engagement-bar" className="relative z-20 border-b border-border bg-sidebar/60 backdrop-blur-sm">
+    <div
+      id="aurora-engagement-bar"
+      className="relative z-20 border-b border-border bg-sidebar/60 backdrop-blur-sm"
+    >
       <div className="flex h-9 items-center gap-2 px-4">
         <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <button
@@ -103,7 +111,10 @@ function EngagementContextBar() {
               {engagements.map((e) => (
                 <li key={e.id}>
                   <button
-                    onClick={() => { setActiveEngagement(e); setPickerOpen(false); }}
+                    onClick={() => {
+                      setActiveEngagement(e);
+                      setPickerOpen(false);
+                    }}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-accent"
                   >
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10">
@@ -198,7 +209,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
     ],
   }),

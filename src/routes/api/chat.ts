@@ -95,10 +95,14 @@ Cite sources as [n] when drawing from the knowledge context.`,
 /** Select intent overlay based on the top intent candidate's tool/category name. */
 function selectIntentOverlay(toolName: string, category?: string): string {
   const key = (category ?? toolName ?? "").toLowerCase();
-  if (/strateg|consult|growth|market|compet|business/i.test(key)) return INTENT_PROMPT_OVERLAYS.strategy ?? "";
-  if (/architect|design|system|graph|schema|service|api/i.test(key)) return INTENT_PROMPT_OVERLAYS.architecture ?? "";
-  if (/ops|deploy|cron|monitor|health|incident|fix|debug|error/i.test(key)) return INTENT_PROMPT_OVERLAYS.operations ?? "";
-  if (/knowledge|search|explain|learn|concept|pattern|rag/i.test(key)) return INTENT_PROMPT_OVERLAYS.knowledge ?? "";
+  if (/strateg|consult|growth|market|compet|business/i.test(key))
+    return INTENT_PROMPT_OVERLAYS.strategy ?? "";
+  if (/architect|design|system|graph|schema|service|api/i.test(key))
+    return INTENT_PROMPT_OVERLAYS.architecture ?? "";
+  if (/ops|deploy|cron|monitor|health|incident|fix|debug|error/i.test(key))
+    return INTENT_PROMPT_OVERLAYS.operations ?? "";
+  if (/knowledge|search|explain|learn|concept|pattern|rag/i.test(key))
+    return INTENT_PROMPT_OVERLAYS.knowledge ?? "";
   return "";
 }
 
@@ -352,7 +356,11 @@ export const Route = createFileRoute("/api/chat")({
               (s) => s.text && !/not allowed|permission denied|executing procedure/i.test(s.text),
             );
             if (cleanSources.length > 0) {
-              writer.write({ type: "data-sources", id: crypto.randomUUID(), data: { sources: cleanSources } });
+              writer.write({
+                type: "data-sources",
+                id: crypto.randomUUID(),
+                data: { sources: cleanSources },
+              });
             }
 
             const topIntent = intentDetection?.candidates[0];

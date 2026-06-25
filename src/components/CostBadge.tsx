@@ -31,11 +31,7 @@ export function CostBadge({
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1",
-        colorClass(clampedPct),
-        className,
-      )}
+      className={cn("inline-flex items-center gap-1", colorClass(clampedPct), className)}
       title={`Budget: ${clampedPct.toFixed(0)}% tilbage · ${usedDKK.toFixed(2)} DKK brugt`}
     >
       <svg

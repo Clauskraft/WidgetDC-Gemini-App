@@ -475,21 +475,30 @@ export function ChatWindow({
       toIngest.forEach((f) => form.append("file", f));
       fetch("/api/ingest", { method: "POST", body: form })
         .then((r) => r.json())
-        .then((data: { results?: Array<{ id: string; filename: string; status: "ok" | "error"; error?: string }> }) => {
-          if (!data.results) return;
-          setIngestedSources((prev) =>
-            prev.map((src) => {
-              const result = data.results!.find((r) => r.filename === src.filename);
-              if (!result) return src;
-              return {
-                id: result.id || src.filename,
-                filename: src.filename,
-                status: result.status,
-                error: result.error,
-              };
-            }),
-          );
-        })
+        .then(
+          (data: {
+            results?: Array<{
+              id: string;
+              filename: string;
+              status: "ok" | "error";
+              error?: string;
+            }>;
+          }) => {
+            if (!data.results) return;
+            setIngestedSources((prev) =>
+              prev.map((src) => {
+                const result = data.results!.find((r) => r.filename === src.filename);
+                if (!result) return src;
+                return {
+                  id: result.id || src.filename,
+                  filename: src.filename,
+                  status: result.status,
+                  error: result.error,
+                };
+              }),
+            );
+          },
+        )
         .catch((err) => {
           console.error("Ingest fejlede:", err);
           setIngestedSources((prev) =>
@@ -575,10 +584,7 @@ export function ChatWindow({
                   <Briefcase className="h-4 w-4" />
                   Kontekst
                   <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      engSelectorOpen && "rotate-180",
-                    )}
+                    className={cn("h-3 w-3 transition-transform", engSelectorOpen && "rotate-180")}
                   />
                 </button>
                 {engSelectorOpen && (
@@ -594,9 +600,7 @@ export function ChatWindow({
                         <li key={eng.id}>
                           <button
                             onClick={() => {
-                              setActiveEngagement(
-                                activeEngagement?.id === eng.id ? null : eng,
-                              );
+                              setActiveEngagement(activeEngagement?.id === eng.id ? null : eng);
                               setEngSelectorOpen(false);
                             }}
                             className={cn(
@@ -657,7 +661,9 @@ export function ChatWindow({
               title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                councilMode ? "bg-primary/10 text-primary border-primary/40" : "text-muted-foreground",
+                councilMode
+                  ? "bg-primary/10 text-primary border-primary/40"
+                  : "text-muted-foreground",
               )}
             >
               <Users className="h-3.5 w-3.5" />
@@ -737,7 +743,9 @@ export function ChatWindow({
                     className="group rounded-2xl border border-border/60 bg-card/70 p-4 text-left transition-all duration-150 hover:border-primary/30 hover:bg-card hover:shadow-soft active:scale-[0.99]"
                   >
                     <div className="text-sm font-semibold text-foreground">{s.title}</div>
-                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">{s.body}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                      {s.body}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -881,7 +889,9 @@ export function ChatWindow({
               ) : (
                 <button
                   onClick={() => submit()}
-                  disabled={!input.trim() && attachments.length === 0 && ingestedSources.length === 0}
+                  disabled={
+                    !input.trim() && attachments.length === 0 && ingestedSources.length === 0
+                  }
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-aurora text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
                   aria-label="Send"
                 >
@@ -1037,8 +1047,17 @@ function Message({
         <Sparkles className="h-3.5 w-3.5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <MessageContent text={text} onCitationClick={sources.length > 0 ? (n) => setActiveCitation(n) : undefined} />
-        {sources.length > 0 && <SourcesPanel sources={sources} activeCitation={activeCitation} onCitationClick={setActiveCitation} />}
+        <MessageContent
+          text={text}
+          onCitationClick={sources.length > 0 ? (n) => setActiveCitation(n) : undefined}
+        />
+        {sources.length > 0 && (
+          <SourcesPanel
+            sources={sources}
+            activeCitation={activeCitation}
+            onCitationClick={setActiveCitation}
+          />
+        )}
         {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
@@ -1122,7 +1141,9 @@ function SourcesPanel({
           return (
             <li
               key={i}
-              ref={(el) => { itemRefs.current[i] = el; }}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
               className={cn(
                 "group/src flex items-start gap-2 leading-snug rounded px-1 -mx-1 transition-colors",
                 isActive && "bg-primary/8 text-foreground",

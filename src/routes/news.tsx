@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { Newspaper, RefreshCw, ExternalLink, TrendingUp, AlertCircle, Globe, Database, BarChart2 } from "lucide-react";
+import {
+  Newspaper,
+  RefreshCw,
+  ExternalLink,
+  TrendingUp,
+  AlertCircle,
+  Globe,
+  Database,
+  BarChart2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NewsItem, NewsResponse } from "@/routes/api/news";
 
@@ -8,16 +17,34 @@ export const Route = createFileRoute("/news")({
   head: () => ({
     meta: [
       { title: "Nyheder · WidgeTDC Aurora" },
-      { name: "description", content: "Intelligence feed kurateret af dine mest brugte platform-noder." },
+      {
+        name: "description",
+        content: "Intelligence feed kurateret af dine mest brugte platform-noder.",
+      },
     ],
   }),
   component: NewsPage,
 });
 
-const SOURCE_META: Record<NewsItem["source"], { label: string; color: string; icon: typeof Globe }> = {
-  ekstern: { label: "Ekstern", color: "bg-blue-500/10 text-blue-400 border-blue-500/20", icon: Globe },
-  marked:  { label: "Marked",  color: "bg-purple-500/10 text-purple-400 border-purple-500/20", icon: BarChart2 },
-  intern:  { label: "Intern",  color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: Database },
+const SOURCE_META: Record<
+  NewsItem["source"],
+  { label: string; color: string; icon: typeof Globe }
+> = {
+  ekstern: {
+    label: "Ekstern",
+    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    icon: Globe,
+  },
+  marked: {
+    label: "Marked",
+    color: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    icon: BarChart2,
+  },
+  intern: {
+    label: "Intern",
+    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    icon: Database,
+  },
 };
 
 function relTime(ts: string | null): string {
@@ -28,13 +55,18 @@ function relTime(ts: string | null): string {
   if (d < 3_600_000) return `${Math.floor(d / 60_000)} min`;
   if (d < 86_400_000) return `${Math.floor(d / 3_600_000)} t`;
   return `${Math.floor(d / 86_400_000)} d`;
-};
+}
 
 function SourceBadge({ source }: { source: NewsItem["source"] }) {
   const m = SOURCE_META[source];
   const Icon = m.icon;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", m.color)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        m.color,
+      )}
+    >
       <Icon className="h-2.5 w-2.5" />
       {m.label}
     </span>
@@ -60,7 +92,9 @@ function NewsCard({ item }: { item: NewsItem }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {item.harvested_at && (
-            <span className="text-[10px] text-muted-foreground/50">{relTime(item.harvested_at)}</span>
+            <span className="text-[10px] text-muted-foreground/50">
+              {relTime(item.harvested_at)}
+            </span>
           )}
           {item.url && (
             <a
@@ -79,7 +113,9 @@ function NewsCard({ item }: { item: NewsItem }) {
       <div>
         <h3 className="text-sm font-semibold leading-snug text-card-foreground">{item.title}</h3>
         {item.summary && (
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-3 leading-relaxed">{item.summary}</p>
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+            {item.summary}
+          </p>
         )}
       </div>
 
@@ -215,7 +251,10 @@ function NewsPage() {
         {loading && (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-40 animate-pulse rounded-2xl border border-border/40 bg-card" />
+              <div
+                key={i}
+                className="h-40 animate-pulse rounded-2xl border border-border/40 bg-card"
+              />
             ))}
           </div>
         )}
@@ -267,7 +306,9 @@ function NewsPage() {
                   <section key={domain}>
                     <div className="mb-3 flex items-center gap-2">
                       <h2 className="text-[13px] font-semibold">{domain}</h2>
-                      <span className="text-[11px] text-muted-foreground/50">{domainItems.length} emner</span>
+                      <span className="text-[11px] text-muted-foreground/50">
+                        {domainItems.length} emner
+                      </span>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {domainItems.map((item) => (

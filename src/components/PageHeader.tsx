@@ -23,7 +23,9 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("flex shrink-0 items-center gap-3 border-b border-border px-6 py-5", className)}>
+    <div
+      className={cn("flex shrink-0 items-center gap-3 border-b border-border px-6 py-5", className)}
+    >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
         {icon}
       </div>
@@ -31,9 +33,7 @@ export function PageHeader({
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         {(subtitle || count !== undefined) && (
           <p className="text-xs text-muted-foreground truncate">
-            {count !== undefined && count !== "" && count !== 0
-              ? `${count} `
-              : ""}
+            {count !== undefined && count !== "" && count !== 0 ? `${count} ` : ""}
             {subtitle}
           </p>
         )}

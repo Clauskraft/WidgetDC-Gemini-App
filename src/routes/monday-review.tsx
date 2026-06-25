@@ -25,11 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { EmptyState } from "@/components/EmptyState";
-import type {
-  MondayReviewResponse,
-  EngagementSummary,
-  ActionItem,
-} from "./api/monday-review";
+import type { MondayReviewResponse, EngagementSummary, ActionItem } from "./api/monday-review";
 
 export const Route = createFileRoute("/monday-review")({
   head: () => ({
@@ -49,9 +45,9 @@ function engagementScore(e: EngagementSummary): number {
   let s = 0;
   if (e.pattern_count >= 3) s += 0.35;
   else if (e.pattern_count >= 1) s += 0.15;
-  if (e.client) s += 0.20;
-  if (e.domain) s += 0.20;
-  if (e.artifact_count >= 1) s += 0.20;
+  if (e.client) s += 0.2;
+  if (e.domain) s += 0.2;
+  if (e.artifact_count >= 1) s += 0.2;
   if (e.description_length >= 50) s += 0.05;
   return s;
 }
@@ -69,7 +65,10 @@ const DOTS: Record<ConfidenceLevel, { dots: string; color: string }> = {
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
-const ACTION_PRIORITY: Record<ActionItem["priority"], { icon: React.ReactNode; border: string; bg: string }> = {
+const ACTION_PRIORITY: Record<
+  ActionItem["priority"],
+  { icon: React.ReactNode; border: string; bg: string }
+> = {
   high: {
     icon: <AlertCircle className="h-4 w-4 text-rose-500" />,
     border: "border-rose-500/25",
@@ -153,7 +152,11 @@ function MondayReviewRoute() {
             disabled={loading}
             className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent disabled:opacity-50"
           >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
             Opdatér
           </button>
         </div>
@@ -176,11 +179,7 @@ function MondayReviewRoute() {
       {/* Content */}
       {data && (
         <div className="flex-1 overflow-y-auto">
-          {view === "briefing" ? (
-            <BriefingView data={data} />
-          ) : (
-            <KpiView data={data} />
-          )}
+          {view === "briefing" ? <BriefingView data={data} /> : <KpiView data={data} />}
         </div>
       )}
 
@@ -234,8 +233,8 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
               data.stats.avg_confidence >= 70
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : data.stats.avg_confidence >= 40
-                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
             }
             unit="%"
             live
@@ -249,8 +248,8 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
               data.stats.open_action_items === 0
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : data.stats.open_action_items <= 3
-                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
             }
             live
           />
@@ -294,7 +293,9 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
           {data.action_items.length === 0 ? (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-6 text-center">
               <CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-emerald-500" />
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Alt er up-to-date</p>
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                Alt er up-to-date
+              </p>
               <p className="mt-1 text-xs text-emerald-600/70 dark:text-emerald-400/70">
                 Alle aktive engagements har patterns og deliverables.
               </p>
@@ -322,9 +323,7 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
                       <p className="text-sm font-medium text-foreground truncate">
                         {action.engagement_name}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {action.message}
-                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{action.message}</p>
                     </div>
                     <Link
                       to="/engagements"
@@ -367,9 +366,7 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
                         afventer
                       </span>
                     )}
-                    <span className="text-[10px] text-muted-foreground">
-                      {art.citations} cit.
-                    </span>
+                    <span className="text-[10px] text-muted-foreground">{art.citations} cit.</span>
                   </div>
                 </div>
               ))}
@@ -390,15 +387,16 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
           ) : (
             <div className="space-y-2">
               {data.top_patterns.map((p, i) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5"
+                >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground truncate">{p.name}</p>
-                    {p.domain && (
-                      <p className="text-[10px] text-muted-foreground">{p.domain}</p>
-                    )}
+                    {p.domain && <p className="text-[10px] text-muted-foreground">{p.domain}</p>}
                   </div>
                   <span className="shrink-0 text-[10px] font-medium text-primary">
                     {p.engagement_count}×
@@ -460,8 +458,8 @@ function KpiView({ data }: { data: MondayReviewResponse }) {
             data.stats.avg_confidence >= 70
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : data.stats.avg_confidence >= 40
-              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
           }
           unit="%"
           live
@@ -475,8 +473,8 @@ function KpiView({ data }: { data: MondayReviewResponse }) {
             data.stats.open_action_items === 0
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : data.stats.open_action_items <= 3
-              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
           }
           live
         />
@@ -558,7 +556,8 @@ function LiveKpiTile({
         {icon}
       </div>
       <p className="text-3xl font-bold text-foreground tabular-nums">
-        {value}{unit}
+        {value}
+        {unit}
       </p>
       <p className="mt-0.5 text-sm font-medium text-foreground">{label}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>
@@ -666,8 +665,8 @@ function EngagementHealthCard({ engagement }: { engagement: EngagementSummary })
             level === "velbelagt"
               ? "bg-emerald-500"
               : level === "indikativt"
-              ? "bg-amber-500"
-              : "bg-rose-500",
+                ? "bg-amber-500"
+                : "bg-rose-500",
           )}
           style={{ width: `${Math.round(score * 100)}%` }}
         />

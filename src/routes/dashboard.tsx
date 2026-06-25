@@ -181,9 +181,7 @@ function Dashboard() {
             {!cost.loading && !cost.error && (
               <div className="flex items-center gap-2 shrink-0">
                 <CostBadge pct={cost.pct} usedDKK={cost.used} />
-                <span className="text-[11px] text-muted-foreground/60">
-                  af {cost.budget} DKK
-                </span>
+                <span className="text-[11px] text-muted-foreground/60">af {cost.budget} DKK</span>
               </div>
             )}
           </div>

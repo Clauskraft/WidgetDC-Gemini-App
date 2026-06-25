@@ -258,6 +258,13 @@ export function MessageContent({
 }: {
   text: string;
   layout?: "stack" | "canvas";
+  /**
+   * Optional citation-click handler. Accepted as part of the component API
+   * (the assistant-message call site wires it to the SourcesPanel active
+   * citation); inline `[n]` markers render through ReactMarkdown so the
+   * dedicated SourcesPanel remains the interactive citation surface.
+   */
+  onCitationClick?: (n: number) => void;
 }) {
   const blocks = useMemo(() => parseBlocks(text), [text]);
   const isCanvas = layout === "canvas";

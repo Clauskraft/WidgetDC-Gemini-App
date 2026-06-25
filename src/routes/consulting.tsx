@@ -14,7 +14,12 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AssemblyBlockRow, AssembleResponse, CpListResponse, FallbackMode } from "./api/consulting.assemble";
+import type {
+  AssemblyBlockRow,
+  AssembleResponse,
+  CpListResponse,
+  FallbackMode,
+} from "./api/consulting.assemble";
 
 export const Route = createFileRoute("/consulting")({
   head: () => ({
@@ -22,7 +27,8 @@ export const Route = createFileRoute("/consulting")({
       { title: "Consulting Assembly — WidgeTDC Aurora" },
       {
         name: "description",
-        content: "Assemblér en BOM af AssemblyBlocks for en ConsultingProcess fra WidgeTDC knowledge graph.",
+        content:
+          "Assemblér en BOM af AssemblyBlocks for en ConsultingProcess fra WidgeTDC knowledge graph.",
       },
     ],
   }),
@@ -30,9 +36,21 @@ export const Route = createFileRoute("/consulting")({
 });
 
 function qualityBadge(score: number): { label: string; className: string } {
-  if (score >= 0.7) return { label: `${(score * 100).toFixed(0)}%`, className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30" };
-  if (score >= 0.4) return { label: `${(score * 100).toFixed(0)}%`, className: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30" };
-  return { label: `${(score * 100).toFixed(0)}%`, className: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/30" };
+  if (score >= 0.7)
+    return {
+      label: `${(score * 100).toFixed(0)}%`,
+      className:
+        "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30",
+    };
+  if (score >= 0.4)
+    return {
+      label: `${(score * 100).toFixed(0)}%`,
+      className: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30",
+    };
+  return {
+    label: `${(score * 100).toFixed(0)}%`,
+    className: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/30",
+  };
 }
 
 interface PreviewDrawerProps {
@@ -63,7 +81,10 @@ function PreviewDrawer({ block, onClose, onCopy, copiedId }: PreviewDrawerProps)
                 </span>
               )}
               <span
-                className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", badge.className)}
+                className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  badge.className,
+                )}
                 title={`Quality score ${block.quality_score} — ≥70% = velbelagt, 40-70% = indikativt, <40% = eksplorativt`}
               >
                 Quality {badge.label}
@@ -77,9 +98,15 @@ function PreviewDrawer({ block, onClose, onCopy, copiedId }: PreviewDrawerProps)
               title="Kopiér indhold"
             >
               {copiedId === block.id ? (
-                <><Check className="h-3.5 w-3.5 text-emerald-500" />Kopieret</>
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  Kopieret
+                </>
               ) : (
-                <><Copy className="h-3.5 w-3.5" />Kopiér</>
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  Kopiér
+                </>
               )}
             </button>
             <button
@@ -159,7 +186,10 @@ function BomCard({
               </span>
             )}
             <span
-              className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}
+              className={cn(
+                "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                badge.className,
+              )}
               title={`Quality score: ${block.quality_score} — baseret på indholdsrigdom, strukturering og relevans i WidgeTDC knowledge graph`}
             >
               {badge.label}
@@ -276,7 +306,7 @@ function ConsultingRoute() {
         setFallbackMode(body.fallback_mode ?? null);
         if (body.bom.length === 0) {
           setError(
-            "Ingen relevante blocks fundet for denne proces og opgave — prøv et bredere brief eller et andet domain filter."
+            "Ingen relevante blocks fundet for denne proces og opgave — prøv et bredere brief eller et andet domain filter.",
           );
         }
       }
@@ -297,14 +327,21 @@ function ConsultingRoute() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left panel: CP picker */}
-      <div className={cn("flex shrink-0 flex-col overflow-hidden border-r border-border transition-all duration-200", bom ? "w-60" : "w-72")}>
+      <div
+        className={cn(
+          "flex shrink-0 flex-col overflow-hidden border-r border-border transition-all duration-200",
+          bom ? "w-60" : "w-72",
+        )}
+      >
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
             <Boxes className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold tracking-tight truncate">Consulting Processes</h2>
-            <p className="text-xs text-muted-foreground">{cps.length > 0 ? `${cps.length} tilgængelige` : "Henter…"}</p>
+            <p className="text-xs text-muted-foreground">
+              {cps.length > 0 ? `${cps.length} tilgængelige` : "Henter…"}
+            </p>
           </div>
           <button
             onClick={() => void fetchCps()}
@@ -312,7 +349,11 @@ function ConsultingRoute() {
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent disabled:opacity-50 transition"
             title="Opdatér liste"
           >
-            {loadingCps ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {loadingCps ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
 
@@ -338,7 +379,9 @@ function ConsultingRoute() {
 
         <div className="flex-1 overflow-y-auto py-1">
           {filteredCps.length === 0 && !loadingCps && !cpError && (
-            <p className="px-4 py-8 text-center text-xs text-muted-foreground">Ingen ConsultingProcess nodes fundet.</p>
+            <p className="px-4 py-8 text-center text-xs text-muted-foreground">
+              Ingen ConsultingProcess nodes fundet.
+            </p>
           )}
           {filteredCps.map((cp) => (
             <button
@@ -362,7 +405,9 @@ function ConsultingRoute() {
                     <p className="truncate text-[10px] text-muted-foreground">{cp.domain}</p>
                   )}
                 </div>
-                {selectedCp === cp.name && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                {selectedCp === cp.name && (
+                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                )}
               </div>
             </button>
           ))}
@@ -422,7 +467,9 @@ function ConsultingRoute() {
                   className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {[5, 10, 15, 20, 50].map((n) => (
-                    <option key={n} value={n}>{n}</option>
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -432,9 +479,15 @@ function ConsultingRoute() {
                 className="ml-auto inline-flex items-center gap-2 rounded-xl bg-gradient-aurora px-5 py-2 text-sm font-medium text-white shadow-glow transition hover:opacity-90 disabled:opacity-40 disabled:shadow-none"
               >
                 {loadingBom ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />Assemblerer…</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Assemblerer…
+                  </>
                 ) : (
-                  <><Sparkles className="h-4 w-4" />Assemblér BOM</>
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Assemblér BOM
+                  </>
                 )}
               </button>
             </div>
@@ -475,7 +528,9 @@ function ConsultingRoute() {
           {!bom && !loadingBom && !error && !selectedCp && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Boxes className="h-12 w-12 text-muted-foreground/20" />
-              <p className="text-sm text-muted-foreground">Vælg en ConsultingProcess for at starte</p>
+              <p className="text-sm text-muted-foreground">
+                Vælg en ConsultingProcess for at starte
+              </p>
             </div>
           )}
           {bom && bom.length > 0 && (
