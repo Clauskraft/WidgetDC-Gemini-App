@@ -638,7 +638,11 @@ export function ChatWindow({
                 )}
               </div>
             )}
-            <ModelPicker />
+            {/* WDC Chat ONLY — no model picker */}
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-soft">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="truncate max-w-[180px]">WDC Chat</span>
+            </button>
             <button
               onClick={toggleDeep}
               aria-pressed={deepMode}
