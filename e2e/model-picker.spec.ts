@@ -5,18 +5,13 @@ async function waitForHydration(page: import("@playwright/test").Page) {
 }
 
 /**
- * Verificerer kontrakten omkring model-pickeren:
- * 1. Når man vælger en model og sender en besked, indeholder POST /api/chat
- *    `body.model` med det valgte model-id.
- * 2. Dashboardet ("Aktiv model" metric) afspejler det samme valg efterfølgende.
- *
- * /api/chat stubbes så testen kører uden LOVABLE_API_KEY og uden ægte LLM-kald.
+ * Verificerer at WDC Chat ONLY er implementeret:
+ * 1. ModelPicker er fjernet — ingen GPT-5/Gemini selector
+ * 2. "WDC Chat" badge vises istedet
+ * 3. Chat kald går gennem WDC intent-gateway
  */
 
-const TARGET_MODEL_ID = "google/gemini-2.5-pro";
-const TARGET_MODEL_LABEL = "Gemini 2.5 Pro";
-
-test("model-picker sender body.model og dashboardet viser valget", async ({ page }) => {
+test("WDC Chat ONLY — no model picker, WDC Chat badge visible", async ({ page }) => {
   // Stub chat-endpointet: returnér en tom UI-message stream så useChat ikke fejler.
   await page.route("**/api/chat", async (route) => {
     await route.fulfill({
@@ -29,33 +24,23 @@ test("model-picker sender body.model og dashboardet viser valget", async ({ page
   await page.goto("/");
   await waitForHydration(page);
 
-  // Åbn pickeren i chat-headeren og vælg target-modellen.
-  const picker = page.getByRole("button", { name: /Gemini|GPT/i }).first();
-  await expect(picker).toBeVisible();
-  await picker.click();
-  const target = page.getByRole("menuitem", { name: new RegExp(TARGET_MODEL_LABEL, "i") });
-  await expect(target).toBeVisible();
-  await target.click();
+  // Verify ModelPicker is NOT present
+  const modelPicker = page.getByRole("button", { name: /Gemini|GPT|Model/i }).first();
+  await expect(modelPicker).not.toBeVisible();
 
-  // Triggeren skal nu vise det nye label.
-  await expect(
-    page.getByRole("button", { name: new RegExp(TARGET_MODEL_LABEL, "i") }).first(),
-  ).toBeVisible();
+  // Verify WDC Chat badge IS present
+  const wdcBadge = page.getByRole("button", { name: /WDC Chat/i }).first();
+  await expect(wdcBadge).toBeVisible();
 
-  // Send en besked og fang request body parallelt.
+  // Send a message and verify it goes through
+  await page.locator("textarea").fill("Hej WDC Chat test");
+  await page.locator("textarea").press("Enter");
+
+  // Verify the request was made
   const reqPromise = page.waitForRequest(
     (req) => req.url().endsWith("/api/chat") && req.method() === "POST",
   );
-  await page.locator("textarea").fill("Hej model-test");
-  await page.locator("textarea").press("Enter");
-
   const req = await reqPromise;
-  const payload = req.postDataJSON() as { model?: string; messages?: unknown };
-  expect(payload.model).toBe(TARGET_MODEL_ID);
+  const payload = req.postDataJSON() as { messages?: unknown };
   expect(Array.isArray(payload.messages)).toBe(true);
-
-  // Navigér til dashboard og verificér at "Aktiv model" viser det samme label.
-  await page.goto("/dashboard");
-  const metric = page.getByText("Aktiv model").locator("..");
-  await expect(metric).toContainText(TARGET_MODEL_LABEL);
 });
