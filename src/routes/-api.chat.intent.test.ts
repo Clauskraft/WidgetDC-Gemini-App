@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/api/chat";
-import { fetchIntentDetection, fetchRagGrounding, llmChatCompletion } from "@/lib/widgetdc.server";
 
 vi.mock("@/lib/widgetdc.server", () => ({
   isPlatformConfigured: vi.fn(() => true),
@@ -62,23 +61,62 @@ async function invokeChat(body: unknown, correlationId = "intent-test"): Promise
   return POST({ request });
 }
 
-describe("/api/chat intent detection", () => {
-  it("adds the platform intent_detect signal to the chat system prompt", async () => {
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue(
+    new Response(
+      [
+        'data: {"type":"plan","content":{"intentClarity":"0.91","mode":"analysis","style":"evidence-gated"}}',
+        'data: {"type":"method","method":"analysis","agent":"intent-gateway","tier":2}',
+        'data: {"type":"token","content":"Intent-routed answer"}',
+        "data: [DONE]",
+        "",
+      ].join("\n\n"),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    ),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("/api/chat WDC CLI chat stream routing", () => {
+  it("routes the last UI-message user text through WDC CLI chat stream only", async () => {
     const query = "Forklar GraphRAG med Neo4j og lav et issue-tree";
     const response = await invokeChat({
+      id: "thread-wdc-cli",
       messages: [{ id: "u1", role: "user", parts: [{ type: "text", text: query }] }],
+      deep: true,
     });
 
     expect(response.status).toBe(200);
-    await response.text();
+    const text = await response.text();
 
-    expect(fetchIntentDetection).toHaveBeenCalledWith(query, "intent-test");
-    expect(fetchRagGrounding).toHaveBeenCalledWith(query, "intent-test");
+    expect(text).toContain("Intent-routed answer");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const chatMessages = vi.mocked(llmChatCompletion).mock.calls[0][0];
-    expect(chatMessages[0]).toMatchObject({ role: "system" });
-    expect(chatMessages[0].content).toContain("WidgeTDC intent routing signal");
-    expect(chatMessages[0].content).toContain("query_knowledge_graph");
-    expect(chatMessages[0].content).toContain("Use this as a routing/context signal only");
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/wdc-chat/stream");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toMatchObject({
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream",
+    });
+    const payload = JSON.parse(String(init.body)) as {
+      message: string;
+      session_id?: string;
+      preferences?: { method?: string; agent?: string; tier?: number; include_evidence?: boolean };
+    };
+    expect(payload.message).toBe(query);
+    expect(payload.session_id).toBe("thread-wdc-cli");
+    expect(payload.preferences).toMatchObject({
+      method: "RLM",
+      tier: 3,
+      include_evidence: true,
+    });
   });
 });
