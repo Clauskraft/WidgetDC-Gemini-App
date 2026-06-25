@@ -270,7 +270,13 @@ export function ChatWindow({
     onError: (e) => console.error("Chat error:", e),
   });
 
+  const [isTyping, setIsTyping] = useState(false);
   const isLoading = status === "submitted" || status === "streaming";
+
+  // P0: Typing indicator — show when AI is processing
+  useEffect(() => {
+    setIsTyping(isLoading);
+  }, [isLoading]);
 
   // Persist messages + fire onFirstMessage exactly once when the first
   // user message appears, so the parent route can navigate event-based
@@ -771,6 +777,20 @@ export function ChatWindow({
             </div>
           )}
         </div>
+
+        {/* Typing Indicator — P0 */}
+        {isTyping && (
+          <div className="mx-auto max-w-2xl px-6 py-2">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="text-xs text-muted-foreground">Aurora tænker...</span>
+            </div>
+          </div>
+        )}
 
         {/* Composer */}
         <div
