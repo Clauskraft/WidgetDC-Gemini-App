@@ -37,6 +37,7 @@ import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiEngagementsRouteImport } from './routes/api/engagements'
 import { Route as ApiDeepResearchRouteImport } from './routes/api/deep-research'
 import { Route as ApiCostRouteImport } from './routes/api/cost'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAudioOverviewRouteImport } from './routes/api/audio-overview'
 import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$canvasId'
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
@@ -193,6 +194,11 @@ const ApiCostRoute = ApiCostRouteImport.update({
   path: '/api/cost',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAudioOverviewRoute = ApiAudioOverviewRouteImport.update({
   id: '/api/audio-overview',
   path: '/api/audio-overview',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
   '/api/audio-overview': typeof ApiAudioOverviewRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
   '/api/audio-overview': typeof ApiAudioOverviewRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -379,6 +387,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/storyline': typeof StorylineRoute
   '/api/audio-overview': typeof ApiAudioOverviewRoute
+  '/api/chat': typeof ApiChatRoute
   '/api/cost': typeof ApiCostRoute
   '/api/deep-research': typeof ApiDeepResearchRoute
   '/api/engagements': typeof ApiEngagementsRouteWithChildren
@@ -426,6 +435,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/storyline'
     | '/api/audio-overview'
+    | '/api/chat'
     | '/api/cost'
     | '/api/deep-research'
     | '/api/engagements'
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/storyline'
     | '/api/audio-overview'
+    | '/api/chat'
     | '/api/cost'
     | '/api/deep-research'
     | '/api/engagements'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/storyline'
     | '/api/audio-overview'
+    | '/api/chat'
     | '/api/cost'
     | '/api/deep-research'
     | '/api/engagements'
@@ -561,6 +573,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   StorylineRoute: typeof StorylineRoute
   ApiAudioOverviewRoute: typeof ApiAudioOverviewRoute
+  ApiChatRoute: typeof ApiChatRoute
   ApiCostRoute: typeof ApiCostRoute
   ApiDeepResearchRoute: typeof ApiDeepResearchRoute
   ApiEngagementsRoute: typeof ApiEngagementsRouteWithChildren
@@ -782,6 +795,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCostRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/audio-overview': {
       id: '/api/audio-overview'
       path: '/api/audio-overview'
@@ -946,6 +966,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   StorylineRoute: StorylineRoute,
   ApiAudioOverviewRoute: ApiAudioOverviewRoute,
+  ApiChatRoute: ApiChatRoute,
   ApiCostRoute: ApiCostRoute,
   ApiDeepResearchRoute: ApiDeepResearchRoute,
   ApiEngagementsRoute: ApiEngagementsRouteWithChildren,
