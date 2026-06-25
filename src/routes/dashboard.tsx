@@ -19,6 +19,7 @@ import { GEMS, getGem, gemThreadId } from "@/lib/gems";
 import { ModelPicker } from "@/components/ModelPicker";
 import { getModelMeta, useModelPreference } from "@/lib/modelPreference";
 import { ApprovalQueuePanel } from "@/components/ApprovalQueuePanel";
+import { GovernancePlanPanel } from "@/components/GovernancePlanPanel";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -181,9 +182,7 @@ function Dashboard() {
             {!cost.loading && !cost.error && (
               <div className="flex items-center gap-2 shrink-0">
                 <CostBadge pct={cost.pct} usedDKK={cost.used} />
-                <span className="text-[11px] text-muted-foreground/60">
-                  af {cost.budget} DKK
-                </span>
+                <span className="text-[11px] text-muted-foreground/60">af {cost.budget} DKK</span>
               </div>
             )}
           </div>
@@ -215,6 +214,11 @@ function Dashboard() {
         {/* Approval queues — backend humanApprovalService + orchestrator HyperAgent (LIN-1911) */}
         <div className="mt-8">
           <ApprovalQueuePanel approverIdentity="clauskraft@gmail.com" />
+        </div>
+
+        {/* AUR-4 — human-in-the-loop write-governance plan lifecycle */}
+        <div className="mt-8">
+          <GovernancePlanPanel approverIdentity="clauskraft@gmail.com" />
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-5">

@@ -102,17 +102,24 @@ unchanged — the endpoint stays fully functional if the platform is unavailable
 
 ## P1 — High-leverage platform features
 
-### AUR-4 — Governance plan + approval flow (staged/production writes)
+### AUR-4 — Governance plan + approval flow (staged/production writes) ✅ DONE (2026-06-25)
 
-**Why:** Governance is currently UI-display only; there is no real plan/approve
-path for mutating actions.
-**Build:** A "HyperAgent plan" surface: when a chat turn implies a write, call
-`governance_plan_create` → show plan + risk → `governance_plan_approve`
-(human-in-the-loop) → `governance_plan_execute` server-side. Browser never
-executes writes directly. Show `governance_matrix` / `governance_policy_decide`
-results inline.
-**Tools:** `governance_plan_create/approve/evaluate/execute`,
-`governance_policy_decide`, `governance_matrix`, `agentic_hitl_escalate`.
+**Done:** Human-in-the-loop write-governance lifecycle. `src/lib/governance.server.ts`
+drives the platform governance MCP tools server-side — `governance_plan_create`
+(forced `apply:false` so it lands in `pending_approval`, never auto-approved from
+the browser surface) → `governance_plan_approve` (operator gate) →
+`governance_plan_execute` (policy-profile enforced on the platform). The
+`pattern_preflight` envelope (`WTD-GOV-PREFLIGHT-001` / `2026-06-17`) is forwarded
+for staged/production writes. `POST /api/governance/plan` (`src/routes/api/governance.plan.ts`)
+is a Zod-validated discriminated-union handler (`create`/`approve`/`execute`); the
+bearer is injected server-side and the browser never executes a write directly
+(holds the CLAUDE.md governance invariant). `GovernancePlanPanel` renders the
+create→approve→execute surface with inline risk/scope on the dashboard. Covered by
+`src/lib/governance.server.test.ts` (extractors + a wired `apply:false` MCP-call test).
+**Tools:** `governance_plan_create/approve/execute`, `governance_matrix` (read).
+**Follow-up:** wire chat-turn write-intent detection to auto-open a plan, and
+surface `governance_policy_decide` results inline (both require the platform
+`pattern_preflight` envelope, which the lifecycle already supports).
 
 ### AUR-5 — Deep-reasoning & verification mode in chat ✅ DONE (2026-06-08)
 

@@ -43,6 +43,7 @@ import { Route as EmbedCanvasCanvasIdRouteImport } from './routes/embed.canvas.$
 import { Route as ApiObservabilitySummaryRouteImport } from './routes/api/observability.summary'
 import { Route as ApiNewsRefreshRouteImport } from './routes/api/news.refresh'
 import { Route as ApiGraphQueryRouteImport } from './routes/api/graph.query'
+import { Route as ApiGovernancePlanRouteImport } from './routes/api/governance.plan'
 import { Route as ApiDeliverableGenerateRouteImport } from './routes/api/deliverable.generate'
 import { Route as ApiDeliverableExportRouteImport } from './routes/api/deliverable.export'
 import { Route as ApiConsultingAssembleRouteImport } from './routes/api/consulting.assemble'
@@ -224,6 +225,11 @@ const ApiGraphQueryRoute = ApiGraphQueryRouteImport.update({
   path: '/api/graph/query',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGovernancePlanRoute = ApiGovernancePlanRouteImport.update({
+  id: '/api/governance/plan',
+  path: '/api/governance/plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDeliverableGenerateRoute = ApiDeliverableGenerateRouteImport.update({
   id: '/api/deliverable/generate',
   path: '/api/deliverable/generate',
@@ -315,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
+  '/api/governance/plan': typeof ApiGovernancePlanRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -360,6 +367,7 @@ export interface FileRoutesByTo {
   '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
+  '/api/governance/plan': typeof ApiGovernancePlanRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -407,6 +415,7 @@ export interface FileRoutesById {
   '/api/consulting/assemble': typeof ApiConsultingAssembleRoute
   '/api/deliverable/export': typeof ApiDeliverableExportRoute
   '/api/deliverable/generate': typeof ApiDeliverableGenerateRoute
+  '/api/governance/plan': typeof ApiGovernancePlanRoute
   '/api/graph/query': typeof ApiGraphQueryRoute
   '/api/news/refresh': typeof ApiNewsRefreshRoute
   '/api/observability/summary': typeof ApiObservabilitySummaryRoute
@@ -455,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
+    | '/api/governance/plan'
     | '/api/graph/query'
     | '/api/news/refresh'
     | '/api/observability/summary'
@@ -500,6 +510,7 @@ export interface FileRouteTypes {
     | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
+    | '/api/governance/plan'
     | '/api/graph/query'
     | '/api/news/refresh'
     | '/api/observability/summary'
@@ -546,6 +557,7 @@ export interface FileRouteTypes {
     | '/api/consulting/assemble'
     | '/api/deliverable/export'
     | '/api/deliverable/generate'
+    | '/api/governance/plan'
     | '/api/graph/query'
     | '/api/news/refresh'
     | '/api/observability/summary'
@@ -591,6 +603,7 @@ export interface RootRouteChildren {
   ApiConsultingAssembleRoute: typeof ApiConsultingAssembleRoute
   ApiDeliverableExportRoute: typeof ApiDeliverableExportRoute
   ApiDeliverableGenerateRoute: typeof ApiDeliverableGenerateRoute
+  ApiGovernancePlanRoute: typeof ApiGovernancePlanRoute
   ApiGraphQueryRoute: typeof ApiGraphQueryRoute
   ApiObservabilitySummaryRoute: typeof ApiObservabilitySummaryRoute
   EmbedCanvasCanvasIdRoute: typeof EmbedCanvasCanvasIdRoute
@@ -837,6 +850,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGraphQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/governance/plan': {
+      id: '/api/governance/plan'
+      path: '/api/governance/plan'
+      fullPath: '/api/governance/plan'
+      preLoaderRoute: typeof ApiGovernancePlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/deliverable/generate': {
       id: '/api/deliverable/generate'
       path: '/api/deliverable/generate'
@@ -984,6 +1004,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiConsultingAssembleRoute: ApiConsultingAssembleRoute,
   ApiDeliverableExportRoute: ApiDeliverableExportRoute,
   ApiDeliverableGenerateRoute: ApiDeliverableGenerateRoute,
+  ApiGovernancePlanRoute: ApiGovernancePlanRoute,
   ApiGraphQueryRoute: ApiGraphQueryRoute,
   ApiObservabilitySummaryRoute: ApiObservabilitySummaryRoute,
   EmbedCanvasCanvasIdRoute: EmbedCanvasCanvasIdRoute,
