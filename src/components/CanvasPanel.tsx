@@ -8,6 +8,16 @@ function getText(m: UIMessage) {
   return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
 }
 
+// Extract Mermaid diagrams from content
+function extractMermaid(content: string): { text: string; diagrams: string[] } {
+  const diagrams: string[] = [];
+  const text = content.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
+    diagrams.push(code.trim());
+    return '';
+  });
+  return { text, diagrams };
+}
+
 // Den "expanded" bredde gemmes UAFHÆNGIGT af collapsed-flaget, så vi altid kan
 // gendanne den nøjagtige sidste bredde når brugeren udvider panelet igen.
 const STORAGE_KEY = "aurora.canvas.width";
@@ -37,6 +47,7 @@ function readStoredCollapsed(): boolean {
 export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onClose: () => void }) {
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const content = lastAssistant ? getText(lastAssistant) : "";
+  const { text: cleanText, diagrams } = extractMermaid(content);
 
   // expandedWidth = brugerens valgte bredde når panelet er åbent.
   // collapsed = visuel tilstand (rail). Disse er bevidst adskilte.
@@ -201,6 +212,23 @@ export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onCl
       >
         {content ? (
           <figure className="aurora-figure">
+            {/* Mermaid Diagrams */}
+            {diagrams.length > 0 && (
+              <div className="mb-6 space-y-4">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4" /> Diagrams
+                </h3>
+                {diagrams.map((d, i) => (
+                  <div key={i} className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 overflow-auto">
+                    <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">{d}</pre>
+                    <div className="mt-2 text-xs text-zinc-500 italic">
+                      Mermaid diagram {i + 1} — render with Mermaid.js for visualization
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="aurora-canvas-toolbar">
               <div className="flex items-center gap-2">
                 <span className="chip">Process Insight</span>
