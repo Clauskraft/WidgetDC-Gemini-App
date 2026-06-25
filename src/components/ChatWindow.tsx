@@ -271,6 +271,7 @@ export function ChatWindow({
   });
 
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionSearch, setSessionSearch] = useState("");
   const isLoading = status === "submitted" || status === "streaming";
 
   // P0: Typing indicator — show when AI is processing
