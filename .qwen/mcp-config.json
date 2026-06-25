@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "widgetdc-railway": {
+      "command": "npm",
+      "args": ["run", "railway-mcp-bridge", "--prefix", "apps/backend"],
+      "env": {
+        "WIDGETDC_BACKEND_URL": "https://backend-production-d3da.up.railway.app",
+        "WIDGETDC_BEARER_TOKEN": "${WIDGETDC_BEARER_TOKEN}"
+      },
+      "default": true,
+      "description": "WidgeTDC — THE single governed MCP hub (backend-production)."
+    }
+  }
+}
