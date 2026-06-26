@@ -119,4 +119,27 @@ describe("/api/chat WDC CLI chat stream routing", () => {
       include_evidence: true,
     });
   });
+
+  it("accepts compact SSE data lines from the WDC backend stream", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        [
+          'data:{"type":"token","content":"WDC_"}',
+          'data:{"type":"token","content":"CHAT_OK"}',
+          'data:[DONE]',
+        ].join("\n\n"),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      ),
+    );
+
+    const response = await invokeChat({
+      id: "thread-compact-sse",
+      messages: [{ role: "user", parts: [{ type: "text", text: "smoke" }] }],
+    });
+
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(text).toContain('"text":"WDC_"');
+    expect(text).toContain('"text":"CHAT_OK"');
+  });
 });

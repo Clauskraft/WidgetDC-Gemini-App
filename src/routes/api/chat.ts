@@ -13,8 +13,16 @@ const WDC_BACKEND =
   "https://backend-production-d3da.up.railway.app";
 const WDC_TOKEN =
   process.env.WIDGETDC_BEARER_TOKEN ||
+  process.env.WIDGETDC_MCP_KEY ||
+  process.env.WIDGETDC_MCP_API_KEY ||
   process.env.WIDGETDC_API_KEY ||
-  process.env.MCP_AGENT_API_KEY;
+  process.env.MCP_API_KEY ||
+  process.env.MCP_AGENT_API_KEY ||
+  process.env.CAPTAIN_RUNTIME_BEARER ||
+  process.env.CAPTAIN_API_BEARER ||
+  process.env.BACKEND_API_KEY ||
+  process.env.API_KEY ||
+  process.env.MCP_AUTH_TOKEN;
 
 const messagePartSchema = z
   .object({
@@ -52,8 +60,8 @@ function messageText(message: ChatMessage | undefined): string {
 }
 
 function parseSseDataLine(line: string): unknown | null {
-  if (!line.startsWith("data: ")) return null;
-  const raw = line.slice(6).trim();
+  if (!line.startsWith("data:")) return null;
+  const raw = line.slice(5).trimStart();
   if (!raw || raw === "[DONE]") return null;
   try {
     return JSON.parse(raw);
@@ -134,13 +142,19 @@ export const Route = createFileRoute("/api/chat")({
                 const { done, value } = await reader.read();
                 if (done) break;
                 buf += dec.decode(value, { stream: true });
-                const lines = buf.split("\n");
+                const lines = buf.split(/\r?\n/);
                 buf = lines.pop() || "";
                 for (const l of lines) {
                   const ev = parseSseDataLine(l);
                   const text = tokenText(ev);
                   if (text) writer.write({ type: "text", text });
                 }
+              }
+              buf += dec.decode();
+              for (const l of buf.split(/\r?\n/)) {
+                const ev = parseSseDataLine(l);
+                const text = tokenText(ev);
+                if (text) writer.write({ type: "text", text });
               }
             } else {
               writer.write({ type: "text", text: `[WDC Chat error: HTTP ${resp.status}]` });
