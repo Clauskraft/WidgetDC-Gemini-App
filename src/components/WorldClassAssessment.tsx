@@ -29,6 +29,14 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
         </div>
       </div>
 
+      <div className="world-class-proof-harness">
+        <span>{assessment.proofHarness.evidence_level}</span>
+        <span>{`visual ${assessment.proofHarness.visual_status}`}</span>
+        <span>{`keyboard ${assessment.proofHarness.accessibility_status}`}</span>
+        <span>{`p95 ${assessment.proofHarness.max_interaction_p95_ms ?? "missing"}ms`}</span>
+        <span>{`runtime ${assessment.proofHarness.runtime_status}`}</span>
+      </div>
+
       <p className="agent-office-boundary-copy">
         WorldClassSatisfied = all(HardGates) and WCI at least 0.95 and every category at least 0.90
         and P0 defects equal 0.

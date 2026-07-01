@@ -78,7 +78,7 @@ describe("worldClassContract", () => {
     expect(assessment.criticalP0Defects).toBe(0);
   });
 
-  it("keeps current P0 cockpit as expected not-world-class until evidence is attached", () => {
+  it("keeps current P0 cockpit as expected not-world-class until runtime and adoption evidence is attached", () => {
     const entries = buildCapabilityLibrary();
     const selectedEntries = entries.slice(0, 3);
     const recipe = buildCapabilityRecipe("World-class capability cockpit", selectedEntries);
@@ -94,11 +94,15 @@ describe("worldClassContract", () => {
     expect(assessment.status).toBe("not_world_class");
     expect(assessment.worldClassSatisfied).toBe(false);
     expect(assessment.criticalP0Defects).toBe(0);
-    expect(assessment.hardGatePassCount).toBeLessThan(assessment.hardGateTotal);
+    expect(assessment.hardGatePassCount).toBe(assessment.hardGateTotal);
+    expect(assessment.proofHarness.evidence_level).toBe("diagnostic_only");
+    expect(assessment.proofHarness.visual_status).toBe("passed");
+    expect(assessment.proofHarness.accessibility_status).toBe("passed");
+    expect(assessment.proofHarness.performance_status).toBe("passed");
+    expect(assessment.proofHarness.runtime_status).toBe("missing_evidence");
     expect(assessment.blockers).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("Visual sanity"),
-        expect.stringContaining("Accessibility"),
+        expect.stringContaining("Human task-success evidence"),
         expect.stringContaining("WorldClassIndex"),
       ]),
     );
@@ -111,7 +115,7 @@ describe("worldClassContract", () => {
         }),
         expect.objectContaining({
           id: "interaction_latency",
-          status: "missing_evidence",
+          status: "met",
         }),
       ]),
     );

@@ -28,6 +28,8 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("Hard gates");
     expect(html).toContain("P0 defects 0");
     expect(html).toContain("Candidate/mapped separation");
-    expect(html).toContain("missing_evidence");
+    expect(html).toContain("diagnostic_only");
+    expect(html).toContain("visual passed");
+    expect(html).toContain("runtime missing_evidence");
   });
 });

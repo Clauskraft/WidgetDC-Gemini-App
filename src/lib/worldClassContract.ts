@@ -2,6 +2,12 @@ import type { ProjectTreeRef } from "@/lib/agentOfficeProductionLoop";
 import type { BrokerageRouteCard } from "@/lib/brokerageRoute";
 import type { CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
 import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
+import {
+  WORLD_CLASS_DIAGNOSTIC_PROOF,
+  summarizeWorldClassProofHarness,
+  type WorldClassProofHarnessEvidence,
+  type WorldClassProofHarnessSummary,
+} from "@/lib/worldClassProofHarness";
 
 export type HardGateId =
   | "governance"
@@ -82,6 +88,7 @@ export type WorldClassAssessment = {
   categories: WeightedCategoryScore[];
   kpis: WorldClassKpi[];
   criticalDefects: CriticalP0DefectAssessment[];
+  proofHarness: WorldClassProofHarnessSummary;
   blockers: string[];
   candidate_only: true;
   projection_only: true;
@@ -133,6 +140,7 @@ export type EvaluateWorldClassInput = {
   categoryScores: Record<WorldClassCategoryId, { score: number; blockers: string[] }>;
   criticalDefects: Record<CriticalP0DefectId, number>;
   kpis: WorldClassKpi[];
+  proofHarness?: WorldClassProofHarnessSummary;
 };
 
 function clampScore(score: number) {
@@ -164,6 +172,8 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
   );
   const minCategoryScore = Math.min(...categories.map((category) => category.score));
   const criticalP0Defects = criticalDefects.reduce((sum, defect) => sum + defect.count, 0);
+  const proofHarness =
+    input.proofHarness ?? summarizeWorldClassProofHarness(WORLD_CLASS_DIAGNOSTIC_PROOF);
   const failedHardGates = hardGates.filter((gate) => !gate.passed);
   const lowCategories = categories.filter((category) => category.score < 0.9);
   const hardGatePassCount = hardGates.length - failedHardGates.length;
@@ -197,6 +207,7 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
     categories,
     kpis: input.kpis,
     criticalDefects,
+    proofHarness,
     blockers,
     candidate_only: true,
     projection_only: true,
@@ -210,11 +221,13 @@ export function buildWorldClassAssessment({
   recipe,
   routeCard,
   projectTreeRefs,
+  proofHarnessEvidence = WORLD_CLASS_DIAGNOSTIC_PROOF,
 }: {
   capabilityEntries: CapabilityLibraryEntry[];
   recipe: CapabilityRecipe;
   routeCard: BrokerageRouteCard;
   projectTreeRefs: ProjectTreeRef[];
+  proofHarnessEvidence?: WorldClassProofHarnessEvidence;
 }): WorldClassAssessment {
   const requiredKinds = new Set([
     "skill",
@@ -251,6 +264,10 @@ export function buildWorldClassAssessment({
     recipe.mapped_count_source === "graph_readback_only" &&
     recipe.graph_write_allowed === false &&
     recipe.proof_eligible === false;
+  const proofHarness = summarizeWorldClassProofHarness(proofHarnessEvidence);
+  const visualSanityPassed = proofHarness.visual_status === "passed";
+  const accessibilityPassed = proofHarness.accessibility_status === "passed";
+  const performancePassed = proofHarness.performance_status === "passed";
 
   return evaluateWorldClass({
     hardGates: {
@@ -290,21 +307,22 @@ export function buildWorldClassAssessment({
         evidence: "WDC boot and claim gates prevent active claim collision before mutation.",
       },
       visual_sanity: {
-        passed: false,
-        evidence: "Full viewport screenshot and overlap audit is not yet attached to the contract.",
+        passed: visualSanityPassed,
+        evidence: `${proofHarness.evidence_level} layout audit ${proofHarness.visual_ratio.toFixed(
+          2,
+        )} from ${proofHarness.evidence_ref}.`,
       },
       accessibility: {
-        passed: false,
-        evidence:
-          "Primary semantic labels exist, but full keyboard path evidence is not yet attached.",
+        passed: accessibilityPassed,
+        evidence: `${proofHarness.evidence_level} keyboard path ${proofHarness.keyboard_ratio.toFixed(
+          2,
+        )} from ${proofHarness.evidence_ref}.`,
       },
     },
     categoryScores: {
       usability: {
-        score: 0.72,
-        blockers: [
-          "First useful route p95 and next-action user test evidence are not yet measured.",
-        ],
+        score: performancePassed && accessibilityPassed ? 0.86 : 0.72,
+        blockers: ["Human task-success evidence and deployed route readback are not yet attached."],
       },
       capability_discovery: {
         score: categoryCoverage === requiredKinds.size && metadataComplete ? 0.94 : 0.7,
@@ -326,12 +344,16 @@ export function buildWorldClassAssessment({
         blockers: [],
       },
       visual_quality: {
-        score: 0.72,
-        blockers: ["No full viewport visual sanity audit has been recorded."],
+        score: visualSanityPassed ? 0.92 : 0.72,
+        blockers: visualSanityPassed
+          ? []
+          : ["No full viewport visual sanity audit has been recorded."],
       },
       performance: {
-        score: 0.5,
-        blockers: ["Interaction, filter and route preview p95 telemetry is not yet measured."],
+        score: performancePassed ? 0.9 : 0.5,
+        blockers: performancePassed
+          ? []
+          : ["Interaction, filter and route preview p95 telemetry is not yet measured."],
       },
       reuse_and_foundry: {
         score: foundryReuseRate >= 0.75 ? 0.9 : 0.7,
@@ -415,8 +437,11 @@ export function buildWorldClassAssessment({
         label: "Interaction latency",
         formula: "p95(click_to_feedback_ms)",
         target: "<=250ms",
-        value: "missing",
-        status: "missing_evidence",
+        value:
+          proofHarness.max_interaction_p95_ms === null
+            ? "missing"
+            : `${proofHarness.max_interaction_p95_ms}ms`,
+        status: performancePassed ? "met" : "missing_evidence",
       },
       {
         id: "visual_sanity",
@@ -424,9 +449,10 @@ export function buildWorldClassAssessment({
         label: "No layout defects",
         formula: "clean_viewports / tested_viewports",
         target: "1.00",
-        value: "missing",
-        status: "missing_evidence",
+        value: proofHarness.visual_ratio.toFixed(2),
+        status: visualSanityPassed ? "met" : "missing_evidence",
       },
     ],
+    proofHarness,
   });
 }
