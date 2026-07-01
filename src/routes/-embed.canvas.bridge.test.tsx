@@ -25,6 +25,11 @@ import {
 } from "@/lib/widgetdcContracts";
 import { verifyCanvasToken } from "@/lib/widgetdcContracts.server";
 
+vi.mock("@/lib/widgetdc.server", () => ({
+  callCanvasBuilder: vi.fn(async () => null),
+  queryGraph: vi.fn(async () => null),
+}));
+
 /** Render a minimal harness that runs the bridge hook. */
 function BridgeHarness({
   payload,

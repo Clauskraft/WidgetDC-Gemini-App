@@ -1,9 +1,11 @@
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import type { WorldClassAssessment as WorldClassAssessmentModel } from "@/lib/worldClassContract";
+import { summarizeWorldClassKpiMatrix } from "@/lib/worldClassKpiMatrix";
 
 export function WorldClassAssessment({ assessment }: { assessment: WorldClassAssessmentModel }) {
   const StatusIcon = assessment.worldClassSatisfied ? CheckCircle2 : AlertTriangle;
   const topBlockers = assessment.blockers.slice(0, 4);
+  const kpiSummary = summarizeWorldClassKpiMatrix(assessment.kpis);
 
   return (
     <section className="world-class-assessment" aria-label="World-class contract">
@@ -37,6 +39,14 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
         <span>{`runtime ${assessment.proofHarness.runtime_status}`}</span>
       </div>
 
+      <div className="world-class-proof-harness">
+        <span>{`${kpiSummary.total} KPI targets`}</span>
+        <span>{`${kpiSummary.met} met`}</span>
+        <span>{`${kpiSummary.missingEvidence} missing evidence`}</span>
+        <span>{`${kpiSummary.belowTarget} below target`}</span>
+        <span>{`coverage ${kpiSummary.objectiveCoverage.toFixed(2)}`}</span>
+      </div>
+
       <p className="agent-office-boundary-copy">
         WorldClassSatisfied = all(HardGates) and WCI at least 0.95 and every category at least 0.90
         and P0 defects equal 0.
@@ -62,7 +72,7 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
       </div>
 
       <div className="agent-office-ref-list">
-        {assessment.kpis.slice(0, 8).map((kpi) => (
+        {assessment.kpis.map((kpi) => (
           <div key={kpi.id} className="agent-office-ref-row">
             <code>{kpi.status}</code>
             <span title={kpi.formula}>{kpi.label}</span>
