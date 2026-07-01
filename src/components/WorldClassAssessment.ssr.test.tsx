@@ -31,5 +31,8 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("diagnostic_only");
     expect(html).toContain("visual passed");
     expect(html).toContain("runtime missing_evidence");
+    expect(html).toContain("25 KPI targets");
+    expect(html).toContain("First useful route");
+    expect(html).toContain("Stop harvest");
   });
 });

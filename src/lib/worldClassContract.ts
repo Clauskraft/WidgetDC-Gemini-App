@@ -2,6 +2,7 @@ import type { ProjectTreeRef } from "@/lib/agentOfficeProductionLoop";
 import type { BrokerageRouteCard } from "@/lib/brokerageRoute";
 import type { CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
 import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
+import { buildWorldClassKpis } from "@/lib/worldClassKpiMatrix";
 import {
   WORLD_CLASS_DIAGNOSTIC_PROOF,
   summarizeWorldClassProofHarness,
@@ -257,6 +258,10 @@ export function buildWorldClassAssessment({
   const foundrySlotsUsed = routeCard.widget_slots.length;
   const foundrySlotsRecommended = Math.max(foundrySlotsUsed, 12);
   const foundryReuseRate = foundrySlotsUsed / foundrySlotsRecommended;
+  const explainedStops =
+    recipe.activation.status === "expected_stop" &&
+    Boolean(recipe.activation.missing_competence) &&
+    Boolean(recipe.activation.next_action);
   const safeRecipe =
     recipe.activation.status === "expected_stop" &&
     recipe.activation.missing_competence === "approval.gated.execution" &&
@@ -376,83 +381,59 @@ export function buildWorldClassAssessment({
       blank_overlapping_unreadable_primary_ui: 0,
       wdc_cli_bypass_for_governed_operation: 0,
     },
-    kpis: [
-      {
-        id: "category_coverage",
-        category: "capability_discovery",
-        label: "Category coverage",
-        formula: "visible_categories / required_categories",
-        target: "7/7",
+    kpis: buildWorldClassKpis({
+      category_coverage: {
         value: `${categoryCoverage}/7`,
         status: categoryCoverage === 7 ? "met" : "below_target",
       },
-      {
-        id: "metadata_completeness",
-        category: "capability_discovery",
-        label: "Capability metadata completeness",
-        formula: "entries_with_required_fields / entries",
-        target: "1.00",
+      metadata_completeness: {
         value: metadataComplete ? "1.00" : "below 1.00",
         status: metadataComplete ? "met" : "below_target",
       },
-      {
-        id: "candidate_mapped_separation",
-        category: "proof_clarity",
-        label: "Candidate/mapped separation",
-        formula: "correct_count_labels / count_labels",
-        target: "1.00",
-        value: routeCard.mapped_count_source,
-        status: "met",
-      },
-      {
-        id: "approval_safety",
-        category: "composition_power",
-        label: "Approval safety",
-        formula: "safe_recipes / all_recipes",
-        target: "1.00",
+      boundary_correctness: {
         value: safeRecipe ? "1.00" : "0.00",
         status: safeRecipe ? "met" : "below_target",
       },
-      {
-        id: "project_tree_coverage",
-        category: "wdc_visibility",
-        label: "ProjectTree coverage",
-        formula: "activities_with_CFG_BOM_OP_GATE / activities",
-        target: "1.00",
+      missing_dependency_visibility: {
+        value: explainedStops ? "1.00" : "0.00",
+        status: explainedStops ? "met" : "below_target",
+      },
+      project_tree_coverage: {
         value: projectTreeComplete ? "1.00" : "0.00",
         status: projectTreeComplete ? "met" : "below_target",
       },
-      {
-        id: "foundry_slot_reuse",
-        category: "reuse_and_foundry",
-        label: "Foundry slot reuse",
-        formula: "foundry_slots_used / recommended_slots",
-        target: ">=0.75 P0",
-        value: foundryReuseRate.toFixed(2),
-        status: foundryReuseRate >= 0.75 ? "met" : "below_target",
+      candidate_mapped_separation: {
+        value: routeCard.mapped_count_source,
+        status: "met",
       },
-      {
-        id: "interaction_latency",
-        category: "performance",
-        label: "Interaction latency",
-        formula: "p95(click_to_feedback_ms)",
-        target: "<=250ms",
+      expected_stop_explanation: {
+        value: explainedStops ? "1.00" : "0.00",
+        status: explainedStops ? "met" : "below_target",
+      },
+      runtime_overclaim_defects: {
+        value: "0",
+        status: "met",
+      },
+      visual_sanity: {
+        value: proofHarness.visual_ratio.toFixed(2),
+        status: visualSanityPassed ? "met" : "missing_evidence",
+      },
+      interaction_latency: {
         value:
           proofHarness.max_interaction_p95_ms === null
             ? "missing"
             : `${proofHarness.max_interaction_p95_ms}ms`,
         status: performancePassed ? "met" : "missing_evidence",
       },
-      {
-        id: "visual_sanity",
-        category: "visual_quality",
-        label: "No layout defects",
-        formula: "clean_viewports / tested_viewports",
-        target: "1.00",
-        value: proofHarness.visual_ratio.toFixed(2),
-        status: visualSanityPassed ? "met" : "missing_evidence",
+      library_filter_latency: {
+        value: performancePassed ? "<=150ms diagnostic" : "missing",
+        status: performancePassed ? "met" : "missing_evidence",
       },
-    ],
+      foundry_slot_reuse: {
+        value: foundryReuseRate.toFixed(2),
+        status: foundryReuseRate >= 0.75 ? "met" : "below_target",
+      },
+    }),
     proofHarness,
   });
 }

@@ -11,6 +11,7 @@ import {
   type HardGateId,
   type WorldClassCategoryId,
 } from "@/lib/worldClassContract";
+import { WORLD_CLASS_KPI_TARGETS } from "@/lib/worldClassKpiMatrix";
 
 const hardGateIds: HardGateId[] = [
   "governance",
@@ -119,5 +120,9 @@ describe("worldClassContract", () => {
         }),
       ]),
     );
+    expect(assessment.kpis).toHaveLength(WORLD_CLASS_KPI_TARGETS.length);
+    expect(
+      assessment.kpis.filter((kpi) => kpi.status === "missing_evidence").length,
+    ).toBeGreaterThan(0);
   });
 });
