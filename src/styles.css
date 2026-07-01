@@ -2340,6 +2340,25 @@
   font-weight: 760;
   text-align: center;
 }
+.world-class-proof-harness {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.world-class-proof-harness span {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--background) 56%, transparent);
+  padding: 0.4rem 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.66rem;
+  font-weight: 720;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .world-class-grid,
 .world-class-category-grid {
   display: grid;
@@ -2429,6 +2448,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .world-class-scoreline,
+  .world-class-proof-harness,
   .world-class-grid,
   .world-class-category-grid {
     grid-template-columns: minmax(0, 1fr);
