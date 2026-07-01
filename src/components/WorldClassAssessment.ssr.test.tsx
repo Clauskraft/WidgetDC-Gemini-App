@@ -42,5 +42,9 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("proof-pending");
     expect(html).toContain("requires user_evidence");
     expect(html).toContain("requires runtime_proof");
+    expect(html).toContain("Evidence gates 1/3");
+    expect(html).toContain("Human task success");
+    expect(html).toContain("Runtime proof readback");
+    expect(html).toContain("observed diagnostic_only");
   });
 });
