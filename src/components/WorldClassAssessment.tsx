@@ -1,4 +1,8 @@
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
+import {
+  buildExternalFrontendReviewPlan,
+  summarizeExternalFrontendReviewReadiness,
+} from "@/lib/externalFrontendReview";
 import type { WorldClassAssessment as WorldClassAssessmentModel } from "@/lib/worldClassContract";
 import { summarizeWorldClassKpiMatrix } from "@/lib/worldClassKpiMatrix";
 
@@ -6,6 +10,8 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
   const StatusIcon = assessment.worldClassSatisfied ? CheckCircle2 : AlertTriangle;
   const topBlockers = assessment.blockers.slice(0, 4);
   const kpiSummary = summarizeWorldClassKpiMatrix(assessment.kpis);
+  const externalReview = buildExternalFrontendReviewPlan();
+  const externalReviewReadiness = summarizeExternalFrontendReviewReadiness(externalReview);
 
   return (
     <section className="world-class-assessment" aria-label="World-class contract">
@@ -73,6 +79,25 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
           <span>{`stops ${assessment.uxEvidence.stop_harvest.harvested_stops}/${assessment.uxEvidence.stop_harvest.expected_stops}`}</span>
         </div>
       )}
+
+      <div className="agent-office-ref-list" aria-label="External frontend review readiness">
+        <div className="agent-office-ref-row">
+          <code>{`External review readiness ${externalReviewReadiness.apps_ready}/${externalReviewReadiness.apps_total}`}</code>
+          <span>candidate_only external inputs</span>
+          <small>{`${externalReviewReadiness.provider_executions} provider executions; governed review execution required`}</small>
+        </div>
+        {externalReview.apps.map((app) => (
+          <div
+            key={app.id}
+            className="agent-office-ref-row"
+            data-state={app.access_status === "ready" ? "pass" : "stop"}
+          >
+            <code>{app.access_status}</code>
+            <span title={app.review_prompt}>{app.label}</span>
+            <small>{`${app.role}; ${app.import_back_contract.candidate_only ? "candidate_only" : "blocked"}`}</small>
+          </div>
+        ))}
+      </div>
 
       <p className="agent-office-boundary-copy">
         WorldClassSatisfied = all(HardGates) and WCI at least 0.95 and every category at least 0.90
