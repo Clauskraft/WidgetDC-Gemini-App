@@ -144,7 +144,7 @@ test.describe("World-class capability cockpit proof harness", () => {
     await expect(page.getByRole("region", { name: /Compose candidate recipe/i })).toContainText(
       "mapped 0",
     );
-    expect(recipeMs).toBeLessThanOrEqual(500);
+    expect(recipeMs).toBeLessThanOrEqual(250);
 
     await expect(page.getByRole("button", { name: /Activate blocked/i })).toBeDisabled();
   });

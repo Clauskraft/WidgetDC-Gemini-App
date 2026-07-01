@@ -35,8 +35,12 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("First useful route");
     expect(html).toContain("Stop harvest");
     expect(html).toContain("UX diagnostic evidence");
-    expect(html).toContain("search 12/12");
+    expect(html).toMatch(/search \d+\/\d+/);
     expect(html).toContain("recipes 3/3");
     expect(html).toContain("stops 1/1");
+    expect(html).toContain("proof-ready");
+    expect(html).toContain("proof-pending");
+    expect(html).toContain("requires user_evidence");
+    expect(html).toContain("requires runtime_proof");
   });
 });

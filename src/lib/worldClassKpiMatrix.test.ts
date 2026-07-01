@@ -43,6 +43,8 @@ describe("worldClassKpiMatrix", () => {
       candidate_mapped_separation: {
         value: "graph_readback_only",
         status: "met",
+        observed_level: "diagnostic_only",
+        evidence_ref: "graph_readback_only count label audit",
       },
     });
     const summary = summarizeWorldClassKpiMatrix(kpis);
@@ -51,9 +53,48 @@ describe("worldClassKpiMatrix", () => {
     expect(summary.objectiveCoverage).toBe(1);
     expect(summary.met).toBe(1);
     expect(summary.missingEvidence).toBe(24);
+    expect(summary.proofReady).toBe(1);
     expect(kpis.find((kpi) => kpi.id === "first_useful_route")).toMatchObject({
       value: "missing",
       status: "missing_evidence",
+      required_level: "diagnostic_only",
+      observed_level: "diagnostic_only",
+      evidence_ref: "missing",
+      proof_ready: false,
+    });
+    expect(kpis.find((kpi) => kpi.id === "candidate_mapped_separation")).toMatchObject({
+      required_level: "diagnostic_only",
+      observed_level: "diagnostic_only",
+      evidence_ref: "graph_readback_only count label audit",
+      proof_ready: true,
+    });
+  });
+
+  it("keeps met diagnostic KPI values separate from user and runtime proof readiness", () => {
+    const kpis = buildWorldClassKpis({
+      next_action_clarity: {
+        value: "2/2 diagnostic",
+        status: "met",
+        observed_level: "diagnostic_only",
+        evidence_ref: "world-class UX diagnostic contract",
+      },
+      runtime_overclaim_defects: {
+        value: "0",
+        status: "met",
+        observed_level: "diagnostic_only",
+        evidence_ref: "P0 static overclaim audit",
+      },
+    });
+
+    expect(kpis.find((kpi) => kpi.id === "next_action_clarity")).toMatchObject({
+      required_level: "user_evidence",
+      observed_level: "diagnostic_only",
+      proof_ready: false,
+    });
+    expect(kpis.find((kpi) => kpi.id === "runtime_overclaim_defects")).toMatchObject({
+      required_level: "runtime_proof",
+      observed_level: "diagnostic_only",
+      proof_ready: false,
     });
   });
 });
