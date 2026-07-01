@@ -14,6 +14,10 @@ describe("AgentOfficeShell", () => {
       expect(html).toContain(label);
     }
     expect(html).toContain("Object palette");
+    expect(html).toContain("Readable process cards");
+    expect(html).toContain("ProjectTree");
+    expect(html).toContain("ProofGate");
+    expect(html).toContain("no raw JSON default");
     expect(html).toContain("Chat surface");
   });
 });
