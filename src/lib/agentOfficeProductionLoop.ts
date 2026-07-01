@@ -18,6 +18,10 @@ export type ProjectTreePhase = "Start" | "Closeout";
 
 export type CompetenceMappingState = "matched" | "mapped" | "debt";
 
+export type ProofEvidenceKind = "code" | "deploy" | "verification-pass";
+
+export type ProofEvidenceStatus = "present" | "missing";
+
 export type ExtractionContract = {
   source: "agent-office-static-model" | "wdc-graph-readback";
   artifact: string;
@@ -48,6 +52,22 @@ export type CapabilityDebtItem = {
   id: string;
   label: string;
   reason: string;
+};
+
+export type ProofGateEvidence = {
+  id: string;
+  label: string;
+  kind: ProofEvidenceKind;
+  status: ProofEvidenceStatus;
+  source: "github-pr" | "deployment-readback" | "verification-readback";
+};
+
+export type ProofGateLedger = {
+  claim: "code-model-proof" | "runtime-proof";
+  runtimeProof: boolean;
+  evidence: ProofGateEvidence[];
+  runtimeRequirements: string[];
+  boundary: string;
 };
 
 export type WorkBomItem = {
@@ -117,6 +137,7 @@ export type AgentOfficeProductionLoopModel = {
   projectTreeRefs: ProjectTreeRef[];
   competenceRows: CompetenceMappingCandidate[];
   capabilityDebt: CapabilityDebtItem[];
+  proofGate: ProofGateLedger;
   learning: StandardCandidateLearning;
 };
 
@@ -226,6 +247,49 @@ export const agentOfficeProductionLoop = {
       reason: "Runtime promotion requires merge, deploy and three verification passes.",
     },
   ],
+  proofGate: {
+    claim: "code-model-proof",
+    runtimeProof: false,
+    evidence: [
+      {
+        id: "merged-pr",
+        label: "Merged PR / code evidence",
+        kind: "code",
+        status: "present",
+        source: "github-pr",
+      },
+      {
+        id: "deployment-readback",
+        label: "Deployment SHA readback",
+        kind: "deploy",
+        status: "missing",
+        source: "deployment-readback",
+      },
+      {
+        id: "verification-pass-1",
+        label: "Verification pass 1",
+        kind: "verification-pass",
+        status: "missing",
+        source: "verification-readback",
+      },
+      {
+        id: "verification-pass-2",
+        label: "Verification pass 2",
+        kind: "verification-pass",
+        status: "missing",
+        source: "verification-readback",
+      },
+      {
+        id: "verification-pass-3",
+        label: "Verification pass 3",
+        kind: "verification-pass",
+        status: "missing",
+        source: "verification-readback",
+      },
+    ],
+    runtimeRequirements: ["merged code", "deployed SHA readback", "three verification passes"],
+    boundary: "Candidate, projection, dry-run and read-only output is not runtime proof.",
+  },
   learning: {
     type: "STANDARD_CANDIDATE",
     transport: "A2A",
@@ -454,6 +518,21 @@ export function summarizeCompetenceMapping(
   };
 }
 
+export function summarizeProofGate(ledger: ProofGateLedger) {
+  const presentCount = ledger.evidence.filter((item) => item.status === "present").length;
+  const missingCount = ledger.evidence.length - presentCount;
+  return {
+    claim: ledger.claim,
+    runtimeProof: ledger.runtimeProof,
+    presentCount,
+    missingCount,
+    requiredPasses: ledger.evidence.filter((item) => item.kind === "verification-pass").length,
+    passedVerifications: ledger.evidence.filter(
+      (item) => item.kind === "verification-pass" && item.status === "present",
+    ).length,
+  };
+}
+
 export function validateProductionLoopModel(model: AgentOfficeProductionLoopModel) {
   const failures: string[] = [];
   const stageOrder = model.stages.map((stage) => stage.id);
@@ -476,6 +555,18 @@ export function validateProductionLoopModel(model: AgentOfficeProductionLoopMode
   }
   if (model.learning.transport !== "A2A" || model.learning.type !== "STANDARD_CANDIDATE") {
     failures.push("LearningExtractor must broadcast an A2A STANDARD_CANDIDATE");
+  }
+  const proofSummary = summarizeProofGate(model.proofGate);
+  if (model.proofGate.runtimeProof) {
+    const hasDeployment = model.proofGate.evidence.some(
+      (item) => item.kind === "deploy" && item.status === "present",
+    );
+    if (!hasDeployment || proofSummary.passedVerifications < 3) {
+      failures.push("runtime proof requires deployment readback and three verification passes");
+    }
+  }
+  if (!model.proofGate.boundary.includes("not runtime proof")) {
+    failures.push("ProofGate boundary must reject candidate/projection/dry-run runtime proof");
   }
   if ("explicitDependencies" in model) {
     for (const dependency of model.explicitDependencies as ExplicitDependency[]) {

@@ -21,6 +21,7 @@ import {
   getProductionStage,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  summarizeProofGate,
   type DemandLoopScopeId,
   type ProductionLoopStageId,
 } from "@/lib/agentOfficeProductionLoop";
@@ -154,6 +155,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
+  const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -294,6 +296,12 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <p>
             LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
             {learningEnvelope.artifactId}; adoption state {learningEnvelope.adoptionState}.
+          </p>
+          <p>
+            ProofGate: {proofGateSummary.claim}; evidence {proofGateSummary.presentCount}/
+            {proofGateSummary.presentCount + proofGateSummary.missingCount}; verification passes{" "}
+            {proofGateSummary.passedVerifications}/{proofGateSummary.requiredPasses}.{" "}
+            {productionLoop.proofGate.boundary}
           </p>
         </div>
 

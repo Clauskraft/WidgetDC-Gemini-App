@@ -1608,9 +1608,12 @@
 @media (max-width: 1180px) {
   .agent-office-shell {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    overflow-y: auto;
   }
   .agent-office-canvas {
-    display: none;
+    display: flex;
+    border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   }
   .agent-office-chat {
     border-right: 0;
