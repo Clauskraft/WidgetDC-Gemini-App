@@ -16,6 +16,34 @@ export type WidgetFoundryExtractionContract = {
   required_fields: ["source_fit_score", "extraction_contract"];
 };
 
+export type WidgetFoundryParityStatus = "stats_parity_required" | "graph_readback_aligned";
+
+export type WidgetFoundrySourceReadback = {
+  source_repo: "widgetdc-consulting-frontend";
+  source_doc_ref: string;
+  inventory_contract_ref: string;
+  registry_source_ref: string;
+  graph_registry_ref: string;
+  unsafe_write_surface_ref: string;
+  local_component_registry_count: number;
+  local_standalone_count: number;
+  local_pptx_ready_count: number;
+  local_html_embeddable_count: number;
+  recommended_slot_candidate_count: number;
+  graph_widget_nodes: number;
+  graph_ui_component_nodes: number;
+  graph_harvested_component_nodes: number;
+  mapped_count: number;
+  mapped_count_source: "graph_readback_only";
+  parity_status: WidgetFoundryParityStatus;
+  parity_reason: string;
+  candidate_only: true;
+  projection_only: true;
+  graph_write_allowed: false;
+  proof_eligible: false;
+  provider_executions: 0;
+};
+
 export type WidgetFoundrySlotCandidate = {
   slot_id: string;
   label: string;
@@ -53,6 +81,30 @@ const extraction_contract: WidgetFoundryExtractionContract = {
   validation_status: "candidate_only",
   source_repo: "widgetdc-consulting-frontend",
   required_fields: ["source_fit_score", "extraction_contract"],
+};
+
+export const WIDGET_FOUNDRY_SOURCE_READBACK: WidgetFoundrySourceReadback = {
+  source_repo: "widgetdc-consulting-frontend",
+  source_doc_ref: "widgetdc-consulting-frontend/docs/WIDGET_FOUNDRY_INVENTORY.md",
+  inventory_contract_ref: "widgetdc-consulting-frontend/src/registry/widgetFoundryInventory.ts",
+  registry_source_ref: "widgetdc-consulting-frontend/src/registry/componentRegistry.ts",
+  graph_registry_ref: "widgetdc-consulting-frontend/src/hooks/useWidgetRegistry.ts",
+  unsafe_write_surface_ref: "widgetdc-consulting-frontend/src/registry/harvestComponents.ts",
+  local_component_registry_count: 22,
+  local_standalone_count: 19,
+  local_pptx_ready_count: 15,
+  local_html_embeddable_count: 20,
+  recommended_slot_candidate_count: 12,
+  graph_widget_nodes: 52,
+  graph_ui_component_nodes: 2273,
+  graph_harvested_component_nodes: 0,
+  mapped_count: 0,
+  mapped_count_source: "graph_readback_only",
+  parity_status: "stats_parity_required",
+  parity_reason:
+    "Consulting Foundry local registry, Widget registry and graph UIComponent counts are not the same evidence surface; curated component-registry-harvest readback is 0 until governed materialization.",
+  provider_executions: 0,
+  ...boundary,
 };
 
 export const WIDGET_FOUNDRY_SLOT_CANDIDATES: WidgetFoundrySlotCandidate[] = [
@@ -252,4 +304,18 @@ export const WIDGET_FOUNDRY_SLOT_CANDIDATES: WidgetFoundrySlotCandidate[] = [
 
 export function getRecommendedWidgetSlots() {
   return WIDGET_FOUNDRY_SLOT_CANDIDATES;
+}
+
+export function getWidgetFoundrySourceReadback(): WidgetFoundrySourceReadback {
+  return {
+    ...WIDGET_FOUNDRY_SOURCE_READBACK,
+    recommended_slot_candidate_count: WIDGET_FOUNDRY_SLOT_CANDIDATES.length,
+  };
+}
+
+export function getWidgetFoundryReuseRatio() {
+  const readback = getWidgetFoundrySourceReadback();
+  return readback.recommended_slot_candidate_count > 0
+    ? WIDGET_FOUNDRY_SLOT_CANDIDATES.length / readback.recommended_slot_candidate_count
+    : 0;
 }

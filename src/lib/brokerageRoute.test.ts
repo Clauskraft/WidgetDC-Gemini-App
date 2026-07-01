@@ -12,6 +12,9 @@ describe("brokerageRoute", () => {
     expect(card.candidate_count).toBeGreaterThan(0);
     expect(card.mapped_count).toBe(0);
     expect(card.mapped_count_source).toBe("graph_readback_only");
+    expect(card.foundry_source_readback.parity_status).toBe("stats_parity_required");
+    expect(card.foundry_source_readback.mapped_count).toBe(0);
+    expect(card.foundry_source_readback.graph_write_allowed).toBe(false);
     expect(card.proof_boundary.missing_competence).toBe("approval.gated.execution");
     expect(card.route_operation.status).toBe("expected_stop");
   });
