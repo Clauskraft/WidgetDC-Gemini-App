@@ -54,6 +54,36 @@ export type CapabilityDebtItem = {
   reason: string;
 };
 
+export type OperationalLedgerStatus = "modelled" | "requires-readback";
+
+export type AgentTeamBomMember = {
+  id: string;
+  label: string;
+  required: string;
+  provided: string;
+  status: CompetenceMappingState;
+  source_fit_score: number;
+  extraction_contract: ExtractionContract;
+};
+
+export type ExecutionLedgerItem = {
+  id: string;
+  label: string;
+  stage: ProductionLoopStageId;
+  claimRequired: boolean;
+  status: OperationalLedgerStatus;
+  proofBoundary: string;
+};
+
+export type VerificationLedgerItem = {
+  id: string;
+  label: string;
+  kind: "unit" | "lint" | "visual" | "build" | "runtime";
+  status: OperationalLedgerStatus;
+  runtimeProof: false;
+  proofBoundary: string;
+};
+
 export type ProofGateEvidence = {
   id: string;
   label: string;
@@ -127,6 +157,9 @@ export type LearningBroadcastEnvelope = {
     candidateCount: number;
     mappedCount: number;
     debtCount: number;
+    agentTeamBomCount: number;
+    executionLedgerCount: number;
+    verificationLedgerCount: number;
     capabilityDebtIds: string[];
     extractionContracts: ExtractionContract[];
   };
@@ -137,6 +170,9 @@ export type AgentOfficeProductionLoopModel = {
   projectTreeRefs: ProjectTreeRef[];
   competenceRows: CompetenceMappingCandidate[];
   capabilityDebt: CapabilityDebtItem[];
+  agentTeamBom: AgentTeamBomMember[];
+  executionLedger: ExecutionLedgerItem[];
+  verificationLedger: VerificationLedgerItem[];
   proofGate: ProofGateLedger;
   learning: StandardCandidateLearning;
 };
@@ -245,6 +281,121 @@ export const agentOfficeProductionLoop = {
       id: "proof-gate-readback",
       label: "ProofGate promotion readback",
       reason: "Runtime promotion requires merge, deploy and three verification passes.",
+    },
+  ],
+  agentTeamBom: [
+    {
+      id: "codex-operator",
+      label: "Codex implementation lane",
+      required: "source_code mutation",
+      provided: "verified actor + scoped WDC claim",
+      status: "matched",
+      source_fit_score: 0.9,
+      extraction_contract: {
+        source: "wdc-graph-readback",
+        artifact: "actorAuthority + work claim",
+        requiredEvidence: ["verified actor", "active WDC session", "conflicts empty"],
+      },
+    },
+    {
+      id: "wdc-cli-governor",
+      label: "WDC CLI governance lane",
+      required: "boot/session/claim gates",
+      provided: "WDC Agent Office boot sequence",
+      status: "matched",
+      source_fit_score: 0.88,
+      extraction_contract: {
+        source: "wdc-graph-readback",
+        artifact: "boot session + work claim",
+        requiredEvidence: ["boot ok", "claim ok", "session release"],
+      },
+    },
+    {
+      id: "runtime-verifier",
+      label: "Runtime verification lane",
+      required: "deployment readback + three passes",
+      provided: "ProofGate debt marker",
+      status: "debt",
+      source_fit_score: 0.42,
+      extraction_contract: {
+        source: "wdc-graph-readback",
+        artifact: "ProofGate runtime evidence",
+        requiredEvidence: [
+          "deployed SHA",
+          "verification pass 1",
+          "verification pass 2",
+          "verification pass 3",
+        ],
+      },
+    },
+  ],
+  executionLedger: [
+    {
+      id: "branch-session",
+      label: "Branch + WDC session lease",
+      stage: "execution",
+      claimRequired: true,
+      status: "modelled",
+      proofBoundary: "Execution starts only after a clean branch and active session.",
+    },
+    {
+      id: "claim-conflict-gate",
+      label: "Claim + conflict gate",
+      stage: "execution",
+      claimRequired: true,
+      status: "modelled",
+      proofBoundary: "Dirty or claimed scopes require A2A/handoff before edits.",
+    },
+    {
+      id: "closeout-release",
+      label: "Release + closeout handoff",
+      stage: "closeout",
+      claimRequired: false,
+      status: "requires-readback",
+      proofBoundary: "Closeout is not runtime proof without deployment and verification readback.",
+    },
+  ],
+  verificationLedger: [
+    {
+      id: "unit-contract",
+      label: "Production-loop unit contract",
+      kind: "unit",
+      status: "modelled",
+      runtimeProof: false,
+      proofBoundary: "Unit tests are code/model proof, not runtime proof.",
+    },
+    {
+      id: "lint-contract",
+      label: "Scoped lint contract",
+      kind: "lint",
+      status: "modelled",
+      runtimeProof: false,
+      proofBoundary: "Lint proves static conformance only.",
+    },
+    {
+      id: "visual-readback",
+      label: "Desktop/mobile visual readback",
+      kind: "visual",
+      status: "modelled",
+      runtimeProof: false,
+      proofBoundary: "Rendered local UI readback is not deployed runtime proof.",
+    },
+    {
+      id: "production-build",
+      label: "Production build contract",
+      kind: "build",
+      status: "modelled",
+      runtimeProof: false,
+      proofBoundary: "A build artifact is not runtime proof without deployment SHA readback.",
+    },
+    {
+      id: "runtime-pass-chain",
+      label: "Three runtime verification passes",
+      kind: "runtime",
+      status: "requires-readback",
+      runtimeProof: false,
+      proofBoundary:
+        "Runtime proof requires deploy readback plus three consecutive verification passes.",
     },
   ],
   proofGate: {
@@ -495,8 +646,14 @@ export function createLearningBroadcastEnvelope(
       candidateCount: summary.candidateCount,
       mappedCount: summary.mappedCount,
       debtCount: summary.debtCount,
+      agentTeamBomCount: model.agentTeamBom.length,
+      executionLedgerCount: model.executionLedger.length,
+      verificationLedgerCount: model.verificationLedger.length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
-      extractionContracts: model.competenceRows.map((candidate) => candidate.extraction_contract),
+      extractionContracts: [
+        ...model.competenceRows.map((candidate) => candidate.extraction_contract),
+        ...model.agentTeamBom.map((member) => member.extraction_contract),
+      ],
     },
   };
 }
@@ -533,6 +690,16 @@ export function summarizeProofGate(ledger: ProofGateLedger) {
   };
 }
 
+export function summarizeOperationalLedgers(model: AgentOfficeProductionLoopModel) {
+  return {
+    agentTeamBomCount: model.agentTeamBom.length,
+    executionLedgerCount: model.executionLedger.length,
+    verificationLedgerCount: model.verificationLedger.length,
+    claimGatedExecutionCount: model.executionLedger.filter((item) => item.claimRequired).length,
+    runtimeProofClaims: model.verificationLedger.filter((item) => item.runtimeProof).length,
+  };
+}
+
 export function validateProductionLoopModel(model: AgentOfficeProductionLoopModel) {
   const failures: string[] = [];
   const stageOrder = model.stages.map((stage) => stage.id);
@@ -552,6 +719,40 @@ export function validateProductionLoopModel(model: AgentOfficeProductionLoopMode
     if (!candidate.extraction_contract.requiredEvidence.length) {
       failures.push(`${candidate.required} is missing extraction evidence contract`);
     }
+  }
+  if (!model.agentTeamBom.length) {
+    failures.push("AgentTeamBOM is missing");
+  }
+  for (const member of model.agentTeamBom) {
+    if (member.source_fit_score < 0 || member.source_fit_score > 1) {
+      failures.push(`${member.id} has invalid AgentTeamBOM source_fit_score`);
+    }
+    if (
+      !member.extraction_contract.artifact ||
+      !member.extraction_contract.requiredEvidence.length
+    ) {
+      failures.push(`${member.id} is missing AgentTeamBOM extraction evidence contract`);
+    }
+  }
+  const operationalSummary = summarizeOperationalLedgers(model);
+  if (operationalSummary.claimGatedExecutionCount === 0) {
+    failures.push("ExecutionLedger must include a claim-gated step");
+  }
+  if (
+    !model.executionLedger.some((item) =>
+      item.proofBoundary.toLowerCase().includes("claimed scopes"),
+    )
+  ) {
+    failures.push("ExecutionLedger must preserve dirty/claimed scope handoff boundary");
+  }
+  if (operationalSummary.runtimeProofClaims > 0) {
+    failures.push("VerificationLedger cannot claim runtime proof");
+  }
+  if (!model.verificationLedger.some((item) => item.kind === "visual")) {
+    failures.push("VerificationLedger must include visual readback");
+  }
+  if (!model.verificationLedger.some((item) => item.kind === "build")) {
+    failures.push("VerificationLedger must include build verification");
   }
   if (model.learning.transport !== "A2A" || model.learning.type !== "STANDARD_CANDIDATE") {
     failures.push("LearningExtractor must broadcast an A2A STANDARD_CANDIDATE");

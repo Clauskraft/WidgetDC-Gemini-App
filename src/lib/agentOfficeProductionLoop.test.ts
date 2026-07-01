@@ -5,6 +5,7 @@ import {
   demandLoopProfiles,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  summarizeOperationalLedgers,
   summarizeProofGate,
   validateLearningBroadcastEnvelope,
   validateProductionLoopModel,
@@ -120,12 +121,55 @@ describe("agentOfficeProductionLoop", () => {
       candidateCount: 4,
       mappedCount: 3,
       debtCount: 1,
+      agentTeamBomCount: 3,
+      executionLedgerCount: 3,
+      verificationLedgerCount: 5,
     });
     expect(envelope.payload.stageOrder.at(0)).toBe("demand");
     expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
-    expect(envelope.payload.extractionContracts.length).toBe(envelope.payload.candidateCount);
+    expect(envelope.payload.extractionContracts.length).toBe(
+      envelope.payload.candidateCount + envelope.payload.agentTeamBomCount,
+    );
     expect(envelope.proofBoundary).toContain("pending adoption");
     expect(validateLearningBroadcastEnvelope(envelope)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("models AgentTeamBOM, ExecutionLedger and VerificationLedger without runtime proof claims", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    expect(summarizeOperationalLedgers(model)).toMatchObject({
+      agentTeamBomCount: 3,
+      executionLedgerCount: 3,
+      verificationLedgerCount: 5,
+      claimGatedExecutionCount: 2,
+      runtimeProofClaims: 0,
+    });
+    expect(model.agentTeamBom.every((member) => member.source_fit_score >= 0)).toBe(true);
+    expect(model.agentTeamBom.every((member) => member.extraction_contract.artifact)).toBe(true);
+    expect(model.executionLedger.some((item) => item.claimRequired)).toBe(true);
+    expect(model.verificationLedger.every((item) => item.runtimeProof === false)).toBe(true);
+    expect(model.verificationLedger.map((item) => item.kind)).toEqual([
+      "unit",
+      "lint",
+      "visual",
+      "build",
+      "runtime",
+    ]);
+    expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("rejects verification ledgers that claim runtime proof directly", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      verificationLedger: [
+        {
+          ...resolveAgentOfficeProductionLoop("operate").verificationLedger[0],
+          runtimeProof: true,
+        },
+      ],
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "VerificationLedger cannot claim runtime proof",
+    );
   });
 
   it("keeps ProofGate at code/model proof until deploy and three verification passes are present", () => {
