@@ -20,6 +20,10 @@ import {
 import { AgentOfficeCommandPalette } from "@/components/AgentOfficeCommandPalette";
 import { BrokerageRouteCard } from "@/components/BrokerageRouteCard";
 import { CanvasWorkspace } from "@/components/CanvasWorkspace";
+import { CapabilityLibrary } from "@/components/CapabilityLibrary";
+import { ComposeRecipePanel } from "@/components/ComposeRecipePanel";
+import { LibraryNav } from "@/components/LibraryNav";
+import { ProjectTreePanel } from "@/components/ProjectTreePanel";
 import { SystemStatusPill } from "@/components/SystemStatusPill";
 import { WDCObjectCard } from "@/components/WDCObjectCard";
 import {
@@ -38,6 +42,8 @@ import {
 } from "@/lib/agentOfficeProductionLoop";
 import { buildAgentOfficeStatus } from "@/lib/agentOfficeStatus";
 import { buildBrokerageRouteCard } from "@/lib/brokerageRoute";
+import { buildCapabilityLibrary, type CapabilityKind } from "@/lib/capabilityLibrary";
+import { buildCapabilityRecipe } from "@/lib/capabilityRecipe";
 import { buildWDCObjectCards } from "@/lib/wdcObjectCards";
 import { cn } from "@/lib/utils";
 import {
@@ -102,9 +108,20 @@ export function WorkModeSwitcher({
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
+  const [activeCapabilityKind, setActiveCapabilityKind] = useState<CapabilityKind>("agent");
+  const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
+  const capabilityLibrary = useMemo(() => buildCapabilityLibrary(), []);
+  const selectedCapabilities = useMemo(
+    () => capabilityLibrary.filter((entry) => selectedCapabilityIds.includes(entry.id)),
+    [capabilityLibrary, selectedCapabilityIds],
+  );
+  const recipe = useMemo(
+    () => buildCapabilityRecipe(activeScope.title, selectedCapabilities),
+    [activeScope.title, selectedCapabilities],
+  );
   const systemStatus = buildAgentOfficeStatus(productionLoop);
   const brokerageRouteCard = buildBrokerageRouteCard(activeScope.id);
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
@@ -150,6 +167,12 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     setActiveScopeId(id);
   };
 
+  const toggleCapability = (id: string) => {
+    setSelectedCapabilityIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  };
+
   const insertPrompt = () => {
     void navigator.clipboard?.writeText(activeScope.prompt);
   };
@@ -184,6 +207,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
 
+        <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_start" />
+
         <div className="agent-office-workstrip">
           <div>
             <div className="agent-office-workstrip-label">Scope</div>
@@ -194,6 +219,17 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             Claimed
           </div>
         </div>
+
+        <LibraryNav activeKind={activeCapabilityKind} onSelectKind={setActiveCapabilityKind} />
+
+        <CapabilityLibrary
+          entries={capabilityLibrary}
+          activeKind={activeCapabilityKind}
+          selectedIds={selectedCapabilityIds}
+          onToggle={toggleCapability}
+        />
+
+        <ComposeRecipePanel recipe={recipe} />
 
         <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
