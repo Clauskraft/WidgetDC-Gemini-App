@@ -2313,6 +2313,95 @@
   background: color-mix(in oklab, var(--primary) 10%, transparent);
   color: var(--primary);
 }
+.world-class-assessment {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  padding: 0.95rem;
+}
+.world-class-scoreline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.world-class-score {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--muted) 40%, transparent);
+  color: var(--foreground);
+  font-size: 0.72rem;
+  font-weight: 760;
+  text-align: center;
+}
+.world-class-grid,
+.world-class-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.world-class-row,
+.world-class-category {
+  display: grid;
+  min-height: 2.55rem;
+  align-content: center;
+  gap: 0.16rem;
+  border: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--background) 56%, transparent);
+  padding: 0.5rem 0.58rem;
+}
+.world-class-row {
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  align-items: center;
+}
+.world-class-row code {
+  color: var(--muted-foreground);
+  font-size: 0.62rem;
+  font-weight: 780;
+}
+.world-class-row span,
+.world-class-category span,
+.world-class-blockers span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.world-class-row[data-state="stop"] {
+  border-color: color-mix(in oklab, oklch(0.62 0.18 35) 35%, var(--border));
+}
+.world-class-row[data-state="pass"] {
+  border-color: color-mix(in oklab, oklch(0.58 0.14 150) 28%, var(--border));
+}
+.world-class-category {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.world-class-category strong {
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+.world-class-category small {
+  grid-column: 1 / -1;
+  color: var(--muted-foreground);
+  font-size: 0.64rem;
+}
+.world-class-blockers {
+  display: grid;
+  gap: 0.35rem;
+}
+.world-class-blockers span {
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, oklch(0.62 0.18 35) 10%, transparent);
+  color: var(--muted-foreground);
+  padding: 0.42rem 0.55rem;
+  font-size: 0.68rem;
+}
 
 @media (max-width: 1180px) {
   .agent-office-shell {
@@ -2337,6 +2426,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .wdc-object-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .world-class-scoreline,
+  .world-class-grid,
+  .world-class-category-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
