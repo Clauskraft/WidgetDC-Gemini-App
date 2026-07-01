@@ -195,7 +195,7 @@ describe("worldClassContract", () => {
     expect(assessment.proofHarness.evidence_level).toBe("diagnostic_only");
     expect(assessment.proofHarness.visual_status).toBe("passed");
     expect(assessment.proofHarness.accessibility_status).toBe("passed");
-    expect(assessment.proofHarness.performance_status).toBe("missing_evidence");
+    expect(assessment.proofHarness.performance_status).toBe("passed");
     expect(assessment.proofHarness.runtime_status).toBe("missing_evidence");
     expect(assessment.uxEvidence?.evidence_level).toBe("diagnostic_only");
     expect(assessment.evidenceGates).toEqual(
@@ -227,7 +227,11 @@ describe("worldClassContract", () => {
         }),
         expect.objectContaining({
           id: "interaction_latency",
-          status: "missing_evidence",
+          status: "met",
+        }),
+        expect.objectContaining({
+          id: "library_filter_latency",
+          status: "met",
         }),
         expect.objectContaining({
           id: "wdc_route_shown",

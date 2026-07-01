@@ -12,7 +12,7 @@ describe("worldClassProofHarness", () => {
     expect(summary.evidence_level).toBe("diagnostic_only");
     expect(summary.visual_status).toBe("passed");
     expect(summary.accessibility_status).toBe("passed");
-    expect(summary.performance_status).toBe("missing_evidence");
+    expect(summary.performance_status).toBe("passed");
     expect(summary.runtime_status).toBe("missing_evidence");
     expect(summary.graph_write_allowed).toBe(false);
     expect(summary.proof_eligible).toBe(false);
@@ -50,8 +50,23 @@ describe("worldClassProofHarness", () => {
     expect(WORLD_CLASS_PROOF_TARGETS.recipe_preview_p95_ms).toBe(250);
   });
 
-  it("does not pass performance evidence when any click feedback sample is above 250ms", () => {
+  it("keeps diagnostic performance evidence aligned with the e2e latency targets", () => {
     const summary = summarizeWorldClassProofHarness(WORLD_CLASS_DIAGNOSTIC_PROOF);
+
+    expect(summary.max_interaction_p95_ms).toBeLessThanOrEqual(
+      WORLD_CLASS_PROOF_TARGETS.work_mode_switch_p95_ms,
+    );
+    expect(summary.performance_status).toBe("passed");
+  });
+
+  it("does not pass performance evidence when any click feedback sample is above 250ms", () => {
+    const summary = summarizeWorldClassProofHarness({
+      ...WORLD_CLASS_DIAGNOSTIC_PROOF,
+      performance: {
+        ...WORLD_CLASS_DIAGNOSTIC_PROOF.performance,
+        recipe_preview_p95_ms: 320,
+      },
+    });
 
     expect(summary.max_interaction_p95_ms).toBe(320);
     expect(summary.performance_status).toBe("missing_evidence");

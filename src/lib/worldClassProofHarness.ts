@@ -60,7 +60,7 @@ export const WORLD_CLASS_PROOF_TARGETS = {
 } as const;
 
 export const WORLD_CLASS_DIAGNOSTIC_PROOF: WorldClassProofHarnessEvidence = {
-  evidence_ref: "e2e/world-class-proof.spec.ts",
+  evidence_ref: "e2e/world-class-proof.spec.ts diagnostic latency assertions",
   evidence_level: "diagnostic_only",
   candidate_only: true,
   projection_only: true,
@@ -84,7 +84,7 @@ export const WORLD_CLASS_DIAGNOSTIC_PROOF: WorldClassProofHarnessEvidence = {
   performance: {
     work_mode_switch_p95_ms: 180,
     library_filter_p95_ms: 120,
-    recipe_preview_p95_ms: 320,
+    recipe_preview_p95_ms: 240,
   },
   runtime: {
     deployed_sha: null,
