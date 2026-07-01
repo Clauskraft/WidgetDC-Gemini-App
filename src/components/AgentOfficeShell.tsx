@@ -108,16 +108,39 @@ export function WorkModeSwitcher({
   );
 }
 
-export function AgentOfficeShell({ children }: { children: ReactNode }) {
-  const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
-  const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
-  const [capabilityFilters, setCapabilityFilters] = useState<CapabilityLibraryFilters>({
+function CapabilityLibraryWorkspace({
+  entries,
+  selectedIds,
+  onToggle,
+}: {
+  entries: ReturnType<typeof buildCapabilityLibrary>;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [filters, setFilters] = useState<CapabilityLibraryFilters>({
     kind: "agent",
     domain: "all",
     readiness: "all",
     evidence: "all",
     query: "",
   });
+
+  return (
+    <>
+      <LibraryNav filters={filters} onChange={setFilters} />
+      <CapabilityLibrary
+        entries={entries}
+        filters={filters}
+        selectedIds={selectedIds}
+        onToggle={onToggle}
+      />
+    </>
+  );
+}
+
+export function AgentOfficeShell({ children }: { children: ReactNode }) {
+  const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
+  const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
@@ -345,11 +368,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <LibraryNav filters={capabilityFilters} onChange={setCapabilityFilters} />
-
-        <CapabilityLibrary
+        <CapabilityLibraryWorkspace
           entries={capabilityLibrary}
-          filters={capabilityFilters}
           selectedIds={selectedCapabilityIds}
           onToggle={toggleCapability}
         />
