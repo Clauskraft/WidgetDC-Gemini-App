@@ -1324,6 +1324,75 @@
   font-size: 0.72rem;
   font-weight: 650;
 }
+.chat-run-indicator {
+  --chat-run-accent: var(--muted-foreground);
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--chat-run-accent) 22%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--chat-run-accent) 8%, var(--card));
+  color: var(--foreground);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--chat-run-accent) 9%, transparent);
+}
+.chat-run-indicator--compact {
+  max-width: 11rem;
+  padding: 0.36rem 0.6rem;
+  font-size: 0.72rem;
+}
+.chat-run-indicator--active {
+  --chat-run-accent: oklch(0.56 0.16 252);
+}
+.chat-run-indicator--success {
+  --chat-run-accent: oklch(0.5 0.13 158);
+}
+.chat-run-indicator--warning {
+  --chat-run-accent: oklch(0.6 0.14 76);
+}
+.chat-run-indicator--danger {
+  --chat-run-accent: oklch(0.58 0.2 27);
+}
+.chat-run-indicator-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--chat-run-accent);
+}
+.chat-run-indicator-dot--active {
+  animation: chat-run-pulse 1.25s ease-in-out infinite;
+}
+.chat-run-indicator-label {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-run-indicator-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes chat-run-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 .agent-office-loop,
 .agent-office-mini-panel,
 .agent-office-debt-panel {
