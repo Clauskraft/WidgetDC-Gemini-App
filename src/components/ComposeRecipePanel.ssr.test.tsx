@@ -13,5 +13,9 @@ describe("ComposeRecipePanel", () => {
     expect(html).toContain("expected_stop");
     expect(html).toContain("approval.gated.execution");
     expect(html).toContain("mapped 0");
+    expect(html).toContain("Approval readiness");
+    expect(html).toContain("request approval");
+    expect(html).toContain("execute provider");
+    expect(html).toContain("provider executions 0");
   });
 });

@@ -20,6 +20,10 @@ describe("capabilityRecipe", () => {
     expect(recipe.mapped_count_source).toBe("graph_readback_only");
     expect(recipe.activation.status).toBe("expected_stop");
     expect(recipe.activation.missing_competence).toBe("approval.gated.execution");
+    expect(recipe.approval_readiness.status).toBe("expected_stop");
+    expect(recipe.approval_readiness.ui_execution_enabled).toBe(false);
+    expect(recipe.approval_readiness.blocked_actions).toContain("execute provider");
+    expect(recipe.approval_readiness.provider_executions).toBe(0);
     expect(recipe.graph_write_allowed).toBe(false);
     expect(recipe.proof_eligible).toBe(false);
   });
