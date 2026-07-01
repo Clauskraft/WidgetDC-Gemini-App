@@ -79,7 +79,7 @@ describe("worldClassContract", () => {
     expect(assessment.criticalP0Defects).toBe(0);
   });
 
-  it("keeps current P0 cockpit as expected not-world-class until runtime and adoption evidence is attached", () => {
+  it("keeps current P0 cockpit as expected not-world-class until runtime and human evidence is attached", () => {
     const entries = buildCapabilityLibrary();
     const selectedEntries = entries.slice(0, 3);
     const recipe = buildCapabilityRecipe("World-class capability cockpit", selectedEntries);
@@ -101,9 +101,10 @@ describe("worldClassContract", () => {
     expect(assessment.proofHarness.accessibility_status).toBe("passed");
     expect(assessment.proofHarness.performance_status).toBe("passed");
     expect(assessment.proofHarness.runtime_status).toBe("missing_evidence");
+    expect(assessment.uxEvidence?.evidence_level).toBe("diagnostic_only");
     expect(assessment.blockers).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("Human task-success evidence"),
+        expect.stringContaining("Diagnostic UX evidence is attached"),
         expect.stringContaining("WorldClassIndex"),
       ]),
     );
@@ -140,8 +141,38 @@ describe("worldClassContract", () => {
         }),
         expect.objectContaining({
           id: "stop_harvest",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "next_action_clarity",
           status: "missing_evidence",
-          value: "0.00",
+          value: "2/2 diagnostic",
+        }),
+        expect.objectContaining({
+          id: "raw_json_avoidance",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "search_success",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "valid_recipe_rate",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "inspector_usefulness",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "visual_artifact_readability",
+          status: "met",
+          value: "1.00",
         }),
       ]),
     );

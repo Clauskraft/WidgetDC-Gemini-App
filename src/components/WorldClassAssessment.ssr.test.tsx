@@ -34,5 +34,9 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("25 KPI targets");
     expect(html).toContain("First useful route");
     expect(html).toContain("Stop harvest");
+    expect(html).toContain("UX diagnostic evidence");
+    expect(html).toContain("search 12/12");
+    expect(html).toContain("recipes 3/3");
+    expect(html).toContain("stops 1/1");
   });
 });

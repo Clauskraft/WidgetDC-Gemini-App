@@ -9,6 +9,11 @@ import {
   type WorldClassProofHarnessEvidence,
   type WorldClassProofHarnessSummary,
 } from "@/lib/worldClassProofHarness";
+import {
+  buildWorldClassUxEvidence,
+  summarizeWorldClassUxEvidence,
+  type WorldClassUxEvidence,
+} from "@/lib/worldClassUxEvidence";
 
 export type HardGateId =
   | "governance"
@@ -90,6 +95,7 @@ export type WorldClassAssessment = {
   kpis: WorldClassKpi[];
   criticalDefects: CriticalP0DefectAssessment[];
   proofHarness: WorldClassProofHarnessSummary;
+  uxEvidence?: WorldClassUxEvidence;
   blockers: string[];
   candidate_only: true;
   projection_only: true;
@@ -292,6 +298,7 @@ export function buildWorldClassAssessment({
   projectTreeRefs,
   proofHarnessEvidence = WORLD_CLASS_DIAGNOSTIC_PROOF,
   wdcEvidence = WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE,
+  uxEvidence = buildWorldClassUxEvidence({ capabilityEntries, recipe, routeCard }),
 }: {
   capabilityEntries: CapabilityLibraryEntry[];
   recipe: CapabilityRecipe;
@@ -299,6 +306,7 @@ export function buildWorldClassAssessment({
   projectTreeRefs: ProjectTreeRef[];
   proofHarnessEvidence?: WorldClassProofHarnessEvidence;
   wdcEvidence?: WorldClassWdcEvidence;
+  uxEvidence?: WorldClassUxEvidence;
 }): WorldClassAssessment {
   const requiredKinds = new Set([
     "skill",
@@ -340,6 +348,7 @@ export function buildWorldClassAssessment({
     recipe.graph_write_allowed === false &&
     recipe.proof_eligible === false;
   const proofHarness = summarizeWorldClassProofHarness(proofHarnessEvidence);
+  const uxSummary = summarizeWorldClassUxEvidence(uxEvidence);
   const visualSanityPassed = proofHarness.visual_status === "passed";
   const accessibilityPassed = proofHarness.accessibility_status === "passed";
   const performancePassed = proofHarness.performance_status === "passed";
@@ -373,8 +382,9 @@ export function buildWorldClassAssessment({
     wdcEvidence.adoption.expected_stops > 0
       ? wdcEvidence.adoption.harvested_stops / wdcEvidence.adoption.expected_stops
       : 0;
+  const diagnosticStopHarvestRatio = Math.max(stopHarvestRatio, uxSummary.stopHarvestRatio);
 
-  return evaluateWorldClass({
+  const assessment = evaluateWorldClass({
     hardGates: {
       governance: {
         passed: recipe.graph_write_allowed === false && recipe.proof_eligible === false,
@@ -428,19 +438,38 @@ export function buildWorldClassAssessment({
     },
     categoryScores: {
       usability: {
-        score: performancePassed && accessibilityPassed ? 0.86 : 0.72,
-        blockers: ["Human task-success evidence and deployed route readback are not yet attached."],
+        score:
+          uxSummary.firstUsefulRoutePassed &&
+          uxSummary.nextActionClarityRatio >= 0.95 &&
+          uxSummary.rawJsonAvoidanceRatio >= 0.98 &&
+          performancePassed &&
+          accessibilityPassed
+            ? 0.89
+            : 0.72,
+        blockers: [
+          "Diagnostic UX evidence is attached, but human task-success evidence and deployed route readback are not yet attached.",
+        ],
       },
       capability_discovery: {
-        score: categoryCoverage === requiredKinds.size && metadataComplete ? 0.94 : 0.7,
+        score:
+          categoryCoverage === requiredKinds.size &&
+          metadataComplete &&
+          uxSummary.searchSuccessRatio >= 0.95
+            ? 0.96
+            : 0.7,
         blockers:
-          categoryCoverage === requiredKinds.size && metadataComplete
+          categoryCoverage === requiredKinds.size &&
+          metadataComplete &&
+          uxSummary.searchSuccessRatio >= 0.95
             ? []
             : ["Capability category coverage or metadata completeness is incomplete."],
       },
       composition_power: {
-        score: safeRecipe ? 0.9 : 0.65,
-        blockers: safeRecipe ? [] : ["Recipe boundary is not safe."],
+        score: safeRecipe && uxSummary.validRecipeRatio >= 0.95 ? 0.94 : 0.65,
+        blockers:
+          safeRecipe && uxSummary.validRecipeRatio >= 0.95
+            ? []
+            : ["Recipe boundary is not safe or recipe validation evidence is incomplete."],
       },
       wdc_visibility: {
         score: projectTreeComplete && routeShown && observabilitySurfaced ? 0.94 : 0.65,
@@ -454,10 +483,18 @@ export function buildWorldClassAssessment({
         blockers: [],
       },
       visual_quality: {
-        score: visualSanityPassed ? 0.92 : 0.72,
-        blockers: visualSanityPassed
-          ? []
-          : ["No full viewport visual sanity audit has been recorded."],
+        score:
+          visualSanityPassed &&
+          uxSummary.inspectorUsefulnessRatio === 1 &&
+          uxSummary.visualArtifactReadabilityRatio >= 0.98
+            ? 0.95
+            : 0.72,
+        blockers:
+          visualSanityPassed &&
+          uxSummary.inspectorUsefulnessRatio === 1 &&
+          uxSummary.visualArtifactReadabilityRatio >= 0.98
+            ? []
+            : ["Visual sanity, inspector coverage, or visual readability evidence is incomplete."],
       },
       performance: {
         score: performancePassed ? 0.9 : 0.5,
@@ -473,9 +510,9 @@ export function buildWorldClassAssessment({
             : ["Foundry slot reuse or Lego/BOM visibility is below target."],
       },
       adoption_readiness: {
-        score: a2aExitReviewVisible && stopHarvestRatio === 1 ? 0.9 : 0.88,
+        score: a2aExitReviewVisible && diagnosticStopHarvestRatio === 1 ? 0.9 : 0.88,
         blockers:
-          a2aExitReviewVisible && stopHarvestRatio === 1
+          a2aExitReviewVisible && diagnosticStopHarvestRatio === 1
             ? []
             : ["Stop harvest coverage is not complete for expected stops."],
       },
@@ -493,13 +530,33 @@ export function buildWorldClassAssessment({
       wdc_cli_bypass_for_governed_operation: 0,
     },
     kpis: buildWorldClassKpis({
+      first_useful_route: {
+        value: `${uxEvidence.first_useful_route.intent_to_route_preview_p95_ms}ms diagnostic`,
+        status: uxSummary.firstUsefulRoutePassed ? "met" : "below_target",
+      },
+      next_action_clarity: {
+        value: `${uxEvidence.next_action_clarity.scenarios_with_next_action}/${uxEvidence.next_action_clarity.scenario_count} diagnostic`,
+        status: "missing_evidence",
+      },
+      raw_json_avoidance: {
+        value: uxSummary.rawJsonAvoidanceRatio.toFixed(2),
+        status: uxSummary.rawJsonAvoidanceRatio >= 0.98 ? "met" : "below_target",
+      },
       category_coverage: {
         value: `${categoryCoverage}/7`,
         status: categoryCoverage === 7 ? "met" : "below_target",
       },
+      search_success: {
+        value: uxSummary.searchSuccessRatio.toFixed(2),
+        status: uxSummary.searchSuccessRatio >= 0.95 ? "met" : "below_target",
+      },
       metadata_completeness: {
         value: metadataComplete ? "1.00" : "below 1.00",
         status: metadataComplete ? "met" : "below_target",
+      },
+      valid_recipe_rate: {
+        value: uxSummary.validRecipeRatio.toFixed(2),
+        status: uxSummary.validRecipeRatio >= 0.95 ? "met" : "below_target",
       },
       boundary_correctness: {
         value: safeRecipe ? "1.00" : "0.00",
@@ -537,6 +594,14 @@ export function buildWorldClassAssessment({
         value: proofHarness.visual_ratio.toFixed(2),
         status: visualSanityPassed ? "met" : "missing_evidence",
       },
+      inspector_usefulness: {
+        value: uxSummary.inspectorUsefulnessRatio.toFixed(2),
+        status: uxSummary.inspectorUsefulnessRatio === 1 ? "met" : "below_target",
+      },
+      visual_artifact_readability: {
+        value: uxSummary.visualArtifactReadabilityRatio.toFixed(2),
+        status: uxSummary.visualArtifactReadabilityRatio >= 0.98 ? "met" : "below_target",
+      },
       interaction_latency: {
         value:
           proofHarness.max_interaction_p95_ms === null
@@ -568,10 +633,15 @@ export function buildWorldClassAssessment({
         status: a2aExitReviewVisible ? "met" : "missing_evidence",
       },
       stop_harvest: {
-        value: stopHarvestRatio.toFixed(2),
-        status: stopHarvestRatio === 1 ? "met" : "missing_evidence",
+        value: diagnosticStopHarvestRatio.toFixed(2),
+        status: diagnosticStopHarvestRatio === 1 ? "met" : "missing_evidence",
       },
     }),
     proofHarness,
   });
+
+  return {
+    ...assessment,
+    uxEvidence,
+  };
 }
