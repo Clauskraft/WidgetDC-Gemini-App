@@ -33,6 +33,13 @@ import { useActiveEngagement } from "@/lib/engagement-context";
 import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSourcesPanel";
 import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
 import { DeepResearchPanel } from "@/components/DeepResearchPanel";
+import {
+  chatRunStatePresentation,
+  deriveChatRunState,
+  isActiveChatRunState,
+  type ChatRunState,
+  type ChatRunStatePresentation,
+} from "@/lib/chatRunState";
 
 const SUGGESTIONS = [
   {
@@ -55,6 +62,33 @@ const SUGGESTIONS = [
 
 function getText(m: UIMessage) {
   return m.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+}
+
+function ChatRunIndicator({
+  state,
+  presentation,
+  compact = false,
+}: {
+  state: ChatRunState;
+  presentation: ChatRunStatePresentation;
+  compact?: boolean;
+}) {
+  const active = isActiveChatRunState(state);
+  return (
+    <div
+      role="status"
+      aria-live={active ? "polite" : "off"}
+      className={cn(
+        "chat-run-indicator",
+        `chat-run-indicator--${presentation.tone}`,
+        compact && "chat-run-indicator--compact",
+      )}
+    >
+      <span className={cn("chat-run-indicator-dot", active && "chat-run-indicator-dot--active")} />
+      <span className="chat-run-indicator-label">{presentation.label}</span>
+      {!compact && <span className="chat-run-indicator-detail">{presentation.detail}</span>}
+    </div>
+  );
 }
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -159,6 +193,12 @@ export function ChatWindow({
   const [healHistory, setHealHistory] = useState<Record<string, HealSummary>>({});
   const [isCreatingThread, setIsCreatingThread] = useState(false);
   const [engagements, setEngagements] = useState<EngagementRow[]>([]);
+  const [hasSubmittedPrompt, setHasSubmittedPrompt] = useState(() =>
+    initialMessages.some((message) => message.role === "user"),
+  );
+  const [optimisticSending, setOptimisticSending] = useState(false);
+  const [chatError, setChatError] = useState<unknown>(null);
+  const [wasCancelled, setWasCancelled] = useState(false);
   // Use global engagement context from __root so context-bar and chat stay in sync
   const { activeEngagement, setActiveEngagement } = useActiveEngagement();
   const [engSelectorOpen, setEngSelectorOpen] = useState(false);
@@ -267,17 +307,40 @@ export function ChatWindow({
     id: threadId,
     messages: initialMessages,
     transport,
-    onError: (e) => console.error("Chat error:", e),
+    onError: (e) => {
+      console.error("Chat error:", e);
+      setChatError(e);
+      setOptimisticSending(false);
+    },
   });
 
-  const [isTyping, setIsTyping] = useState(false);
   const [sessionSearch, setSessionSearch] = useState("");
   const isLoading = status === "submitted" || status === "streaming";
+  const currentAssistantTextLength = useMemo(() => {
+    const last = messages[messages.length - 1];
+    return isLoading && last?.role === "assistant" ? getText(last).trim().length : 0;
+  }, [isLoading, messages]);
+  const chatRunState = deriveChatRunState({
+    transportStatus: status,
+    hasSubmittedPrompt,
+    assistantTextLength: currentAssistantTextLength,
+    isSending: optimisticSending,
+    isToolWorking: healingMessageId !== null,
+    wasCancelled,
+    error: chatError,
+  });
+  const chatRunPresentation = chatRunStatePresentation(
+    chatRunState,
+    healingMessageId
+      ? `Self-heal forsøg ${healAttemptsRef.current.get(healingMessageId) ?? 1}/${MAX_HEAL_RETRIES} retter canvas-struktur.`
+      : undefined,
+  );
+  const showInlineRunState =
+    isActiveChatRunState(chatRunState) || chatRunState === "errored" || chatRunState === "cancelled";
 
-  // P0: Typing indicator — show when AI is processing
   useEffect(() => {
-    setIsTyping(isLoading);
-  }, [isLoading]);
+    if (status !== "ready" || messages.length > 0) setOptimisticSending(false);
+  }, [messages.length, status]);
 
   // Persist messages + fire onFirstMessage exactly once when the first
   // user message appears, so the parent route can navigate event-based
@@ -398,23 +461,40 @@ export function ChatWindow({
     healChainRef.current = 0;
     healChainTraceRef.current = [];
     setHealingMessageId(null);
+    setHasSubmittedPrompt(true);
+    setOptimisticSending(true);
+    setChatError(null);
+    setWasCancelled(false);
     const fileParts = files.map((a) => ({
       type: "file" as const,
       mediaType: a.file.type || "application/octet-stream",
       filename: a.file.name,
       url: a.dataUrl,
     }));
-    if (fileParts.length > 0) {
-      await sendMessage(
-        {
-          role: "user",
-          parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
-        },
-        { body: buildRequestBody() },
-      );
-    } else {
-      await sendMessage({ text: content }, { body: buildRequestBody() });
+    try {
+      if (fileParts.length > 0) {
+        await sendMessage(
+          {
+            role: "user",
+            parts: [...fileParts, ...(content ? [{ type: "text" as const, text: content }] : [])],
+          },
+          { body: buildRequestBody() },
+        );
+      } else {
+        await sendMessage({ text: content }, { body: buildRequestBody() });
+      }
+    } catch (err) {
+      console.error("Chat send failed:", err);
+      setChatError(err);
+    } finally {
+      setOptimisticSending(false);
     }
+  };
+
+  const stopChat = () => {
+    setWasCancelled(true);
+    setOptimisticSending(false);
+    stop();
   };
 
   const INGEST_TYPES = new Set([
@@ -649,6 +729,11 @@ export function ChatWindow({
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span className="truncate max-w-[180px]">WDC Chat</span>
             </button>
+            <ChatRunIndicator
+              state={chatRunState}
+              presentation={chatRunPresentation}
+              compact
+            />
             <button
               onClick={toggleDeep}
               aria-pressed={deepMode}
@@ -767,31 +852,15 @@ export function ChatWindow({
                   />
                 );
               })}
-              {status === "submitted" && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
-                  {healingMessageId
-                    ? `Self-heal forsøg ${healAttemptsRef.current.get(healingMessageId) ?? 1}/${MAX_HEAL_RETRIES} — retter canvas-struktur...`
-                    : "Tænker..."}
-                </div>
+              {showInlineRunState && (
+                <ChatRunIndicator
+                  state={chatRunState}
+                  presentation={chatRunPresentation}
+                />
               )}
             </div>
           )}
         </div>
-
-        {/* Typing Indicator — P0 */}
-        {isTyping && (
-          <div className="mx-auto max-w-2xl px-6 py-2">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-              <span className="text-xs text-muted-foreground">Aurora tænker...</span>
-            </div>
-          </div>
-        )}
 
         {/* Composer */}
         <div
@@ -896,7 +965,7 @@ export function ChatWindow({
               />
               {isLoading ? (
                 <button
-                  onClick={stop}
+                  onClick={stopChat}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive text-destructive-foreground transition hover:opacity-90"
                   aria-label="Stop"
                 >
