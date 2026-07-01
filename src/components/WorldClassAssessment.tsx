@@ -39,6 +39,21 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
         <span>{`runtime ${assessment.proofHarness.runtime_status}`}</span>
       </div>
 
+      <div className="agent-office-ref-list" aria-label="World-class evidence gates">
+        <div className="agent-office-ref-row">
+          <code>{`Evidence gates ${assessment.evidenceGatePassCount}/${assessment.evidenceGateTotal}`}</code>
+          <span>Proof readiness</span>
+          <small>diagnostic, user and runtime proof remain separate gates</small>
+        </div>
+        {assessment.evidenceGates.map((gate) => (
+          <div key={gate.id} className="agent-office-ref-row" data-state={gate.passed ? "pass" : "stop"}>
+            <code>{gate.passed ? "pass" : "blocked"}</code>
+            <span title={gate.evidence}>{gate.label}</span>
+            <small>{`requires ${gate.required_level}; observed ${gate.observed_level}`}</small>
+          </div>
+        ))}
+      </div>
+
       <div className="world-class-proof-harness">
         <span>{`${kpiSummary.total} KPI targets`}</span>
         <span>{`${kpiSummary.met} met`}</span>
