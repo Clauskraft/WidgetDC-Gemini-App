@@ -142,6 +142,47 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   );
   const inspectedObject = useMemo<InspectableObject>(() => {
     if (inspectedCapability) {
+      const styleSections = inspectedCapability.style_profile
+        ? [
+            {
+              label: "style",
+              value: `${inspectedCapability.style_profile.tone}; ${inspectedCapability.style_profile.density}; ${inspectedCapability.style_profile.diagram_family}`,
+            },
+            {
+              label: "palette",
+              value: inspectedCapability.style_profile.palette.join(", "),
+            },
+            {
+              label: "targets",
+              value: inspectedCapability.style_profile.artifact_targets.join(", "),
+            },
+            {
+              label: "risk",
+              value: `${inspectedCapability.style_profile.visual_risk_level}; ${inspectedCapability.style_profile.executive_depth}`,
+            },
+          ]
+        : [];
+      const visualSections = inspectedCapability.visual_strategy
+        ? [
+            {
+              label: "visual",
+              value: `${inspectedCapability.visual_strategy.visualization_family}; mermaid=${inspectedCapability.visual_strategy.mermaid_type}; drawio=${inspectedCapability.visual_strategy.drawio_type}`,
+            },
+            {
+              label: "widget",
+              value: inspectedCapability.visual_strategy.widget_slot,
+            },
+            {
+              label: "profiles",
+              value: inspectedCapability.visual_strategy.style_profile_ids.join(", "),
+            },
+            {
+              label: "boundary",
+              value: `${inspectedCapability.visual_strategy.proof_boundary}; graph_writes=${inspectedCapability.visual_strategy.graph_writes}; claim_mutations=${inspectedCapability.visual_strategy.claim_mutations}`,
+            },
+          ]
+        : [];
+
       return {
         title: inspectedCapability.label,
         type: inspectedCapability.kind,
@@ -170,6 +211,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             value: inspectedCapability.extraction_contract.required_fields.join(", "),
           },
           { label: "cost", value: "P0 read-only preview; provider executions=0" },
+          ...styleSections,
+          ...visualSections,
         ],
       };
     }
