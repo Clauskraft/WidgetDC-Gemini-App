@@ -93,6 +93,25 @@ export type StandardCandidateLearning = {
   proofBoundary: string;
 };
 
+export type LearningBroadcastEnvelope = {
+  transport: "A2A";
+  messageType: "STANDARD_CANDIDATE";
+  adoptionState: "candidate";
+  sourceScopeId: DemandLoopScopeId;
+  artifactId: string;
+  label: string;
+  proofBoundary: string;
+  payload: {
+    demand: string;
+    stageOrder: ProductionLoopStageId[];
+    candidateCount: number;
+    mappedCount: number;
+    debtCount: number;
+    capabilityDebtIds: string[];
+    extractionContracts: ExtractionContract[];
+  };
+};
+
 export type AgentOfficeProductionLoopModel = {
   stages: ProductionLoopStage[];
   projectTreeRefs: ProjectTreeRef[];
@@ -394,6 +413,30 @@ export function resolveAgentOfficeProductionLoop(
   };
 }
 
+export function createLearningBroadcastEnvelope(
+  model: ResolvedAgentOfficeProductionLoop,
+): LearningBroadcastEnvelope {
+  const summary = summarizeCompetenceMapping(model.competenceRows);
+  return {
+    transport: model.learning.transport,
+    messageType: model.learning.type,
+    adoptionState: "candidate",
+    sourceScopeId: model.scopeId,
+    artifactId: `agent-office-production-loop:${model.scopeId}`,
+    label: model.learning.label,
+    proofBoundary: model.learning.proofBoundary,
+    payload: {
+      demand: model.demand,
+      stageOrder: model.stages.map((stage) => stage.id),
+      candidateCount: summary.candidateCount,
+      mappedCount: summary.mappedCount,
+      debtCount: summary.debtCount,
+      capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
+      extractionContracts: model.competenceRows.map((candidate) => candidate.extraction_contract),
+    },
+  };
+}
+
 export function getProductionStage(
   model: AgentOfficeProductionLoopModel,
   stageId: ProductionLoopStageId,
@@ -442,6 +485,29 @@ export function validateProductionLoopModel(model: AgentOfficeProductionLoopMode
         failures.push(`invalid explicit dependency ${dependency.from}->${dependency.to}`);
       }
     }
+  }
+  return { ok: failures.length === 0, failures };
+}
+
+export function validateLearningBroadcastEnvelope(envelope: LearningBroadcastEnvelope) {
+  const failures: string[] = [];
+  if (envelope.transport !== "A2A" || envelope.messageType !== "STANDARD_CANDIDATE") {
+    failures.push("Learning envelope must use A2A STANDARD_CANDIDATE");
+  }
+  if (envelope.adoptionState !== "candidate") {
+    failures.push("Learning envelope must remain candidate until adopted and verified");
+  }
+  if (envelope.payload.candidateCount < envelope.payload.mappedCount) {
+    failures.push("Learning envelope mapped count cannot exceed candidate count");
+  }
+  if (!envelope.payload.extractionContracts.length) {
+    failures.push("Learning envelope must include extraction contracts");
+  }
+  if (!envelope.payload.capabilityDebtIds.length) {
+    failures.push("Learning envelope must carry CapabilityDebtLedger ids");
+  }
+  if (envelope.proofBoundary.toLowerCase().includes("runtime proof")) {
+    failures.push("Learning envelope must not claim runtime proof");
   }
   return { ok: failures.length === 0, failures };
 }
