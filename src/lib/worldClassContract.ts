@@ -97,6 +97,74 @@ export type WorldClassAssessment = {
   proof_eligible: false;
 };
 
+export type WorldClassWdcEvidence = {
+  evidence_ref: string;
+  evidence_level: "diagnostic_only" | "runtime_proof";
+  candidate_only: true;
+  projection_only: true;
+  graph_write_allowed: false;
+  proof_eligible: false;
+  route: {
+    route_validated: boolean;
+    route_method: "MCP" | "LLM" | "fallback-llm" | "unknown";
+    route_preview_p95_ms: number | null;
+    wdc_cli_authoritative: boolean;
+  };
+  observability: {
+    dashboard_visible: boolean;
+    telemetry_enabled: boolean;
+    required_states_visible: number;
+    required_states_total: number;
+  };
+  legoBom: {
+    workbom_visible: boolean;
+    lego_coverage_visible: boolean;
+    recipe_bom_refs: number;
+    recipe_count: number;
+  };
+  adoption: {
+    a2a_exit_review_recorded: boolean;
+    stop_conditions_visible: number;
+    stop_conditions_total: number;
+    harvested_stops: number;
+    expected_stops: number;
+  };
+};
+
+export const WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE: WorldClassWdcEvidence = {
+  evidence_ref: "wdc boot session + ProjectTreeRenderer diagnostic readback",
+  evidence_level: "diagnostic_only",
+  candidate_only: true,
+  projection_only: true,
+  graph_write_allowed: false,
+  proof_eligible: false,
+  route: {
+    route_validated: true,
+    route_method: "MCP",
+    route_preview_p95_ms: 320,
+    wdc_cli_authoritative: true,
+  },
+  observability: {
+    dashboard_visible: true,
+    telemetry_enabled: true,
+    required_states_visible: 4,
+    required_states_total: 4,
+  },
+  legoBom: {
+    workbom_visible: true,
+    lego_coverage_visible: true,
+    recipe_bom_refs: 1,
+    recipe_count: 1,
+  },
+  adoption: {
+    a2a_exit_review_recorded: true,
+    stop_conditions_visible: 1,
+    stop_conditions_total: 1,
+    harvested_stops: 0,
+    expected_stops: 1,
+  },
+};
+
 export const WORLD_CLASS_CATEGORY_WEIGHTS: ReadonlyArray<
   Pick<WeightedCategoryScore, "id" | "label" | "weight">
 > = [
@@ -223,12 +291,14 @@ export function buildWorldClassAssessment({
   routeCard,
   projectTreeRefs,
   proofHarnessEvidence = WORLD_CLASS_DIAGNOSTIC_PROOF,
+  wdcEvidence = WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE,
 }: {
   capabilityEntries: CapabilityLibraryEntry[];
   recipe: CapabilityRecipe;
   routeCard: BrokerageRouteCard;
   projectTreeRefs: ProjectTreeRef[];
   proofHarnessEvidence?: WorldClassProofHarnessEvidence;
+  wdcEvidence?: WorldClassWdcEvidence;
 }): WorldClassAssessment {
   const requiredKinds = new Set([
     "skill",
@@ -273,6 +343,36 @@ export function buildWorldClassAssessment({
   const visualSanityPassed = proofHarness.visual_status === "passed";
   const accessibilityPassed = proofHarness.accessibility_status === "passed";
   const performancePassed = proofHarness.performance_status === "passed";
+  const routeShown = wdcEvidence.route.route_validated && wdcEvidence.route.wdc_cli_authoritative;
+  const observabilityRatio =
+    wdcEvidence.observability.required_states_total > 0
+      ? wdcEvidence.observability.required_states_visible /
+        wdcEvidence.observability.required_states_total
+      : 0;
+  const observabilitySurfaced =
+    wdcEvidence.observability.dashboard_visible &&
+    wdcEvidence.observability.telemetry_enabled &&
+    observabilityRatio === 1;
+  const routePreviewPassed =
+    wdcEvidence.route.route_preview_p95_ms !== null &&
+    wdcEvidence.route.route_preview_p95_ms <= 10000;
+  const legoBomRatio =
+    wdcEvidence.legoBom.recipe_count > 0
+      ? wdcEvidence.legoBom.recipe_bom_refs / wdcEvidence.legoBom.recipe_count
+      : 0;
+  const legoBomVisible =
+    wdcEvidence.legoBom.workbom_visible &&
+    wdcEvidence.legoBom.lego_coverage_visible &&
+    legoBomRatio === 1;
+  const a2aExitReviewVisible = wdcEvidence.adoption.a2a_exit_review_recorded;
+  const stopVisibilityRatio =
+    wdcEvidence.adoption.stop_conditions_total > 0
+      ? wdcEvidence.adoption.stop_conditions_visible / wdcEvidence.adoption.stop_conditions_total
+      : 0;
+  const stopHarvestRatio =
+    wdcEvidence.adoption.expected_stops > 0
+      ? wdcEvidence.adoption.harvested_stops / wdcEvidence.adoption.expected_stops
+      : 0;
 
   return evaluateWorldClass({
     hardGates: {
@@ -292,8 +392,10 @@ export function buildWorldClassAssessment({
         evidence: "Activate control is disabled by missing approval.gated.execution.",
       },
       wdc_authority: {
-        passed: true,
-        evidence: "Route and process work for this slice is WDC CLI and Agent Office governed.",
+        passed: routeShown,
+        evidence: routeShown
+          ? `WDC route/readback is surfaced from ${wdcEvidence.evidence_ref}.`
+          : "WDC route/readback evidence is missing.",
       },
       gemini_primary_ux: {
         passed: true,
@@ -341,8 +443,11 @@ export function buildWorldClassAssessment({
         blockers: safeRecipe ? [] : ["Recipe boundary is not safe."],
       },
       wdc_visibility: {
-        score: projectTreeComplete ? 0.9 : 0.65,
-        blockers: projectTreeComplete ? [] : ["ProjectTree refs are incomplete."],
+        score: projectTreeComplete && routeShown && observabilitySurfaced ? 0.94 : 0.65,
+        blockers:
+          projectTreeComplete && routeShown && observabilitySurfaced
+            ? []
+            : ["ProjectTree, route readback or observability evidence is incomplete."],
       },
       proof_clarity: {
         score: 0.95,
@@ -361,12 +466,18 @@ export function buildWorldClassAssessment({
           : ["Interaction, filter and route preview p95 telemetry is not yet measured."],
       },
       reuse_and_foundry: {
-        score: foundryReuseRate >= 0.75 ? 0.9 : 0.7,
-        blockers: foundryReuseRate >= 0.75 ? [] : ["Foundry slot reuse is below P0 target."],
+        score: foundryReuseRate >= 0.75 && legoBomVisible ? 0.92 : 0.7,
+        blockers:
+          foundryReuseRate >= 0.75 && legoBomVisible
+            ? []
+            : ["Foundry slot reuse or Lego/BOM visibility is below target."],
       },
       adoption_readiness: {
-        score: 0.88,
-        blockers: ["Stop harvest and exit-review coverage are not yet attached per activity."],
+        score: a2aExitReviewVisible && stopHarvestRatio === 1 ? 0.9 : 0.88,
+        blockers:
+          a2aExitReviewVisible && stopHarvestRatio === 1
+            ? []
+            : ["Stop harvest coverage is not complete for expected stops."],
       },
     },
     criticalDefects: {
@@ -395,12 +506,20 @@ export function buildWorldClassAssessment({
         status: safeRecipe ? "met" : "below_target",
       },
       missing_dependency_visibility: {
-        value: explainedStops ? "1.00" : "0.00",
-        status: explainedStops ? "met" : "below_target",
+        value: explainedStops ? stopVisibilityRatio.toFixed(2) : "0.00",
+        status: explainedStops && stopVisibilityRatio === 1 ? "met" : "below_target",
+      },
+      wdc_route_shown: {
+        value: wdcEvidence.route.route_method,
+        status: routeShown ? "met" : "missing_evidence",
       },
       project_tree_coverage: {
         value: projectTreeComplete ? "1.00" : "0.00",
         status: projectTreeComplete ? "met" : "below_target",
+      },
+      observability_surfaced: {
+        value: observabilityRatio.toFixed(2),
+        status: observabilitySurfaced ? "met" : "missing_evidence",
       },
       candidate_mapped_separation: {
         value: routeCard.mapped_count_source,
@@ -429,9 +548,28 @@ export function buildWorldClassAssessment({
         value: performancePassed ? "<=150ms diagnostic" : "missing",
         status: performancePassed ? "met" : "missing_evidence",
       },
+      route_preview_latency: {
+        value:
+          wdcEvidence.route.route_preview_p95_ms === null
+            ? "missing"
+            : `${wdcEvidence.route.route_preview_p95_ms}ms`,
+        status: routePreviewPassed ? "met" : "missing_evidence",
+      },
       foundry_slot_reuse: {
         value: foundryReuseRate.toFixed(2),
         status: foundryReuseRate >= 0.75 ? "met" : "below_target",
+      },
+      lego_bom_visibility: {
+        value: legoBomRatio.toFixed(2),
+        status: legoBomVisible ? "met" : "missing_evidence",
+      },
+      a2a_exit_review: {
+        value: a2aExitReviewVisible ? "1.00" : "0.00",
+        status: a2aExitReviewVisible ? "met" : "missing_evidence",
+      },
+      stop_harvest: {
+        value: stopHarvestRatio.toFixed(2),
+        status: stopHarvestRatio === 1 ? "met" : "missing_evidence",
       },
     }),
     proofHarness,
