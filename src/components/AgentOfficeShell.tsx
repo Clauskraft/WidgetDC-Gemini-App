@@ -23,6 +23,7 @@ import { CanvasWorkspace } from "@/components/CanvasWorkspace";
 import { CapabilityLibrary } from "@/components/CapabilityLibrary";
 import { ComposeRecipePanel } from "@/components/ComposeRecipePanel";
 import { LibraryNav } from "@/components/LibraryNav";
+import { ObjectInspector, type InspectableObject } from "@/components/ObjectInspector";
 import { ProjectTreePanel } from "@/components/ProjectTreePanel";
 import { SystemStatusPill } from "@/components/SystemStatusPill";
 import { WDCObjectCard } from "@/components/WDCObjectCard";
@@ -120,10 +121,73 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     () => capabilityLibrary.filter((entry) => selectedCapabilityIds.includes(entry.id)),
     [capabilityLibrary, selectedCapabilityIds],
   );
+  const inspectedCapability = useMemo(
+    () =>
+      selectedCapabilityIds.length
+        ? capabilityLibrary.find(
+            (entry) => entry.id === selectedCapabilityIds[selectedCapabilityIds.length - 1],
+          )
+        : undefined,
+    [capabilityLibrary, selectedCapabilityIds],
+  );
   const recipe = useMemo(
     () => buildCapabilityRecipe(activeScope.title, selectedCapabilities),
     [activeScope.title, selectedCapabilities],
   );
+  const inspectedObject = useMemo<InspectableObject>(() => {
+    if (inspectedCapability) {
+      return {
+        title: inspectedCapability.label,
+        type: inspectedCapability.kind,
+        summary: inspectedCapability.description,
+        proofBoundary: inspectedCapability.proof_eligible
+          ? "Proof eligibility must still be read back from WDC runtime gates."
+          : "Candidate/projection only. This cannot execute, write graph data, or promote claims.",
+        status: inspectedCapability.readiness,
+        nextAction: "Compose or dry-run through WDC Agent Office before any execution.",
+        meta: [
+          { label: "repo", value: inspectedCapability.source_repo },
+          { label: "domain", value: inspectedCapability.domain },
+          { label: "fit", value: inspectedCapability.source_fit_score.toFixed(2) },
+          { label: "mapped", value: "graph_readback_only" },
+        ],
+        sections: [
+          { label: "does", value: inspectedCapability.description },
+          {
+            label: "recommended",
+            value: `Provides ${inspectedCapability.provided_competences.join(", ")}`,
+          },
+          { label: "requires", value: inspectedCapability.required_competences.join(", ") },
+          { label: "source", value: inspectedCapability.source_ref },
+          {
+            label: "contract",
+            value: inspectedCapability.extraction_contract.required_fields.join(", "),
+          },
+          { label: "cost", value: "P0 read-only preview; provider executions=0" },
+        ],
+      };
+    }
+
+    return {
+      title: recipe.intent,
+      type: "candidate_recipe",
+      summary: `${recipe.candidate_count} selected candidates; mapped_count=${recipe.mapped_count} from ${recipe.mapped_count_source}.`,
+      proofBoundary:
+        "Recipe composition is candidate-only and projection-only until WDC approval and runtime readback exist.",
+      status: recipe.activation.status,
+      nextAction: recipe.activation.next_action,
+      meta: [
+        { label: "candidate", value: String(recipe.candidate_count) },
+        { label: "mapped", value: String(recipe.mapped_count) },
+        { label: "source", value: recipe.mapped_count_source },
+      ],
+      sections: [
+        { label: "missing", value: recipe.activation.missing_competence },
+        { label: "graph", value: `graph_write_allowed=${recipe.graph_write_allowed}` },
+        { label: "proof", value: `proof_eligible=${recipe.proof_eligible}` },
+      ],
+    };
+  }, [inspectedCapability, recipe]);
   const systemStatus = buildAgentOfficeStatus(productionLoop);
   const brokerageRouteCard = buildBrokerageRouteCard(activeScope.id);
   const worldClassAssessment = useMemo(
@@ -242,6 +306,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         />
 
         <ComposeRecipePanel recipe={recipe} />
+
+        <ObjectInspector item={inspectedObject} />
 
         <WorldClassAssessment assessment={worldClassAssessment} />
 
@@ -619,6 +685,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             ))}
           </div>
         </div>
+
+        <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_closeout" />
 
         <div className="agent-office-debt-panel">
           <div className="agent-office-inspector-icon">
