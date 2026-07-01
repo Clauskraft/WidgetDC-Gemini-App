@@ -12,6 +12,8 @@ export type ProductionLoopStageId =
   | "closeout"
   | "learning";
 
+export type DemandLoopScopeId = "app" | "book" | "investigation" | "operate" | "general";
+
 export type ProjectTreePhase = "Start" | "Closeout";
 
 export type CompetenceMappingState = "matched" | "mapped" | "debt";
@@ -48,6 +50,42 @@ export type CapabilityDebtItem = {
   reason: string;
 };
 
+export type WorkBomItem = {
+  id: string;
+  label: string;
+  stage: ProductionLoopStageId;
+  buildable: boolean;
+};
+
+export type RouteCatalogEntry = {
+  id: string;
+  label: string;
+  method: string;
+};
+
+export type EnvironmentBomItem = {
+  id: string;
+  label: string;
+  status: CompetenceMappingState;
+};
+
+export type ExplicitDependency = {
+  from: ProductionLoopStageId;
+  to: ProductionLoopStageId;
+  reason: "stage-order";
+};
+
+export type DemandLoopProfile = {
+  scopeId: DemandLoopScopeId;
+  label: string;
+  demand: string;
+  workBom: WorkBomItem[];
+  routeCatalog: RouteCatalogEntry[];
+  environmentBom: EnvironmentBomItem[];
+  competenceCandidate: CompetenceMappingCandidate;
+  explicitDependencies: ExplicitDependency[];
+};
+
 export type StandardCandidateLearning = {
   type: "STANDARD_CANDIDATE";
   transport: "A2A";
@@ -62,6 +100,8 @@ export type AgentOfficeProductionLoopModel = {
   capabilityDebt: CapabilityDebtItem[];
   learning: StandardCandidateLearning;
 };
+
+export type ResolvedAgentOfficeProductionLoop = AgentOfficeProductionLoopModel & DemandLoopProfile;
 
 export type CompetenceMappingSummary = {
   candidateCount: number;
@@ -83,6 +123,16 @@ const expectedStageOrder: ProductionLoopStageId[] = [
   "closeout",
   "learning",
 ];
+
+const stageIndex = new Map(expectedStageOrder.map((stageId, index) => [stageId, index]));
+
+const stageOrderDependencies: ExplicitDependency[] = expectedStageOrder
+  .slice(0, -1)
+  .map((stageId, index) => ({
+    from: stageId,
+    to: expectedStageOrder[index + 1],
+    reason: "stage-order",
+  }));
 
 export const agentOfficeProductionLoop = {
   stages: [
@@ -165,6 +215,185 @@ export const agentOfficeProductionLoop = {
   },
 } satisfies AgentOfficeProductionLoopModel;
 
+export const demandLoopProfiles = {
+  app: {
+    scopeId: "app",
+    label: "Build app",
+    demand: "Convert a product demand into a governed app delivery loop.",
+    workBom: [
+      { id: "app-scope", label: "Scope + user flow", stage: "workbom", buildable: true },
+      { id: "app-ui", label: "Chat + canvas surface", stage: "execution", buildable: true },
+      {
+        id: "app-proof",
+        label: "Visual + build verification",
+        stage: "verification",
+        buildable: true,
+      },
+    ],
+    routeCatalog: [
+      { id: "app-route", label: "Frontend implementation route", method: "branch -> PR -> checks" },
+    ],
+    environmentBom: [
+      { id: "app-repo", label: "WidgetDC-Gemini-App repo", status: "mapped" },
+      { id: "app-control", label: "WDC CLI Agent Office claim", status: "matched" },
+    ],
+    competenceCandidate: {
+      required: "app delivery demand",
+      provided: "scope-specific WorkBOM + UI route",
+      state: "mapped",
+      source_fit_score: 0.82,
+      extraction_contract: {
+        source: "agent-office-static-model",
+        artifact: "demandLoopProfiles.app",
+        requiredEvidence: ["active scope", "WorkBOM entries", "RouteCatalog entry"],
+      },
+    },
+    explicitDependencies: stageOrderDependencies,
+  },
+  book: {
+    scopeId: "book",
+    label: "Write book",
+    demand: "Convert a writing demand into a governed book production loop.",
+    workBom: [
+      {
+        id: "book-outline",
+        label: "Synopsis + chapter outline",
+        stage: "workbom",
+        buildable: true,
+      },
+      { id: "book-research", label: "Research backlog", stage: "execution", buildable: true },
+      { id: "book-closeout", label: "Draft handoff tree", stage: "closeout", buildable: true },
+    ],
+    routeCatalog: [
+      { id: "book-route", label: "Editorial route", method: "outline -> draft -> review" },
+    ],
+    environmentBom: [
+      { id: "book-canvas", label: "Canvas notes", status: "mapped" },
+      { id: "book-sources", label: "Source evidence register", status: "debt" },
+    ],
+    competenceCandidate: {
+      required: "book production demand",
+      provided: "outline WorkBOM + editorial route",
+      state: "mapped",
+      source_fit_score: 0.78,
+      extraction_contract: {
+        source: "agent-office-static-model",
+        artifact: "demandLoopProfiles.book",
+        requiredEvidence: ["active scope", "chapter outline", "source backlog"],
+      },
+    },
+    explicitDependencies: stageOrderDependencies,
+  },
+  investigation: {
+    scopeId: "investigation",
+    label: "Investigate",
+    demand: "Convert an investigation demand into a governed evidence loop.",
+    workBom: [
+      {
+        id: "investigation-hypothesis",
+        label: "Hypothesis set",
+        stage: "workbom",
+        buildable: true,
+      },
+      { id: "investigation-sources", label: "Source matrix", stage: "execution", buildable: true },
+      { id: "investigation-proof", label: "Evidence boundary", stage: "proof", buildable: true },
+    ],
+    routeCatalog: [
+      {
+        id: "investigation-route",
+        label: "Evidence route",
+        method: "hypothesis -> source -> proof",
+      },
+    ],
+    environmentBom: [
+      { id: "investigation-canvas", label: "Evidence canvas", status: "mapped" },
+      { id: "investigation-chain", label: "Chain-of-custody readback", status: "debt" },
+    ],
+    competenceCandidate: {
+      required: "investigation demand",
+      provided: "hypothesis WorkBOM + evidence route",
+      state: "mapped",
+      source_fit_score: 0.8,
+      extraction_contract: {
+        source: "agent-office-static-model",
+        artifact: "demandLoopProfiles.investigation",
+        requiredEvidence: ["active scope", "hypothesis list", "source matrix"],
+      },
+    },
+    explicitDependencies: stageOrderDependencies,
+  },
+  operate: {
+    scopeId: "operate",
+    label: "Operate WDC",
+    demand: "Convert an operational WDC demand into a governed Agent Office loop.",
+    workBom: [
+      { id: "operate-boot", label: "Boot + actor authority", stage: "workbom", buildable: true },
+      { id: "operate-claim", label: "Claim + conflict gate", stage: "execution", buildable: true },
+      { id: "operate-proof", label: "ProofGate readback", stage: "proof", buildable: false },
+    ],
+    routeCatalog: [
+      { id: "operate-route", label: "WDC CLI route", method: "boot -> claim -> verify -> release" },
+    ],
+    environmentBom: [
+      { id: "operate-control", label: "WidgeTDC control repo", status: "matched" },
+      { id: "operate-target", label: "Target repo branch", status: "matched" },
+      { id: "operate-runtime", label: "Runtime deployment readback", status: "debt" },
+    ],
+    competenceCandidate: {
+      required: "WDC operation demand",
+      provided: "WDC CLI session + claim route",
+      state: "matched",
+      source_fit_score: 0.9,
+      extraction_contract: {
+        source: "wdc-graph-readback",
+        artifact: "WDC boot session",
+        requiredEvidence: ["verified actor", "boot session", "claim conflicts empty"],
+      },
+    },
+    explicitDependencies: stageOrderDependencies,
+  },
+  general: {
+    scopeId: "general",
+    label: "Think",
+    demand: "Convert an open-ended demand into a governed reasoning loop.",
+    workBom: [
+      { id: "general-goal", label: "Goal framing", stage: "workbom", buildable: true },
+      { id: "general-options", label: "Options + tradeoffs", stage: "route", buildable: true },
+      { id: "general-next", label: "Next action", stage: "closeout", buildable: true },
+    ],
+    routeCatalog: [
+      { id: "general-route", label: "Decision route", method: "frame -> compare -> decide" },
+    ],
+    environmentBom: [
+      { id: "general-canvas", label: "Canvas scratchpad", status: "mapped" },
+      { id: "general-proof", label: "External proof readback", status: "debt" },
+    ],
+    competenceCandidate: {
+      required: "general reasoning demand",
+      provided: "decision WorkBOM + canvas route",
+      state: "mapped",
+      source_fit_score: 0.74,
+      extraction_contract: {
+        source: "agent-office-static-model",
+        artifact: "demandLoopProfiles.general",
+        requiredEvidence: ["active scope", "goal frame", "next action"],
+      },
+    },
+    explicitDependencies: stageOrderDependencies,
+  },
+} satisfies Record<DemandLoopScopeId, DemandLoopProfile>;
+
+export function resolveAgentOfficeProductionLoop(
+  scopeId: DemandLoopScopeId,
+): ResolvedAgentOfficeProductionLoop {
+  const profile = demandLoopProfiles[scopeId];
+  return {
+    ...agentOfficeProductionLoop,
+    ...profile,
+    competenceRows: [...agentOfficeProductionLoop.competenceRows, profile.competenceCandidate],
+  };
+}
+
 export function getProductionStage(
   model: AgentOfficeProductionLoopModel,
   stageId: ProductionLoopStageId,
@@ -204,6 +433,15 @@ export function validateProductionLoopModel(model: AgentOfficeProductionLoopMode
   }
   if (model.learning.transport !== "A2A" || model.learning.type !== "STANDARD_CANDIDATE") {
     failures.push("LearningExtractor must broadcast an A2A STANDARD_CANDIDATE");
+  }
+  if ("explicitDependencies" in model) {
+    for (const dependency of model.explicitDependencies as ExplicitDependency[]) {
+      const fromIndex = stageIndex.get(dependency.from);
+      const toIndex = stageIndex.get(dependency.to);
+      if (dependency.reason !== "stage-order" || toIndex !== (fromIndex ?? -2) + 1) {
+        failures.push(`invalid explicit dependency ${dependency.from}->${dependency.to}`);
+      }
+    }
   }
   return { ok: failures.length === 0, failures };
 }
