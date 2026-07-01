@@ -30,6 +30,11 @@ describe("AgentOfficeShell", () => {
     expect(html).toContain("approval.gated.execution");
     expect(html).toContain("graph_write_allowed=false");
     expect(html).toContain("ProjectTree");
+    expect(html).toContain("Start frame");
+    expect(html).toContain("Closeout frame");
+    expect(html).toContain("Object inspector");
+    expect(html).toContain("candidate_recipe");
+    expect(html).toContain("Next safe action");
     expect(html).toContain("World-class contract");
     expect(html).toContain("not_world_class");
     expect(html).toContain("P0 defects 0");

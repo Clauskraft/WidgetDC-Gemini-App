@@ -16,4 +16,33 @@ describe("ObjectInspector", () => {
     expect(html).toContain(object.proofBoundary);
     expect(html).toContain(document.persistence.kind);
   });
+
+  it("renders generic capability cockpit objects with metadata and next safe action", () => {
+    const html = renderToString(
+      <ObjectInspector
+        item={{
+          title: "Runtime Truth",
+          type: "pattern",
+          summary: "Verify claims through live readback.",
+          proofBoundary: "Candidate/projection only.",
+          nextAction: "Dry-run through WDC Agent Office.",
+          meta: [
+            { label: "repo", value: "WidgeTDC" },
+            { label: "mapped", value: "graph_readback_only" },
+          ],
+          sections: [
+            { label: "requires", value: "proof.boundary" },
+            { label: "cost", value: "provider executions=0" },
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain("Runtime Truth");
+    expect(html).toContain("pattern");
+    expect(html).toContain("Candidate/projection only.");
+    expect(html).toContain("Next safe action");
+    expect(html).toContain("graph_readback_only");
+    expect(html).toContain("provider executions=0");
+  });
 });
