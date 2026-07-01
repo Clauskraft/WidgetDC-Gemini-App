@@ -1,4 +1,13 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   AppWindow,
@@ -28,21 +37,20 @@ import {
   summarizeCompetenceMapping,
   summarizeOperationalLedgers,
   summarizeProofGate,
-  type DemandLoopScopeId,
   type ProductionLoopStageId,
 } from "@/lib/agentOfficeProductionLoop";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_WORK_MODE_ID,
+  WORK_MODES,
+  toWorkModeChatContext,
+  type WorkMode,
+  type WorkModeId,
+} from "@/lib/workModes";
 
-type WorkScopeId = DemandLoopScopeId;
-
-type WorkScope = {
-  id: WorkScopeId;
-  label: string;
-  title: string;
-  description: string;
+type WorkModeView = WorkMode & {
   icon: typeof AppWindow;
   accent: string;
-  prompt: string;
 };
 
 type CanvasNode = {
@@ -54,55 +62,20 @@ type CanvasNode = {
   tone: string;
 };
 
-const scopes: WorkScope[] = [
-  {
-    id: "app",
-    label: "App",
-    title: "Build app",
-    description: "Produkt, UX, repo, roadmap og leverance samlet i et spor.",
-    icon: AppWindow,
-    accent: "agent-office-scope-blue",
-    prompt: "Lav en WDC-gated app-plan med scope, UX, arkitektur, work items og verifikation.",
-  },
-  {
-    id: "book",
-    label: "Bog",
-    title: "Write book",
-    description: "Outline, kapitler, research notes og redaktionel fremdrift.",
-    icon: BookOpen,
-    accent: "agent-office-scope-gold",
-    prompt: "Byg et bogprojekt med synopsis, kapitelstruktur, research-backlog og skriveplan.",
-  },
-  {
-    id: "investigation",
-    label: "Efterforsk",
-    title: "Investigate",
-    description: "Hypoteser, kilder, beviser, forbindelser og næste spørgsmål.",
-    icon: FileSearch,
-    accent: "agent-office-scope-red",
-    prompt: "Start en efterforskning med hypoteser, kildematrix, bevisgraf og åbne usikkerheder.",
-  },
-  {
-    id: "operate",
-    label: "WDC",
-    title: "Operate WDC",
-    description: "Agent Office, graph state, claims, gates og runtime readbacks.",
-    icon: Radar,
-    accent: "agent-office-scope-green",
-    prompt: "Kør WDC Agent Office status: boot, claims, A2A, proof gates og næste sikre handling.",
-  },
-  {
-    id: "general",
-    label: "General",
-    title: "Think",
-    description: "Åben assistent-mode med canvas-noter og beslutningsspor.",
-    icon: Brain,
-    accent: "agent-office-scope-violet",
-    prompt: "Hjælp mig med at tænke klart: opsummer mål, muligheder, tradeoffs og næste handling.",
-  },
-];
+const modeVisuals: Record<WorkModeId, Pick<WorkModeView, "icon" | "accent">> = {
+  general: { icon: Brain, accent: "agent-office-scope-violet" },
+  app: { icon: AppWindow, accent: "agent-office-scope-blue" },
+  book: { icon: BookOpen, accent: "agent-office-scope-gold" },
+  investigation: { icon: FileSearch, accent: "agent-office-scope-red" },
+  operate: { icon: Radar, accent: "agent-office-scope-green" },
+};
 
-const nodesByScope: Record<WorkScopeId, CanvasNode[]> = {
+const workModes: WorkModeView[] = WORK_MODES.map((mode) => ({
+  ...mode,
+  ...modeVisuals[mode.id],
+}));
+
+const nodesByScope: Record<WorkModeId, CanvasNode[]> = {
   app: [
     { id: "intent", label: "Intent", meta: "Scope + user", x: 62, y: 70, tone: "blue" },
     { id: "ux", label: "Experience", meta: "Chat + canvas", x: 258, y: 44, tone: "gold" },
@@ -135,9 +108,42 @@ const nodesByScope: Record<WorkScopeId, CanvasNode[]> = {
   ],
 };
 
+export function WorkModeSwitcher({
+  activeModeId,
+  modes,
+  onSelect,
+}: {
+  activeModeId: WorkModeId;
+  modes: WorkModeView[];
+  onSelect: (id: WorkModeId) => void;
+}) {
+  return (
+    <div className="agent-office-scopes" role="tablist" aria-label="Work modes">
+      {modes.map((mode) => {
+        const Icon = mode.icon;
+        const active = mode.id === activeModeId;
+        return (
+          <button
+            key={mode.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onSelect(mode.id)}
+            className={cn("agent-office-scope", mode.accent, active && "agent-office-scope-active")}
+            title={mode.description}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{mode.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
-  const [activeScopeId, setActiveScopeId] = useState<WorkScopeId>("app");
-  const [selectedNode, setSelectedNode] = useState("intent");
+  const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
+  const [selectedNode, setSelectedNode] = useState(nodesByScope[DEFAULT_WORK_MODE_ID][0].id);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [zoom, setZoom] = useState(0.92);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -148,7 +154,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     | null
   >(null);
 
-  const activeScope = scopes.find((scope) => scope.id === activeScopeId) ?? scopes[0];
+  const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
   const nodes = useMemo(
     () =>
       nodesByScope[activeScope.id].map((node) => ({
@@ -185,8 +191,19 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     (item) => !item.proofEligible,
   ).length;
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
+  const chatMode = useMemo(() => toWorkModeChatContext(activeScope), [activeScope]);
+  const workspaceChildren = useMemo(
+    () =>
+      Children.map(children, (child) => {
+        if (!isValidElement(child)) return child;
+        return cloneElement(child as ReactElement<{ workMode?: typeof chatMode }>, {
+          workMode: chatMode,
+        });
+      }),
+    [children, chatMode],
+  );
 
-  const setScope = (id: WorkScopeId) => {
+  const setScope = (id: WorkModeId) => {
     setActiveScopeId(id);
     setSelectedNode(nodesByScope[id][0].id);
     setOffset({ x: 0, y: 0 });
@@ -224,7 +241,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="agent-office-shell">
-      <section className="agent-office-chat">{children}</section>
+      <section className="agent-office-chat">{workspaceChildren}</section>
       <aside
         id="agent-office-canvas"
         className="agent-office-canvas"
@@ -248,29 +265,26 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="agent-office-scopes" role="tablist" aria-label="Work scopes">
-          {scopes.map((scope) => {
-            const Icon = scope.icon;
-            const active = scope.id === activeScope.id;
-            return (
-              <button
-                key={scope.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setScope(scope.id)}
-                className={cn(
-                  "agent-office-scope",
-                  scope.accent,
-                  active && "agent-office-scope-active",
-                )}
-                title={scope.description}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{scope.label}</span>
-              </button>
-            );
-          })}
+        <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
+
+        <div className="agent-office-mode-palette" aria-label="Object palette">
+          <div className="agent-office-workstrip-label">Object palette</div>
+          <div>
+            {activeScope.canvasPalette.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="agent-office-workstrip">
+          <div>
+            <div className="agent-office-workstrip-label">Mode prompt</div>
+            <p>{activeScope.prompt}</p>
+          </div>
+          <div className="agent-office-status-pill">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Mode
+          </div>
         </div>
 
         <div className="agent-office-workstrip">

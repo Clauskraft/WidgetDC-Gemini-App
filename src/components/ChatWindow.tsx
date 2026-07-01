@@ -40,6 +40,7 @@ import {
   type ChatRunState,
   type ChatRunStatePresentation,
 } from "@/lib/chatRunState";
+import type { WorkModeChatContext } from "@/lib/workModes";
 
 const SUGGESTIONS = [
   {
@@ -164,12 +165,14 @@ export function ChatWindow({
   initialMessages,
   initialInput,
   gem,
+  workMode,
   onFirstMessage,
 }: {
   threadId: string;
   initialMessages: UIMessage[];
   initialInput?: string;
   gem?: GemContext;
+  workMode?: WorkModeChatContext;
   onFirstMessage?: () => void;
 }) {
   const { upsertThread } = useThreads();
@@ -336,7 +339,9 @@ export function ChatWindow({
       : undefined,
   );
   const showInlineRunState =
-    isActiveChatRunState(chatRunState) || chatRunState === "errored" || chatRunState === "cancelled";
+    isActiveChatRunState(chatRunState) ||
+    chatRunState === "errored" ||
+    chatRunState === "cancelled";
 
   useEffect(() => {
     if (status !== "ready" || messages.length > 0) setOptimisticSending(false);
@@ -561,21 +566,30 @@ export function ChatWindow({
       toIngest.forEach((f) => form.append("file", f));
       fetch("/api/ingest", { method: "POST", body: form })
         .then((r) => r.json())
-        .then((data: { results?: Array<{ id: string; filename: string; status: "ok" | "error"; error?: string }> }) => {
-          if (!data.results) return;
-          setIngestedSources((prev) =>
-            prev.map((src) => {
-              const result = data.results!.find((r) => r.filename === src.filename);
-              if (!result) return src;
-              return {
-                id: result.id || src.filename,
-                filename: src.filename,
-                status: result.status,
-                error: result.error,
-              };
-            }),
-          );
-        })
+        .then(
+          (data: {
+            results?: Array<{
+              id: string;
+              filename: string;
+              status: "ok" | "error";
+              error?: string;
+            }>;
+          }) => {
+            if (!data.results) return;
+            setIngestedSources((prev) =>
+              prev.map((src) => {
+                const result = data.results!.find((r) => r.filename === src.filename);
+                if (!result) return src;
+                return {
+                  id: result.id || src.filename,
+                  filename: src.filename,
+                  status: result.status,
+                  error: result.error,
+                };
+              }),
+            );
+          },
+        )
         .catch((err) => {
           console.error("Ingest fejlede:", err);
           setIngestedSources((prev) =>
@@ -600,6 +614,15 @@ export function ChatWindow({
   };
 
   const empty = messages.length === 0;
+  const emptyStarters = gem?.starters ?? workMode?.starters ?? SUGGESTIONS;
+  const emptyGreeting = gem
+    ? gem.name
+    : (workMode?.chatGreeting ?? "Hej. Hvad arbejder vi på i dag?");
+  const emptyTagline =
+    gem?.tagline ?? workMode?.chatTagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen.";
+  const composerPlaceholder = workMode
+    ? `Skriv til WDC · ${workMode.id}`
+    : "Skriv din besked til Aurora...";
 
   return (
     <div className="relative flex h-screen flex-1">
@@ -661,10 +684,7 @@ export function ChatWindow({
                   <Briefcase className="h-4 w-4" />
                   Kontekst
                   <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      engSelectorOpen && "rotate-180",
-                    )}
+                    className={cn("h-3 w-3 transition-transform", engSelectorOpen && "rotate-180")}
                   />
                 </button>
                 {engSelectorOpen && (
@@ -680,9 +700,7 @@ export function ChatWindow({
                         <li key={eng.id}>
                           <button
                             onClick={() => {
-                              setActiveEngagement(
-                                activeEngagement?.id === eng.id ? null : eng,
-                              );
+                              setActiveEngagement(activeEngagement?.id === eng.id ? null : eng);
                               setEngSelectorOpen(false);
                             }}
                             className={cn(
@@ -725,15 +743,14 @@ export function ChatWindow({
               </div>
             )}
             {/* WDC Chat ONLY — no model picker */}
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-soft">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-soft"
+            >
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span className="truncate max-w-[180px]">WDC Chat</span>
             </button>
-            <ChatRunIndicator
-              state={chatRunState}
-              presentation={chatRunPresentation}
-              compact
-            />
+            <ChatRunIndicator state={chatRunState} presentation={chatRunPresentation} compact />
             <button
               onClick={toggleDeep}
               aria-pressed={deepMode}
@@ -752,7 +769,9 @@ export function ChatWindow({
               title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                councilMode ? "bg-primary/10 text-primary border-primary/40" : "text-muted-foreground",
+                councilMode
+                  ? "bg-primary/10 text-primary border-primary/40"
+                  : "text-muted-foreground",
               )}
             >
               <Users className="h-3.5 w-3.5" />
@@ -819,20 +838,20 @@ export function ChatWindow({
                   gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
                 )}
               >
-                {gem ? gem.name : "Hej. Hvad arbejder vi på i dag?"}
+                {emptyGreeting}
               </h1>
-              <p className="mt-2.5 text-[15px] text-muted-foreground">
-                {gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen."}
-              </p>
+              <p className="mt-2.5 text-[15px] text-muted-foreground">{emptyTagline}</p>
               <div className="mt-8 grid w-full grid-cols-1 gap-2.5 md:grid-cols-2">
-                {(gem?.starters ?? SUGGESTIONS).map((s) => (
+                {emptyStarters.map((s) => (
                   <button
                     key={s.title}
                     onClick={() => submit(s.body)}
                     className="group rounded-2xl border border-border/60 bg-card/70 p-4 text-left transition-all duration-150 hover:border-primary/30 hover:bg-card hover:shadow-soft active:scale-[0.99]"
                   >
                     <div className="text-sm font-semibold text-foreground">{s.title}</div>
-                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">{s.body}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                      {s.body}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -853,10 +872,7 @@ export function ChatWindow({
                 );
               })}
               {showInlineRunState && (
-                <ChatRunIndicator
-                  state={chatRunState}
-                  presentation={chatRunPresentation}
-                />
+                <ChatRunIndicator state={chatRunState} presentation={chatRunPresentation} />
               )}
             </div>
           )}
@@ -958,7 +974,7 @@ export function ChatWindow({
                     submit();
                   }
                 }}
-                placeholder="Skriv din besked til Aurora..."
+                placeholder={composerPlaceholder}
                 rows={1}
                 className="max-h-48 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
                 style={{ minHeight: "2.5rem" }}
@@ -974,7 +990,9 @@ export function ChatWindow({
               ) : (
                 <button
                   onClick={() => submit()}
-                  disabled={!input.trim() && attachments.length === 0 && ingestedSources.length === 0}
+                  disabled={
+                    !input.trim() && attachments.length === 0 && ingestedSources.length === 0
+                  }
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-aurora text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
                   aria-label="Send"
                 >
@@ -1130,8 +1148,17 @@ function Message({
         <Sparkles className="h-3.5 w-3.5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <MessageContent text={text} onCitationClick={sources.length > 0 ? (n) => setActiveCitation(n) : undefined} />
-        {sources.length > 0 && <SourcesPanel sources={sources} activeCitation={activeCitation} onCitationClick={setActiveCitation} />}
+        <MessageContent
+          text={text}
+          onCitationClick={sources.length > 0 ? (n) => setActiveCitation(n) : undefined}
+        />
+        {sources.length > 0 && (
+          <SourcesPanel
+            sources={sources}
+            activeCitation={activeCitation}
+            onCitationClick={setActiveCitation}
+          />
+        )}
         {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
@@ -1215,7 +1242,9 @@ function SourcesPanel({
           return (
             <li
               key={i}
-              ref={(el) => { itemRefs.current[i] = el; }}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
               className={cn(
                 "group/src flex items-start gap-2 leading-snug rounded px-1 -mx-1 transition-colors",
                 isActive && "bg-primary/8 text-foreground",
