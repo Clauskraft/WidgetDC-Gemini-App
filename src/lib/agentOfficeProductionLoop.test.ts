@@ -5,6 +5,7 @@ import {
   demandLoopProfiles,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  summarizeProofGate,
   validateLearningBroadcastEnvelope,
   validateProductionLoopModel,
 } from "./agentOfficeProductionLoop";
@@ -125,5 +126,33 @@ describe("agentOfficeProductionLoop", () => {
     expect(envelope.payload.extractionContracts.length).toBe(envelope.payload.candidateCount);
     expect(envelope.proofBoundary).toContain("pending adoption");
     expect(validateLearningBroadcastEnvelope(envelope)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("keeps ProofGate at code/model proof until deploy and three verification passes are present", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    expect(summarizeProofGate(model.proofGate)).toMatchObject({
+      claim: "code-model-proof",
+      runtimeProof: false,
+      presentCount: 1,
+      missingCount: 4,
+      requiredPasses: 3,
+      passedVerifications: 0,
+    });
+    expect(model.proofGate.boundary).toContain("not runtime proof");
+    expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("rejects runtime proof without deployment readback and three verification passes", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      proofGate: {
+        ...resolveAgentOfficeProductionLoop("operate").proofGate,
+        claim: "runtime-proof" as const,
+        runtimeProof: true,
+      },
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "runtime proof requires deployment readback and three verification passes",
+    );
   });
 });
