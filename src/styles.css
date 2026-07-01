@@ -1357,6 +1357,190 @@
   border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
   background: color-mix(in oklab, var(--primary) 8%, var(--card));
 }
+.wdc-object-card-section {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 84%, transparent);
+  padding: 0.75rem;
+}
+.wdc-object-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.wdc-object-card {
+  --wdc-card-accent: var(--muted-foreground);
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  border: 1px solid color-mix(in oklab, var(--wdc-card-accent) 20%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  padding: 0.75rem;
+  box-shadow: 0 16px 34px -32px color-mix(in oklab, var(--wdc-card-accent) 55%, transparent);
+}
+.wdc-object-card-ok {
+  --wdc-card-accent: oklch(0.5 0.13 158);
+}
+.wdc-object-card-warning {
+  --wdc-card-accent: oklch(0.62 0.15 72);
+}
+.wdc-object-card-danger {
+  --wdc-card-accent: oklch(0.58 0.18 25);
+}
+.wdc-object-card-info {
+  --wdc-card-accent: oklch(0.55 0.17 252);
+}
+.wdc-object-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.wdc-object-card-eyebrow {
+  color: var(--wdc-card-accent);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.wdc-object-card h3 {
+  margin: 0.12rem 0 0;
+  color: var(--foreground);
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.15;
+}
+.wdc-object-card > p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.76rem;
+  line-height: 1.38;
+}
+.wdc-object-card-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--wdc-card-accent) 10%, transparent);
+  color: var(--wdc-card-accent);
+  padding: 0.24rem 0.48rem;
+  font-size: 0.65rem;
+  font-weight: 720;
+  line-height: 1;
+}
+.wdc-object-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.wdc-object-card-metrics > div {
+  min-width: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: color-mix(in oklab, var(--muted) 40%, transparent);
+  padding: 0.42rem 0.5rem;
+}
+.wdc-object-card-metrics span {
+  display: block;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.61rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wdc-object-card-metrics strong {
+  display: block;
+  margin-top: 0.08rem;
+  color: var(--foreground);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+.wdc-object-card-metric-ok strong {
+  color: oklch(0.48 0.14 158);
+}
+.wdc-object-card-metric-warning strong {
+  color: oklch(0.6 0.15 72);
+}
+.wdc-object-card-metric-danger strong {
+  color: oklch(0.58 0.18 25);
+}
+.wdc-object-card-boundary {
+  border-left: 3px solid color-mix(in oklab, var(--wdc-card-accent) 45%, var(--border));
+  padding-left: 0.55rem;
+}
+.wdc-object-card-boundary span {
+  color: var(--muted-foreground);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.wdc-object-card-boundary p {
+  margin: 0.12rem 0 0;
+  color: var(--foreground);
+  font-size: 0.72rem;
+  line-height: 1.32;
+}
+.wdc-object-card-details {
+  border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  padding-top: 0.45rem;
+}
+.wdc-object-card-details summary {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.wdc-object-card-details summary::-webkit-details-marker {
+  display: none;
+}
+.wdc-object-card-details[open] summary svg {
+  transform: rotate(180deg);
+}
+.wdc-object-card-details > div {
+  display: grid;
+  gap: 0.32rem;
+  margin-top: 0.5rem;
+}
+.wdc-object-card-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: color-mix(in oklab, var(--muted) 36%, transparent);
+  padding: 0.35rem 0.42rem;
+}
+.wdc-object-card-row span,
+.wdc-object-card-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wdc-object-card-row span {
+  color: var(--foreground);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.wdc-object-card-row small {
+  color: var(--muted-foreground);
+  font-size: 0.63rem;
+}
+.wdc-object-card-row code {
+  color: var(--wdc-card-accent);
+  font-size: 0.61rem;
+  font-weight: 800;
+}
 .chat-run-indicator {
   --chat-run-accent: var(--muted-foreground);
   display: inline-flex;
@@ -1752,6 +1936,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .agent-office-governance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wdc-object-card-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

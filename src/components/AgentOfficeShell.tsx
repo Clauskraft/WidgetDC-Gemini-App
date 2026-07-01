@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CanvasWorkspace } from "@/components/CanvasWorkspace";
+import { WDCObjectCard } from "@/components/WDCObjectCard";
 import {
   buildBuildabilityLedger,
   buildEvidenceContractLedger,
@@ -33,6 +34,7 @@ import {
   summarizeProofGate,
   type ProductionLoopStageId,
 } from "@/lib/agentOfficeProductionLoop";
+import { buildWDCObjectCards } from "@/lib/wdcObjectCards";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_WORK_MODE_ID,
@@ -118,6 +120,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
   const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
   const proofAdoptionLadder = buildProofAdoptionLadder(productionLoop);
+  const wdcObjectCards = buildWDCObjectCards(productionLoop);
   const proofAdoptionBlockedCount = proofAdoptionLadder.filter(
     (item) => item.status === "blocked",
   ).length;
@@ -185,6 +188,21 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         </div>
 
         <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
+
+        <section className="wdc-object-card-section" aria-label="WDC visual object cards">
+          <div className="agent-office-panel-head">
+            <div>
+              <div className="agent-office-workstrip-label">WDC objects</div>
+              <strong>Readable process cards</strong>
+            </div>
+            <span>no raw JSON default</span>
+          </div>
+          <div className="wdc-object-card-grid">
+            {wdcObjectCards.map((card) => (
+              <WDCObjectCard key={card.id} card={card} />
+            ))}
+          </div>
+        </section>
 
         <div className="agent-office-loop" aria-label="Demand to proof production loop">
           <div className="agent-office-panel-head">
