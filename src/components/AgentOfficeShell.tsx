@@ -19,6 +19,7 @@ import {
 import {
   buildBuildabilityLedger,
   buildEvidenceContractLedger,
+  buildMappingCandidateLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -169,6 +170,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const evidenceContractLedger = buildEvidenceContractLedger(productionLoop);
   const evidenceContractIncompleteCount = evidenceContractLedger.filter(
     (item) => item.status === "incomplete",
+  ).length;
+  const mappingCandidateLedger = buildMappingCandidateLedger(productionLoop);
+  const mappingMappedCount = mappingCandidateLedger.filter(
+    (item) => item.state === "mapped",
   ).length;
   const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
   const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
@@ -329,6 +334,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             source_fit_score and extraction_contract stay visible.
           </p>
           <p>
+            MappingCandidateLedger: candidates {mappingCandidateLedger.length} / mapped{" "}
+            {mappingMappedCount}; every production-loop edge keeps source_fit_score and
+            extraction_contract candidate-only.
+          </p>
+          <p>
             AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
             {operationalSummary.executionLedgerCount} with{" "}
             {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
@@ -473,6 +483,28 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
                     {item.source_fit_score === null
                       ? item.source
                       : `${item.source} ${item.source_fit_score.toFixed(2)}`}
+                  </small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">MappingCandidateLedger</div>
+                <strong>Loop edges</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {mappingCandidateLedger.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.state}</code>
+                  <span title={item.proofBoundary}>
+                    {item.source_ref} -&gt; {item.target_ref}
+                  </span>
+                  <small title={item.extraction_contract.contract_version}>
+                    {item.source_fit_score.toFixed(2)}
                   </small>
                 </div>
               ))}
