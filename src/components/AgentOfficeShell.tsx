@@ -21,6 +21,7 @@ import {
   getProductionStage,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  summarizeOperationalLedgers,
   summarizeProofGate,
   type DemandLoopScopeId,
   type ProductionLoopStageId,
@@ -156,6 +157,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
+  const operationalSummary = summarizeOperationalLedgers(productionLoop);
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -292,6 +294,13 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             {productionLoop.label}: {productionLoop.demand} WorkBOM {productionLoop.workBom.length},
             RouteCatalog {productionLoop.routeCatalog.length}, EnvironmentBOM{" "}
             {productionLoop.environmentBom.length}.
+          </p>
+          <p>
+            AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
+            {operationalSummary.executionLedgerCount} with{" "}
+            {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
+            {operationalSummary.verificationLedgerCount} / runtime proof claims{" "}
+            {operationalSummary.runtimeProofClaims}.
           </p>
           <p>
             LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
@@ -440,6 +449,69 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
                   >
                     {row.state}
                   </small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">AgentTeamBOM</div>
+                <strong>Required / provided lanes</strong>
+              </div>
+            </div>
+            <div className="agent-office-competence-list">
+              {productionLoop.agentTeamBom.map((member) => (
+                <div key={member.id} className="agent-office-competence-row">
+                  <span>{member.required}</span>
+                  <span>{member.provided}</span>
+                  <small
+                    data-state={member.status}
+                    title={`source_fit_score ${member.source_fit_score.toFixed(2)} · ${
+                      member.extraction_contract.artifact
+                    }`}
+                  >
+                    {member.status}
+                  </small>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="agent-office-governance-grid">
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">ExecutionLedger</div>
+                <strong>Claim-gated work</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {productionLoop.executionLedger.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.claimRequired ? "claim" : item.stage}</code>
+                  <span title={item.proofBoundary}>{item.label}</span>
+                  <small>{item.status}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">VerificationLedger</div>
+                <strong>Non-runtime checks</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {productionLoop.verificationLedger.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.kind}</code>
+                  <span title={item.proofBoundary}>{item.label}</span>
+                  <small>{item.runtimeProof ? "runtime" : item.status}</small>
                 </div>
               ))}
             </div>
