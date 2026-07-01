@@ -133,6 +133,26 @@ export type CloseoutTreeItem = {
   proofBoundary: string;
 };
 
+export type ProductionLoopCoverageRequirementId =
+  | "stage-order"
+  | "required-provided-primary"
+  | "explicit-dependencies-stage-order"
+  | "candidate-mapped-count-separation"
+  | "source-fit-extraction-contracts"
+  | "capability-debt-ledger"
+  | "project-tree-start-closeout"
+  | "runtime-proof-boundary"
+  | "a2a-standard-candidate"
+  | "dirty-claimed-scope-handoff";
+
+export type ProductionLoopCoverageItem = {
+  id: ProductionLoopCoverageRequirementId;
+  label: string;
+  status: "covered" | "debt";
+  evidence: string[];
+  proofBoundary: string;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -176,6 +196,8 @@ export type LearningBroadcastEnvelope = {
     executionLedgerCount: number;
     verificationLedgerCount: number;
     closeoutTreeCount: number;
+    coverageRequirementCount: number;
+    coverageDebtCount: number;
     capabilityDebtIds: string[];
     extractionContracts: ExtractionContract[];
   };
@@ -796,6 +818,7 @@ export function createLearningBroadcastEnvelope(
   model: ResolvedAgentOfficeProductionLoop,
 ): LearningBroadcastEnvelope {
   const summary = summarizeCompetenceMapping(model.competenceRows);
+  const coverage = buildProductionLoopCoverageMatrix(model);
   return {
     transport: model.learning.transport,
     messageType: model.learning.type,
@@ -815,6 +838,8 @@ export function createLearningBroadcastEnvelope(
       executionLedgerCount: model.executionLedger.length,
       verificationLedgerCount: model.verificationLedger.length,
       closeoutTreeCount: model.closeoutTree.length,
+      coverageRequirementCount: coverage.length,
+      coverageDebtCount: coverage.filter((item) => item.status === "debt").length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       extractionContracts: [
         ...model.competenceRows.map((candidate) => candidate.extraction_contract),
@@ -823,6 +848,134 @@ export function createLearningBroadcastEnvelope(
       ],
     },
   };
+}
+
+export function buildProductionLoopCoverageMatrix(
+  model: AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>,
+): ProductionLoopCoverageItem[] {
+  const competenceSummary = summarizeCompetenceMapping(model.competenceRows);
+  const operationalSummary = summarizeOperationalLedgers(model);
+  const stageOrder = model.stages.map((stage) => stage.id);
+  const explicitDependencies = model.explicitDependencies ?? [];
+  const environmentBom = model.environmentBom ?? [];
+  const coverage = (item: Omit<ProductionLoopCoverageItem, "status">, ok: boolean) =>
+    ({
+      ...item,
+      status: ok ? "covered" : "debt",
+    }) satisfies ProductionLoopCoverageItem;
+
+  return [
+    coverage(
+      {
+        id: "stage-order",
+        label: "Demand -> LearningExtractor stage order",
+        evidence: model.stages.map((stage) => stage.label),
+        proofBoundary: "Stage order is model proof, not runtime proof.",
+      },
+      stageOrder.join(">") === expectedStageOrder.join(">"),
+    ),
+    coverage(
+      {
+        id: "required-provided-primary",
+        label: "Required/provided competence matching",
+        evidence: model.competenceRows.map((row) => `${row.required} -> ${row.provided}`),
+        proofBoundary: "Competence matching precedes dependency ordering.",
+      },
+      model.competenceRows.length > 0 &&
+        model.competenceRows.every((row) => row.required && row.provided),
+    ),
+    coverage(
+      {
+        id: "explicit-dependencies-stage-order",
+        label: "Explicit dependencies only order stages",
+        evidence: explicitDependencies.map((item) => `${item.from}->${item.to}`),
+        proofBoundary: "Dependencies are ordering hints only.",
+      },
+      explicitDependencies.every((item) => item.reason === "stage-order"),
+    ),
+    coverage(
+      {
+        id: "candidate-mapped-count-separation",
+        label: "Candidate count separate from mapped count",
+        evidence: [
+          `candidate=${competenceSummary.candidateCount}`,
+          `mapped=${competenceSummary.mappedCount}`,
+          `debt=${competenceSummary.debtCount}`,
+        ],
+        proofBoundary: "Candidate count must not be read as mapped count.",
+      },
+      competenceSummary.candidateCount >= competenceSummary.mappedCount,
+    ),
+    coverage(
+      {
+        id: "source-fit-extraction-contracts",
+        label: "source_fit_score + extraction_contract",
+        evidence: [
+          ...model.competenceRows.map((row) => row.extraction_contract.artifact),
+          ...model.agentTeamBom.map((member) => member.extraction_contract.artifact),
+          ...environmentBom.map((item) => item.extraction_contract.artifact),
+        ],
+        proofBoundary: "Extraction contracts define evidence requirements, not proof promotion.",
+      },
+      [...model.competenceRows, ...model.agentTeamBom].every(
+        (item) =>
+          item.source_fit_score >= 0 &&
+          item.source_fit_score <= 1 &&
+          item.extraction_contract.requiredEvidence.length > 0,
+      ) && environmentBom.every((item) => item.extraction_contract.requiredEvidence.length > 0),
+    ),
+    coverage(
+      {
+        id: "capability-debt-ledger",
+        label: "CapabilityDebtLedger for missing pieces",
+        evidence: model.capabilityDebt.map((item) => item.id),
+        proofBoundary: "Debt remains explicit until evidence closes it.",
+      },
+      model.capabilityDebt.length > 0 || operationalSummary.environmentDebtCount > 0,
+    ),
+    coverage(
+      {
+        id: "project-tree-start-closeout",
+        label: "ProjectTree start + closeout",
+        evidence: model.projectTreeRefs.map((item) => `${item.phase}:${item.ref}`),
+        proofBoundary: "ProjectTree visibility is planning/readback proof only.",
+      },
+      model.projectTreeRefs.some((item) => item.phase === "Start") &&
+        model.projectTreeRefs.some((item) => item.phase === "Closeout"),
+    ),
+    coverage(
+      {
+        id: "runtime-proof-boundary",
+        label: "No candidate/dry-run/read-only runtime proof",
+        evidence: [
+          model.proofGate.boundary,
+          ...model.verificationLedger.map((item) => item.proofBoundary),
+        ],
+        proofBoundary: "Runtime proof requires deploy readback plus three verification passes.",
+      },
+      !model.proofGate.runtimeProof && operationalSummary.runtimeProofClaims === 0,
+    ),
+    coverage(
+      {
+        id: "a2a-standard-candidate",
+        label: "Reusable learning via A2A STANDARD_CANDIDATE",
+        evidence: [`${model.learning.transport}:${model.learning.type}`],
+        proofBoundary: "A2A broadcast is candidate learning until adopted and verified.",
+      },
+      model.learning.transport === "A2A" && model.learning.type === "STANDARD_CANDIDATE",
+    ),
+    coverage(
+      {
+        id: "dirty-claimed-scope-handoff",
+        label: "Dirty/claimed scopes require handoff",
+        evidence: model.executionLedger.map((item) => item.proofBoundary),
+        proofBoundary: "Claim-gated execution prevents uncoordinated source edits.",
+      },
+      model.executionLedger.some((item) =>
+        item.proofBoundary.toLowerCase().includes("claimed scopes"),
+      ),
+    ),
+  ];
 }
 
 export function getProductionStage(
@@ -878,6 +1031,7 @@ export function validateProductionLoopModel(
 ) {
   const failures: string[] = [];
   const environmentBom = model.environmentBom ?? [];
+  const coverageMatrix = buildProductionLoopCoverageMatrix(model);
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -967,6 +1121,11 @@ export function validateProductionLoopModel(
   }
   if (!model.proofGate.boundary.includes("not runtime proof")) {
     failures.push("ProofGate boundary must reject candidate/projection/dry-run runtime proof");
+  }
+  for (const item of coverageMatrix) {
+    if (item.status === "debt") {
+      failures.push(`coverage debt: ${item.id}`);
+    }
   }
   if ("explicitDependencies" in model) {
     for (const dependency of model.explicitDependencies as ExplicitDependency[]) {

@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
   getProductionStage,
   resolveAgentOfficeProductionLoop,
@@ -158,6 +159,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
   const operationalSummary = summarizeOperationalLedgers(productionLoop);
+  const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
+  const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -303,6 +306,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             {operationalSummary.verificationLedgerCount} / runtime proof claims{" "}
             {operationalSummary.runtimeProofClaims}; CloseoutTree{" "}
             {operationalSummary.closeoutTreeCount}.
+          </p>
+          <p>
+            CoverageMatrix: {coverageMatrix.length - coverageDebtCount}/{coverageMatrix.length}{" "}
+            covered; debt {coverageDebtCount}. Required/provided matching remains primary.
           </p>
           <p>
             LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
@@ -554,6 +561,27 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               ))}
             </div>
           </section>
+        </div>
+
+        <div className="agent-office-loop" aria-label="Production loop requirement coverage">
+          <div className="agent-office-panel-head">
+            <div>
+              <div className="agent-office-workstrip-label">CoverageMatrix</div>
+              <strong>Objective requirements</strong>
+            </div>
+            <span>
+              covered {coverageMatrix.length - coverageDebtCount}/{coverageMatrix.length}
+            </span>
+          </div>
+          <div className="agent-office-ref-list">
+            {coverageMatrix.map((item) => (
+              <div key={item.id} className="agent-office-ref-row">
+                <code>{item.status}</code>
+                <span title={item.proofBoundary}>{item.label}</span>
+                <small>{item.evidence.length}</small>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="agent-office-debt-panel">

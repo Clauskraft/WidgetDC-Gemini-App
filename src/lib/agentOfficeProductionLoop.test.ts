@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentOfficeProductionLoop,
+  buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
   demandLoopProfiles,
   resolveAgentOfficeProductionLoop,
@@ -126,6 +127,8 @@ describe("agentOfficeProductionLoop", () => {
       executionLedgerCount: 3,
       verificationLedgerCount: 5,
       closeoutTreeCount: 3,
+      coverageRequirementCount: 10,
+      coverageDebtCount: 0,
     });
     expect(envelope.payload.stageOrder.at(0)).toBe("demand");
     expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
@@ -224,6 +227,50 @@ describe("agentOfficeProductionLoop", () => {
     };
     expect(validateProductionLoopModel(model).failures).toContain(
       "VerificationLedger cannot claim runtime proof",
+    );
+  });
+
+  it("builds a covered production-loop requirement matrix for every demand scope", () => {
+    for (const scopeId of Object.keys(demandLoopProfiles) as Array<
+      keyof typeof demandLoopProfiles
+    >) {
+      const matrix = buildProductionLoopCoverageMatrix(resolveAgentOfficeProductionLoop(scopeId));
+      expect(matrix).toHaveLength(10);
+      expect(matrix.map((item) => item.id)).toEqual([
+        "stage-order",
+        "required-provided-primary",
+        "explicit-dependencies-stage-order",
+        "candidate-mapped-count-separation",
+        "source-fit-extraction-contracts",
+        "capability-debt-ledger",
+        "project-tree-start-closeout",
+        "runtime-proof-boundary",
+        "a2a-standard-candidate",
+        "dirty-claimed-scope-handoff",
+      ]);
+      expect(matrix.every((item) => item.status === "covered")).toBe(true);
+      expect(matrix.every((item) => item.evidence.length > 0)).toBe(true);
+    }
+  });
+
+  it("rejects production loops with coverage debt", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      learning: {
+        ...resolveAgentOfficeProductionLoop("operate").learning,
+        transport: "file" as const,
+      },
+    };
+    expect(
+      buildProductionLoopCoverageMatrix(model).find((item) => item.status === "debt"),
+    ).toMatchObject({
+      id: "a2a-standard-candidate",
+    });
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "LearningExtractor must broadcast an A2A STANDARD_CANDIDATE",
+    );
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "coverage debt: a2a-standard-candidate",
     );
   });
 
