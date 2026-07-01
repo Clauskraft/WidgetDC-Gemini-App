@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   agentOfficeProductionLoop,
+  createLearningBroadcastEnvelope,
   demandLoopProfiles,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  validateLearningBroadcastEnvelope,
   validateProductionLoopModel,
 } from "./agentOfficeProductionLoop";
 
@@ -101,5 +103,27 @@ describe("agentOfficeProductionLoop", () => {
       mappedCount: 3,
       debtCount: 1,
     });
+  });
+
+  it("builds an A2A STANDARD_CANDIDATE learning envelope from a resolved demand", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    const envelope = createLearningBroadcastEnvelope(model);
+    expect(envelope).toMatchObject({
+      transport: "A2A",
+      messageType: "STANDARD_CANDIDATE",
+      adoptionState: "candidate",
+      sourceScopeId: "operate",
+      artifactId: "agent-office-production-loop:operate",
+    });
+    expect(envelope.payload).toMatchObject({
+      candidateCount: 4,
+      mappedCount: 3,
+      debtCount: 1,
+    });
+    expect(envelope.payload.stageOrder.at(0)).toBe("demand");
+    expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
+    expect(envelope.payload.extractionContracts.length).toBe(envelope.payload.candidateCount);
+    expect(envelope.proofBoundary).toContain("pending adoption");
+    expect(validateLearningBroadcastEnvelope(envelope)).toEqual({ ok: true, failures: [] });
   });
 });

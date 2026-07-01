@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  createLearningBroadcastEnvelope,
   getProductionStage,
   resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
@@ -152,6 +153,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const selected = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
+  const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -288,6 +290,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             {productionLoop.label}: {productionLoop.demand} WorkBOM {productionLoop.workBom.length},
             RouteCatalog {productionLoop.routeCatalog.length}, EnvironmentBOM{" "}
             {productionLoop.environmentBom.length}.
+          </p>
+          <p>
+            LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
+            {learningEnvelope.artifactId}; adoption state {learningEnvelope.adoptionState}.
           </p>
         </div>
 
