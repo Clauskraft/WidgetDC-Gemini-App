@@ -80,6 +80,16 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
         </div>
       )}
 
+      {assessment.userEvidenceSummary && (
+        <div className="world-class-proof-harness">
+          <span>{`User evidence ${assessment.userEvidenceSummary.userEvidenceReady ? "ready" : "pending"}`}</span>
+          <span>{`reviewers ${assessment.userEvidenceSummary.testedUsers}`}</span>
+          <span>{`tasks ${assessment.userEvidenceSummary.taskResultCount}`}</span>
+          <span>{`external ${assessment.userEvidenceSummary.externalReviewsCompleted}/${assessment.userEvidenceSummary.externalReviewsRequired}`}</span>
+          <span>{`boundary defects ${assessment.userEvidenceSummary.boundaryDefectCount}`}</span>
+        </div>
+      )}
+
       <div className="agent-office-ref-list" aria-label="External frontend review readiness">
         <div className="agent-office-ref-row">
           <code>{`External review readiness ${externalReviewReadiness.apps_ready}/${externalReviewReadiness.apps_total}`}</code>

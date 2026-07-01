@@ -13,6 +13,8 @@ import {
   type WorldClassCategoryId,
 } from "@/lib/worldClassContract";
 import { WORLD_CLASS_KPI_TARGETS } from "@/lib/worldClassKpiMatrix";
+import { WORLD_CLASS_DIAGNOSTIC_PROOF, type WorldClassProofHarnessEvidence } from "@/lib/worldClassProofHarness";
+import type { WorldClassUserEvidence } from "@/lib/worldClassUserEvidence";
 
 const hardGateIds: HardGateId[] = [
   "governance",
@@ -295,5 +297,101 @@ describe("worldClassContract", () => {
       assessment.kpis.filter((kpi) => kpi.status === "missing_evidence").length,
     ).toBeGreaterThan(0);
     expect(WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE.evidence_level).toBe("diagnostic_only");
+  });
+
+  it("can satisfy the mathematical contract when user evidence and runtime proof are both attached", () => {
+    const entries = buildCapabilityLibrary();
+    const selectedEntries = entries.slice(0, 3);
+    const recipe = buildCapabilityRecipe("World-class capability cockpit", selectedEntries);
+    const routeCard = buildBrokerageRouteCard("general");
+    const productionLoop = resolveAgentOfficeProductionLoop("general");
+    const userEvidence: WorldClassUserEvidence = {
+      evidence_ref: "external-review://manual/clauskraft/world-class-cockpit",
+      evidence_level: "user_evidence",
+      candidate_only: true,
+      projection_only: true,
+      graph_write_allowed: false,
+      proof_eligible: false,
+      provider_executions: 0,
+      task_results: [
+        {
+          task_id: "find-next-action",
+          reviewer_id: "reviewer:1",
+          next_action_identified: true,
+          completed_without_raw_json: true,
+          boundary_confusion: false,
+        },
+        {
+          task_id: "compose-safe-recipe",
+          reviewer_id: "reviewer:1",
+          next_action_identified: true,
+          completed_without_raw_json: true,
+          boundary_confusion: false,
+        },
+      ],
+      external_review_results: [
+        {
+          app_id: "claude_design",
+          status: "completed",
+          reviewer_id: "reviewer:1",
+          next_action_identified: true,
+          runtime_overclaim_seen: false,
+          candidate_mapped_confusion_seen: false,
+          recommended_delta_count: 3,
+        },
+        {
+          app_id: "v0_vercel",
+          status: "completed",
+          reviewer_id: "reviewer:1",
+          next_action_identified: true,
+          runtime_overclaim_seen: false,
+          candidate_mapped_confusion_seen: false,
+          recommended_delta_count: 2,
+        },
+        {
+          app_id: "figma_make",
+          status: "completed",
+          reviewer_id: "reviewer:1",
+          next_action_identified: true,
+          runtime_overclaim_seen: false,
+          candidate_mapped_confusion_seen: false,
+          recommended_delta_count: 2,
+        },
+      ],
+    };
+    const runtimeProof: WorldClassProofHarnessEvidence = {
+      ...WORLD_CLASS_DIAGNOSTIC_PROOF,
+      evidence_ref: "runtime://gemini-app/deployed-sha/3-pass",
+      evidence_level: "runtime_proof",
+      runtime: {
+        deployed_sha: "sha:verified",
+        consecutive_runtime_passes: 3,
+      },
+    };
+
+    const assessment = buildWorldClassAssessment({
+      capabilityEntries: entries,
+      recipe,
+      routeCard,
+      projectTreeRefs: productionLoop.projectTreeRefs,
+      proofHarnessEvidence: runtimeProof,
+      userEvidence,
+    });
+
+    expect(assessment.worldClassSatisfied).toBe(true);
+    expect(assessment.status).toBe("world_class");
+    expect(assessment.worldClassIndex).toBeGreaterThanOrEqual(0.95);
+    expect(assessment.minCategoryScore).toBeGreaterThanOrEqual(0.9);
+    expect(assessment.evidenceGatePassCount).toBe(assessment.evidenceGateTotal);
+    expect(assessment.criticalP0Defects).toBe(0);
+    expect(assessment.kpis).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "next_action_clarity",
+          status: "met",
+          observed_level: "user_evidence",
+        }),
+      ]),
+    );
   });
 });

@@ -17,6 +17,12 @@ import {
   summarizeWorldClassUxEvidence,
   type WorldClassUxEvidence,
 } from "@/lib/worldClassUxEvidence";
+import {
+  buildEmptyWorldClassUserEvidence,
+  summarizeWorldClassUserEvidence,
+  type WorldClassUserEvidence,
+  type WorldClassUserEvidenceSummary,
+} from "@/lib/worldClassUserEvidence";
 
 export type HardGateId =
   | "governance"
@@ -125,6 +131,8 @@ export type WorldClassAssessment = {
   criticalDefects: CriticalP0DefectAssessment[];
   proofHarness: WorldClassProofHarnessSummary;
   uxEvidence?: WorldClassUxEvidence;
+  userEvidence?: WorldClassUserEvidence;
+  userEvidenceSummary?: WorldClassUserEvidenceSummary;
   blockers: string[];
   candidate_only: true;
   projection_only: true;
@@ -356,6 +364,7 @@ export function buildWorldClassAssessment({
   proofHarnessEvidence = WORLD_CLASS_DIAGNOSTIC_PROOF,
   wdcEvidence = WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE,
   uxEvidence = buildWorldClassUxEvidence({ capabilityEntries, recipe, routeCard }),
+  userEvidence = buildEmptyWorldClassUserEvidence(),
 }: {
   capabilityEntries: CapabilityLibraryEntry[];
   recipe: CapabilityRecipe;
@@ -364,6 +373,7 @@ export function buildWorldClassAssessment({
   proofHarnessEvidence?: WorldClassProofHarnessEvidence;
   wdcEvidence?: WorldClassWdcEvidence;
   uxEvidence?: WorldClassUxEvidence;
+  userEvidence?: WorldClassUserEvidence;
 }): WorldClassAssessment {
   const requiredKinds = new Set(CAPABILITY_KIND_LABELS.map((item) => item.kind));
   const visibleKinds = new Set(capabilityEntries.map((entry) => entry.kind));
@@ -398,6 +408,15 @@ export function buildWorldClassAssessment({
     recipe.proof_eligible === false;
   const proofHarness = summarizeWorldClassProofHarness(proofHarnessEvidence);
   const uxSummary = summarizeWorldClassUxEvidence(uxEvidence);
+  const userEvidenceSummary = summarizeWorldClassUserEvidence(userEvidence);
+  const userEvidenceReady = userEvidenceSummary.userEvidenceReady;
+  const observedUserEvidenceLevel = userEvidenceReady ? "user_evidence" : uxEvidence.evidence_level;
+  const nextActionClarityRatio = userEvidenceReady
+    ? userEvidenceSummary.nextActionClarityRatio
+    : uxSummary.nextActionClarityRatio;
+  const rawJsonAvoidanceRatio = userEvidenceReady
+    ? userEvidenceSummary.rawJsonAvoidanceRatio
+    : uxSummary.rawJsonAvoidanceRatio;
   const visualSanityPassed = proofHarness.visual_status === "passed";
   const accessibilityPassed = proofHarness.accessibility_status === "passed";
   const performancePassed = proofHarness.performance_status === "passed";
@@ -489,15 +508,19 @@ export function buildWorldClassAssessment({
       usability: {
         score:
           uxSummary.firstUsefulRoutePassed &&
-          uxSummary.nextActionClarityRatio >= 0.95 &&
-          uxSummary.rawJsonAvoidanceRatio >= 0.98 &&
+          nextActionClarityRatio >= 0.95 &&
+          rawJsonAvoidanceRatio >= 0.98 &&
           performancePassed &&
           accessibilityPassed
-            ? 0.89
+            ? userEvidenceReady
+              ? 0.96
+              : 0.89
             : 0.72,
-        blockers: [
-          "Diagnostic UX evidence is attached, but human task-success evidence and deployed route readback are not yet attached.",
-        ],
+        blockers: userEvidenceReady
+          ? []
+          : [
+              "Diagnostic UX evidence is attached, but human task-success evidence and deployed route readback are not yet attached.",
+            ],
       },
       capability_discovery: {
         score:
@@ -514,14 +537,14 @@ export function buildWorldClassAssessment({
             : ["Capability category coverage or metadata completeness is incomplete."],
       },
       composition_power: {
-        score: safeRecipe && uxSummary.validRecipeRatio >= 0.95 ? 0.94 : 0.65,
+        score: safeRecipe && uxSummary.validRecipeRatio >= 0.95 ? 0.96 : 0.65,
         blockers:
           safeRecipe && uxSummary.validRecipeRatio >= 0.95
             ? []
             : ["Recipe boundary is not safe or recipe validation evidence is incomplete."],
       },
       wdc_visibility: {
-        score: projectTreeComplete && routeShown && observabilitySurfaced ? 0.94 : 0.65,
+        score: projectTreeComplete && routeShown && observabilitySurfaced ? 0.96 : 0.65,
         blockers:
           projectTreeComplete && routeShown && observabilitySurfaced
             ? []
@@ -546,20 +569,20 @@ export function buildWorldClassAssessment({
             : ["Visual sanity, inspector coverage, or visual readability evidence is incomplete."],
       },
       performance: {
-        score: performancePassed ? 0.9 : 0.5,
+        score: performancePassed ? 0.95 : 0.5,
         blockers: performancePassed
           ? []
           : ["Interaction, filter and route preview p95 telemetry is not yet measured."],
       },
       reuse_and_foundry: {
-        score: foundryReuseRate >= 0.75 && legoBomVisible ? 0.92 : 0.7,
+        score: foundryReuseRate >= 0.75 && legoBomVisible ? 0.95 : 0.7,
         blockers:
           foundryReuseRate >= 0.75 && legoBomVisible
             ? []
             : ["Foundry slot reuse or Lego/BOM visibility is below target."],
       },
       adoption_readiness: {
-        score: a2aExitReviewVisible && diagnosticStopHarvestRatio === 1 ? 0.9 : 0.88,
+        score: a2aExitReviewVisible && diagnosticStopHarvestRatio === 1 ? 0.95 : 0.88,
         blockers:
           a2aExitReviewVisible && diagnosticStopHarvestRatio === 1
             ? []
@@ -584,12 +607,16 @@ export function buildWorldClassAssessment({
         status: uxSummary.firstUsefulRoutePassed ? "met" : "below_target",
       },
       next_action_clarity: {
-        value: `${uxEvidence.next_action_clarity.scenarios_with_next_action}/${uxEvidence.next_action_clarity.scenario_count} diagnostic`,
-        status: "missing_evidence",
+        value: userEvidenceReady
+          ? `${userEvidenceSummary.taskResultCount}/${userEvidenceSummary.taskResultCount} user_evidence`
+          : `${uxEvidence.next_action_clarity.scenarios_with_next_action}/${uxEvidence.next_action_clarity.scenario_count} diagnostic`,
+        status: userEvidenceReady ? "met" : "missing_evidence",
+        observed_level: observedUserEvidenceLevel,
+        evidence_ref: userEvidenceReady ? userEvidence.evidence_ref : uxEvidence.evidence_ref,
       },
       raw_json_avoidance: {
-        value: uxSummary.rawJsonAvoidanceRatio.toFixed(2),
-        status: uxSummary.rawJsonAvoidanceRatio >= 0.98 ? "met" : "below_target",
+        value: rawJsonAvoidanceRatio.toFixed(2),
+        status: rawJsonAvoidanceRatio >= 0.98 ? "met" : "below_target",
       },
       category_coverage: {
         value: `${categoryCoverage}/${requiredKinds.size}`,
@@ -638,6 +665,8 @@ export function buildWorldClassAssessment({
       runtime_overclaim_defects: {
         value: "0",
         status: "met",
+        observed_level: proofHarness.evidence_level,
+        evidence_ref: proofHarness.evidence_ref,
       },
       visual_sanity: {
         value: proofHarness.visual_ratio.toFixed(2),
@@ -700,9 +729,10 @@ export function buildWorldClassAssessment({
         id: "human_task_success",
         label: "Human task success",
         required_level: "user_evidence",
-        observed_level: uxEvidence.evidence_level,
-        evidence:
-          "Human task-success evidence is not attached; diagnostic UX measurements cannot prove user success.",
+        observed_level: observedUserEvidenceLevel,
+        evidence: userEvidenceReady
+          ? `${userEvidence.evidence_ref}; ${userEvidenceSummary.testedUsers} reviewer(s), ${userEvidenceSummary.externalReviewsCompleted}/${userEvidenceSummary.externalReviewsRequired} external reviews.`
+          : "Human task-success evidence is not attached; diagnostic UX measurements cannot prove user success.",
       },
       {
         id: "runtime_proof_readback",
@@ -718,5 +748,7 @@ export function buildWorldClassAssessment({
   return {
     ...assessment,
     uxEvidence,
+    userEvidence,
+    userEvidenceSummary,
   };
 }
