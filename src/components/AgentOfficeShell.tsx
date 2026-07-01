@@ -16,6 +16,12 @@ import {
   Settings2,
   Sparkles,
 } from "lucide-react";
+import {
+  agentOfficeProductionLoop,
+  getProductionStage,
+  summarizeCompetenceMapping,
+  type ProductionLoopStageId,
+} from "@/lib/agentOfficeProductionLoop";
 import { cn } from "@/lib/utils";
 
 type WorkScopeId = "app" | "book" | "investigation" | "operate" | "general";
@@ -38,46 +44,6 @@ type CanvasNode = {
   y: number;
   tone: string;
 };
-
-type ProductionStage = {
-  id: string;
-  label: string;
-  proofBoundary: string;
-};
-
-const productionLoopStages: ProductionStage[] = [
-  { id: "demand", label: "Demand", proofBoundary: "intake" },
-  { id: "capability", label: "CapabilityResolution", proofBoundary: "required/provided" },
-  { id: "workbom", label: "WorkBOM", proofBoundary: "scope" },
-  { id: "route", label: "RouteCatalog", proofBoundary: "method" },
-  { id: "project", label: "ProjectTree", proofBoundary: "start + closeout" },
-  { id: "agent", label: "AgentTeamBOM", proofBoundary: "competence match" },
-  { id: "environment", label: "EnvironmentBOM", proofBoundary: "repo + branch + deps" },
-  { id: "execution", label: "Execution", proofBoundary: "claim-gated" },
-  { id: "verification", label: "Verification", proofBoundary: "tests + visual" },
-  { id: "proof", label: "ProofGate", proofBoundary: "no dry-run promotion" },
-  { id: "closeout", label: "CloseoutTree", proofBoundary: "handoff" },
-  { id: "learning", label: "LearningExtractor", proofBoundary: "A2A standard" },
-];
-
-const projectTreeRefs = [
-  { ref: "CFG-010", label: "Demand + context", phase: "Start" },
-  { ref: "BOM-020", label: "WorkBOM + gaps", phase: "Start" },
-  { ref: "OP-030", label: "Execution path", phase: "Closeout" },
-  { ref: "GATE-040", label: "Proof boundary", phase: "Closeout" },
-];
-
-const competenceRows = [
-  { required: "source_code mutation", provided: "verified actor + WDC claim", state: "matched" },
-  { required: "visual production loop", provided: "AgentOfficeShell canvas", state: "mapped" },
-  { required: "runtime proof", provided: "candidate-only UI marker", state: "debt" },
-];
-
-const capabilityDebt = [
-  "Live AgentTeamBOM from graph",
-  "EnvironmentBOM readback in UI",
-  "ProofGate promotion readback",
-];
 
 const scopes: WorkScope[] = [
   {
@@ -163,7 +129,7 @@ const nodesByScope: Record<WorkScopeId, CanvasNode[]> = {
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkScopeId>("app");
   const [selectedNode, setSelectedNode] = useState("intent");
-  const [selectedStageId, setSelectedStageId] = useState("demand");
+  const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [zoom, setZoom] = useState(0.92);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -183,8 +149,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     [activeScope.id, positions],
   );
   const selected = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
-  const selectedStage =
-    productionLoopStages.find((stage) => stage.id === selectedStageId) ?? productionLoopStages[0];
+  const productionLoopSummary = summarizeCompetenceMapping(
+    agentOfficeProductionLoop.competenceRows,
+  );
+  const selectedStage = getProductionStage(agentOfficeProductionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
     setActiveScopeId(id);
@@ -290,10 +258,13 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               <div className="agent-office-workstrip-label">Production loop</div>
               <strong>Demand -&gt; LearningExtractor</strong>
             </div>
-            <span>read-only model</span>
+            <span>
+              candidates {productionLoopSummary.candidateCount} / mapped{" "}
+              {productionLoopSummary.mappedCount}
+            </span>
           </div>
           <div className="agent-office-loop-track">
-            {productionLoopStages.map((stage, index) => (
+            {agentOfficeProductionLoop.stages.map((stage, index) => (
               <button
                 key={stage.id}
                 type="button"
@@ -420,7 +391,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="agent-office-ref-list">
-              {projectTreeRefs.map((item) => (
+              {agentOfficeProductionLoop.projectTreeRefs.map((item) => (
                 <div key={item.ref} className="agent-office-ref-row">
                   <code>{item.ref}</code>
                   <span>{item.label}</span>
@@ -438,11 +409,18 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="agent-office-competence-list">
-              {competenceRows.map((row) => (
+              {agentOfficeProductionLoop.competenceRows.map((row) => (
                 <div key={row.required} className="agent-office-competence-row">
                   <span>{row.required}</span>
                   <span>{row.provided}</span>
-                  <small data-state={row.state}>{row.state}</small>
+                  <small
+                    data-state={row.state}
+                    title={`source_fit_score ${row.source_fit_score.toFixed(2)} · ${
+                      row.extraction_contract.artifact
+                    }`}
+                  >
+                    {row.state}
+                  </small>
                 </div>
               ))}
             </div>
@@ -460,8 +438,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               debt before promotion.
             </p>
             <div className="agent-office-debt-list">
-              {capabilityDebt.map((item) => (
-                <span key={item}>{item}</span>
+              {agentOfficeProductionLoop.capabilityDebt.map((item) => (
+                <span key={item.id} title={item.reason}>
+                  {item.label}
+                </span>
               ))}
             </div>
           </div>
