@@ -17,14 +17,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  agentOfficeProductionLoop,
   getProductionStage,
+  resolveAgentOfficeProductionLoop,
   summarizeCompetenceMapping,
+  type DemandLoopScopeId,
   type ProductionLoopStageId,
 } from "@/lib/agentOfficeProductionLoop";
 import { cn } from "@/lib/utils";
 
-type WorkScopeId = "app" | "book" | "investigation" | "operate" | "general";
+type WorkScopeId = DemandLoopScopeId;
 
 type WorkScope = {
   id: WorkScopeId;
@@ -149,10 +150,9 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     [activeScope.id, positions],
   );
   const selected = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
-  const productionLoopSummary = summarizeCompetenceMapping(
-    agentOfficeProductionLoop.competenceRows,
-  );
-  const selectedStage = getProductionStage(agentOfficeProductionLoop, selectedStageId);
+  const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
+  const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
+  const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
     setActiveScopeId(id);
@@ -264,7 +264,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             </span>
           </div>
           <div className="agent-office-loop-track">
-            {agentOfficeProductionLoop.stages.map((stage, index) => (
+            {productionLoop.stages.map((stage, index) => (
               <button
                 key={stage.id}
                 type="button"
@@ -283,6 +283,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <p>
             {selectedStage.label}: {selectedStage.proofBoundary}. Candidate, projection, dry-run and
             read-only output is never runtime proof.
+          </p>
+          <p>
+            {productionLoop.label}: {productionLoop.demand} WorkBOM {productionLoop.workBom.length},
+            RouteCatalog {productionLoop.routeCatalog.length}, EnvironmentBOM{" "}
+            {productionLoop.environmentBom.length}.
           </p>
         </div>
 
@@ -391,7 +396,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="agent-office-ref-list">
-              {agentOfficeProductionLoop.projectTreeRefs.map((item) => (
+              {productionLoop.projectTreeRefs.map((item) => (
                 <div key={item.ref} className="agent-office-ref-row">
                   <code>{item.ref}</code>
                   <span>{item.label}</span>
@@ -409,7 +414,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="agent-office-competence-list">
-              {agentOfficeProductionLoop.competenceRows.map((row) => (
+              {productionLoop.competenceRows.map((row) => (
                 <div key={row.required} className="agent-office-competence-row">
                   <span>{row.required}</span>
                   <span>{row.provided}</span>
@@ -438,7 +443,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               debt before promotion.
             </p>
             <div className="agent-office-debt-list">
-              {agentOfficeProductionLoop.capabilityDebt.map((item) => (
+              {productionLoop.capabilityDebt.map((item) => (
                 <span key={item.id} title={item.reason}>
                   {item.label}
                 </span>
