@@ -293,14 +293,16 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <p>
             {productionLoop.label}: {productionLoop.demand} WorkBOM {productionLoop.workBom.length},
             RouteCatalog {productionLoop.routeCatalog.length}, EnvironmentBOM{" "}
-            {productionLoop.environmentBom.length}.
+            {operationalSummary.environmentBomCount} with debt{" "}
+            {operationalSummary.environmentDebtCount}.
           </p>
           <p>
             AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
             {operationalSummary.executionLedgerCount} with{" "}
             {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
             {operationalSummary.verificationLedgerCount} / runtime proof claims{" "}
-            {operationalSummary.runtimeProofClaims}.
+            {operationalSummary.runtimeProofClaims}; CloseoutTree{" "}
+            {operationalSummary.closeoutTreeCount}.
           </p>
           <p>
             LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
@@ -432,6 +434,24 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <section className="agent-office-mini-panel">
             <div className="agent-office-panel-head">
               <div>
+                <div className="agent-office-workstrip-label">EnvironmentBOM</div>
+                <strong>Repo + evidence</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {productionLoop.environmentBom.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.category}</code>
+                  <span title={item.proofBoundary}>{item.label}</span>
+                  <small>{item.status}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
                 <div className="agent-office-workstrip-label">Competence</div>
                 <strong>Required / provided</strong>
               </div>
@@ -512,6 +532,24 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
                   <code>{item.kind}</code>
                   <span title={item.proofBoundary}>{item.label}</span>
                   <small>{item.runtimeProof ? "runtime" : item.status}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">CloseoutTree</div>
+                <strong>Release + learning handoff</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {productionLoop.closeoutTree.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.handoff}</code>
+                  <span title={item.proofBoundary}>{item.label}</span>
+                  <small>{item.status}</small>
                 </div>
               ))}
             </div>

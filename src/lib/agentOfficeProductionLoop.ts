@@ -113,10 +113,24 @@ export type RouteCatalogEntry = {
   method: string;
 };
 
+export type EnvironmentBomCategory = "repo" | "branch" | "dependency" | "runtime" | "evidence";
+
 export type EnvironmentBomItem = {
   id: string;
   label: string;
+  category: EnvironmentBomCategory;
   status: CompetenceMappingState;
+  extraction_contract: ExtractionContract;
+  proofBoundary: string;
+};
+
+export type CloseoutTreeItem = {
+  id: string;
+  label: string;
+  handoff: "release" | "a2a" | "adoption-followup";
+  status: OperationalLedgerStatus;
+  requiredEvidence: string[];
+  proofBoundary: string;
 };
 
 export type ExplicitDependency = {
@@ -158,8 +172,10 @@ export type LearningBroadcastEnvelope = {
     mappedCount: number;
     debtCount: number;
     agentTeamBomCount: number;
+    environmentBomCount: number;
     executionLedgerCount: number;
     verificationLedgerCount: number;
+    closeoutTreeCount: number;
     capabilityDebtIds: string[];
     extractionContracts: ExtractionContract[];
   };
@@ -171,6 +187,7 @@ export type AgentOfficeProductionLoopModel = {
   competenceRows: CompetenceMappingCandidate[];
   capabilityDebt: CapabilityDebtItem[];
   agentTeamBom: AgentTeamBomMember[];
+  closeoutTree: CloseoutTreeItem[];
   executionLedger: ExecutionLedgerItem[];
   verificationLedger: VerificationLedgerItem[];
   proofGate: ProofGateLedger;
@@ -398,6 +415,32 @@ export const agentOfficeProductionLoop = {
         "Runtime proof requires deploy readback plus three consecutive verification passes.",
     },
   ],
+  closeoutTree: [
+    {
+      id: "release-claims",
+      label: "Release WDC claim and session",
+      handoff: "release",
+      status: "requires-readback",
+      requiredEvidence: ["work release ok", "session release ok"],
+      proofBoundary: "Released claims close the edit scope but do not prove runtime behavior.",
+    },
+    {
+      id: "standard-candidate-broadcast",
+      label: "Broadcast reusable learning",
+      handoff: "a2a",
+      status: "requires-readback",
+      requiredEvidence: ["A2A STANDARD_CANDIDATE id", "inbox readback"],
+      proofBoundary: "A2A candidate broadcast is reusable learning, not adopted runtime proof.",
+    },
+    {
+      id: "adoption-followup",
+      label: "Track adoption follow-up",
+      handoff: "adoption-followup",
+      status: "requires-readback",
+      requiredEvidence: ["reuse route", "adoption record", "verification readback"],
+      proofBoundary: "Learning remains candidate until reused, adopted and verified.",
+    },
+  ],
   proofGate: {
     claim: "code-model-proof",
     runtimeProof: false,
@@ -468,8 +511,30 @@ export const demandLoopProfiles = {
       { id: "app-route", label: "Frontend implementation route", method: "branch -> PR -> checks" },
     ],
     environmentBom: [
-      { id: "app-repo", label: "WidgetDC-Gemini-App repo", status: "mapped" },
-      { id: "app-control", label: "WDC CLI Agent Office claim", status: "matched" },
+      {
+        id: "app-repo",
+        label: "WidgetDC-Gemini-App repo",
+        category: "repo",
+        status: "mapped",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.app.environmentBom",
+          requiredEvidence: ["target repo", "branch", "PR route"],
+        },
+        proofBoundary: "Repo evidence makes the app buildable, not runtime-proven.",
+      },
+      {
+        id: "app-control",
+        label: "WDC CLI Agent Office claim",
+        category: "branch",
+        status: "matched",
+        extraction_contract: {
+          source: "wdc-graph-readback",
+          artifact: "WDC work claim",
+          requiredEvidence: ["active claim", "conflicts empty", "release readback"],
+        },
+        proofBoundary: "A clean claim authorizes edits but does not prove deployment.",
+      },
     ],
     competenceCandidate: {
       required: "app delivery demand",
@@ -502,8 +567,30 @@ export const demandLoopProfiles = {
       { id: "book-route", label: "Editorial route", method: "outline -> draft -> review" },
     ],
     environmentBom: [
-      { id: "book-canvas", label: "Canvas notes", status: "mapped" },
-      { id: "book-sources", label: "Source evidence register", status: "debt" },
+      {
+        id: "book-canvas",
+        label: "Canvas notes",
+        category: "evidence",
+        status: "mapped",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.book.environmentBom",
+          requiredEvidence: ["canvas notes", "outline state"],
+        },
+        proofBoundary: "Book canvas evidence is planning proof, not publication proof.",
+      },
+      {
+        id: "book-sources",
+        label: "Source evidence register",
+        category: "evidence",
+        status: "debt",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.book.environmentBom",
+          requiredEvidence: ["source list", "citation state", "review readback"],
+        },
+        proofBoundary: "Missing sources remain CapabilityDebtLedger input.",
+      },
     ],
     competenceCandidate: {
       required: "book production demand",
@@ -540,8 +627,30 @@ export const demandLoopProfiles = {
       },
     ],
     environmentBom: [
-      { id: "investigation-canvas", label: "Evidence canvas", status: "mapped" },
-      { id: "investigation-chain", label: "Chain-of-custody readback", status: "debt" },
+      {
+        id: "investigation-canvas",
+        label: "Evidence canvas",
+        category: "evidence",
+        status: "mapped",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.investigation.environmentBom",
+          requiredEvidence: ["hypothesis set", "source matrix"],
+        },
+        proofBoundary: "Evidence canvas is investigative structure, not factual proof by itself.",
+      },
+      {
+        id: "investigation-chain",
+        label: "Chain-of-custody readback",
+        category: "evidence",
+        status: "debt",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.investigation.environmentBom",
+          requiredEvidence: ["source provenance", "timestamped custody", "reviewer readback"],
+        },
+        proofBoundary: "Chain-of-custody debt blocks proof promotion.",
+      },
     ],
     competenceCandidate: {
       required: "investigation demand",
@@ -569,9 +678,42 @@ export const demandLoopProfiles = {
       { id: "operate-route", label: "WDC CLI route", method: "boot -> claim -> verify -> release" },
     ],
     environmentBom: [
-      { id: "operate-control", label: "WidgeTDC control repo", status: "matched" },
-      { id: "operate-target", label: "Target repo branch", status: "matched" },
-      { id: "operate-runtime", label: "Runtime deployment readback", status: "debt" },
+      {
+        id: "operate-control",
+        label: "WidgeTDC control repo",
+        category: "repo",
+        status: "matched",
+        extraction_contract: {
+          source: "wdc-graph-readback",
+          artifact: "WDC control repo bootstrap",
+          requiredEvidence: ["control repo", "preflight ok"],
+        },
+        proofBoundary: "Control repo readiness is an execution precondition only.",
+      },
+      {
+        id: "operate-target",
+        label: "Target repo branch",
+        category: "branch",
+        status: "matched",
+        extraction_contract: {
+          source: "wdc-graph-readback",
+          artifact: "target repo bootstrap",
+          requiredEvidence: ["target branch", "upstream", "clean worktree"],
+        },
+        proofBoundary: "A clean branch is buildable state, not deployed runtime proof.",
+      },
+      {
+        id: "operate-runtime",
+        label: "Runtime deployment readback",
+        category: "runtime",
+        status: "debt",
+        extraction_contract: {
+          source: "wdc-graph-readback",
+          artifact: "runtime deployment readback",
+          requiredEvidence: ["deployed SHA", "runtime URL", "three verification passes"],
+        },
+        proofBoundary: "Runtime environment remains debt until deploy and verification readback.",
+      },
     ],
     competenceCandidate: {
       required: "WDC operation demand",
@@ -599,8 +741,30 @@ export const demandLoopProfiles = {
       { id: "general-route", label: "Decision route", method: "frame -> compare -> decide" },
     ],
     environmentBom: [
-      { id: "general-canvas", label: "Canvas scratchpad", status: "mapped" },
-      { id: "general-proof", label: "External proof readback", status: "debt" },
+      {
+        id: "general-canvas",
+        label: "Canvas scratchpad",
+        category: "evidence",
+        status: "mapped",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.general.environmentBom",
+          requiredEvidence: ["goal frame", "options", "next action"],
+        },
+        proofBoundary: "Canvas reasoning is decision support, not external proof.",
+      },
+      {
+        id: "general-proof",
+        label: "External proof readback",
+        category: "runtime",
+        status: "debt",
+        extraction_contract: {
+          source: "agent-office-static-model",
+          artifact: "demandLoopProfiles.general.environmentBom",
+          requiredEvidence: ["external source", "readback", "verification state"],
+        },
+        proofBoundary: "External proof debt must remain visible before promotion.",
+      },
     ],
     competenceCandidate: {
       required: "general reasoning demand",
@@ -647,12 +811,15 @@ export function createLearningBroadcastEnvelope(
       mappedCount: summary.mappedCount,
       debtCount: summary.debtCount,
       agentTeamBomCount: model.agentTeamBom.length,
+      environmentBomCount: model.environmentBom.length,
       executionLedgerCount: model.executionLedger.length,
       verificationLedgerCount: model.verificationLedger.length,
+      closeoutTreeCount: model.closeoutTree.length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       extractionContracts: [
         ...model.competenceRows.map((candidate) => candidate.extraction_contract),
         ...model.agentTeamBom.map((member) => member.extraction_contract),
+        ...model.environmentBom.map((item) => item.extraction_contract),
       ],
     },
   };
@@ -690,18 +857,27 @@ export function summarizeProofGate(ledger: ProofGateLedger) {
   };
 }
 
-export function summarizeOperationalLedgers(model: AgentOfficeProductionLoopModel) {
+export function summarizeOperationalLedgers(
+  model: AgentOfficeProductionLoopModel & Partial<Pick<DemandLoopProfile, "environmentBom">>,
+) {
+  const environmentBom = model.environmentBom ?? [];
   return {
     agentTeamBomCount: model.agentTeamBom.length,
+    environmentBomCount: environmentBom.length,
     executionLedgerCount: model.executionLedger.length,
     verificationLedgerCount: model.verificationLedger.length,
+    closeoutTreeCount: model.closeoutTree.length,
     claimGatedExecutionCount: model.executionLedger.filter((item) => item.claimRequired).length,
+    environmentDebtCount: environmentBom.filter((item) => item.status === "debt").length,
     runtimeProofClaims: model.verificationLedger.filter((item) => item.runtimeProof).length,
   };
 }
 
-export function validateProductionLoopModel(model: AgentOfficeProductionLoopModel) {
+export function validateProductionLoopModel(
+  model: AgentOfficeProductionLoopModel & Partial<Pick<DemandLoopProfile, "environmentBom">>,
+) {
   const failures: string[] = [];
+  const environmentBom = model.environmentBom ?? [];
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -734,7 +910,30 @@ export function validateProductionLoopModel(model: AgentOfficeProductionLoopMode
       failures.push(`${member.id} is missing AgentTeamBOM extraction evidence contract`);
     }
   }
+  for (const item of environmentBom) {
+    if (!item.extraction_contract.artifact || !item.extraction_contract.requiredEvidence.length) {
+      failures.push(`${item.id} is missing EnvironmentBOM extraction evidence contract`);
+    }
+    if (!item.proofBoundary.trim()) {
+      failures.push(`${item.id} is missing EnvironmentBOM proof boundary`);
+    }
+  }
   const operationalSummary = summarizeOperationalLedgers(model);
+  if (!model.closeoutTree.some((item) => item.handoff === "release")) {
+    failures.push("CloseoutTree must include WDC release handoff");
+  }
+  if (!model.closeoutTree.some((item) => item.handoff === "a2a")) {
+    failures.push("CloseoutTree must include A2A learning handoff");
+  }
+  for (const item of model.closeoutTree) {
+    if (!item.requiredEvidence.length) {
+      failures.push(`${item.id} is missing CloseoutTree evidence`);
+    }
+    const proofBoundary = item.proofBoundary.toLowerCase();
+    if (proofBoundary.includes("runtime proof") && !proofBoundary.includes("not")) {
+      failures.push(`${item.id} CloseoutTree must not claim runtime proof`);
+    }
+  }
   if (operationalSummary.claimGatedExecutionCount === 0) {
     failures.push("ExecutionLedger must include a claim-gated step");
   }

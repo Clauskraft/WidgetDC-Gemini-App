@@ -122,13 +122,17 @@ describe("agentOfficeProductionLoop", () => {
       mappedCount: 3,
       debtCount: 1,
       agentTeamBomCount: 3,
+      environmentBomCount: 3,
       executionLedgerCount: 3,
       verificationLedgerCount: 5,
+      closeoutTreeCount: 3,
     });
     expect(envelope.payload.stageOrder.at(0)).toBe("demand");
     expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
     expect(envelope.payload.extractionContracts.length).toBe(
-      envelope.payload.candidateCount + envelope.payload.agentTeamBomCount,
+      envelope.payload.candidateCount +
+        envelope.payload.agentTeamBomCount +
+        envelope.payload.environmentBomCount,
     );
     expect(envelope.proofBoundary).toContain("pending adoption");
     expect(validateLearningBroadcastEnvelope(envelope)).toEqual({ ok: true, failures: [] });
@@ -138,9 +142,12 @@ describe("agentOfficeProductionLoop", () => {
     const model = resolveAgentOfficeProductionLoop("operate");
     expect(summarizeOperationalLedgers(model)).toMatchObject({
       agentTeamBomCount: 3,
+      environmentBomCount: 3,
       executionLedgerCount: 3,
       verificationLedgerCount: 5,
+      closeoutTreeCount: 3,
       claimGatedExecutionCount: 2,
+      environmentDebtCount: 1,
       runtimeProofClaims: 0,
     });
     expect(model.agentTeamBom.every((member) => member.source_fit_score >= 0)).toBe(true);
@@ -155,6 +162,54 @@ describe("agentOfficeProductionLoop", () => {
       "runtime",
     ]);
     expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("keeps EnvironmentBOM evidence contracts visible per demand scope", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    expect(model.environmentBom.map((item) => item.category)).toEqual([
+      "repo",
+      "branch",
+      "runtime",
+    ]);
+    expect(model.environmentBom.every((item) => item.extraction_contract.artifact)).toBe(true);
+    expect(
+      model.environmentBom.every((item) => item.extraction_contract.requiredEvidence.length > 0),
+    ).toBe(true);
+    expect(model.environmentBom.find((item) => item.id === "operate-runtime")).toMatchObject({
+      status: "debt",
+      category: "runtime",
+    });
+    expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("keeps CloseoutTree release and A2A handoff before learning adoption", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    expect(model.closeoutTree.map((item) => item.handoff)).toEqual([
+      "release",
+      "a2a",
+      "adoption-followup",
+    ]);
+    expect(model.closeoutTree.every((item) => item.requiredEvidence.length > 0)).toBe(true);
+    expect(model.closeoutTree.at(-1)?.proofBoundary).toContain("candidate");
+    expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("rejects EnvironmentBOM rows without extraction evidence", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      environmentBom: [
+        {
+          ...resolveAgentOfficeProductionLoop("operate").environmentBom[0],
+          extraction_contract: {
+            ...resolveAgentOfficeProductionLoop("operate").environmentBom[0].extraction_contract,
+            requiredEvidence: [],
+          },
+        },
+      ],
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "operate-control is missing EnvironmentBOM extraction evidence contract",
+    );
   });
 
   it("rejects verification ledgers that claim runtime proof directly", () => {
