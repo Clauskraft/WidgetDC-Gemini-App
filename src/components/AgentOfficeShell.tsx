@@ -3,7 +3,6 @@ import {
   cloneElement,
   isValidElement,
   useMemo,
-  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -14,17 +13,12 @@ import {
   BookOpen,
   Brain,
   CheckCircle2,
-  Crosshair,
   FileSearch,
   MessageSquare,
-  Minus,
-  Network,
-  Plus,
   Radar,
-  RotateCcw,
-  Settings2,
   Sparkles,
 } from "lucide-react";
+import { CanvasWorkspace } from "@/components/CanvasWorkspace";
 import {
   buildBuildabilityLedger,
   buildEvidenceContractLedger,
@@ -53,15 +47,6 @@ type WorkModeView = WorkMode & {
   accent: string;
 };
 
-type CanvasNode = {
-  id: string;
-  label: string;
-  meta: string;
-  x: number;
-  y: number;
-  tone: string;
-};
-
 const modeVisuals: Record<WorkModeId, Pick<WorkModeView, "icon" | "accent">> = {
   general: { icon: Brain, accent: "agent-office-scope-violet" },
   app: { icon: AppWindow, accent: "agent-office-scope-blue" },
@@ -74,39 +59,6 @@ const workModes: WorkModeView[] = WORK_MODES.map((mode) => ({
   ...mode,
   ...modeVisuals[mode.id],
 }));
-
-const nodesByScope: Record<WorkModeId, CanvasNode[]> = {
-  app: [
-    { id: "intent", label: "Intent", meta: "Scope + user", x: 62, y: 70, tone: "blue" },
-    { id: "ux", label: "Experience", meta: "Chat + canvas", x: 258, y: 44, tone: "gold" },
-    { id: "build", label: "Build slice", meta: "Branch + PR", x: 213, y: 214, tone: "green" },
-    { id: "proof", label: "Proof", meta: "Tests + gates", x: 448, y: 154, tone: "violet" },
-  ],
-  book: [
-    { id: "premise", label: "Premise", meta: "Thesis", x: 70, y: 58, tone: "gold" },
-    { id: "outline", label: "Outline", meta: "Chapters", x: 280, y: 78, tone: "blue" },
-    { id: "research", label: "Research", meta: "Sources", x: 158, y: 240, tone: "red" },
-    { id: "draft", label: "Draft", meta: "Next pages", x: 436, y: 224, tone: "green" },
-  ],
-  investigation: [
-    { id: "question", label: "Question", meta: "Unknown", x: 60, y: 90, tone: "red" },
-    { id: "sources", label: "Sources", meta: "Evidence", x: 263, y: 48, tone: "blue" },
-    { id: "links", label: "Links", meta: "Relations", x: 236, y: 236, tone: "violet" },
-    { id: "next", label: "Next pivot", meta: "Action", x: 466, y: 162, tone: "gold" },
-  ],
-  operate: [
-    { id: "boot", label: "Boot", meta: "Session", x: 72, y: 62, tone: "green" },
-    { id: "claim", label: "Claim", meta: "Files", x: 286, y: 52, tone: "blue" },
-    { id: "gate", label: "Gate", meta: "Conflicts", x: 204, y: 230, tone: "gold" },
-    { id: "close", label: "Closeout", meta: "Proof", x: 452, y: 210, tone: "violet" },
-  ],
-  general: [
-    { id: "goal", label: "Goal", meta: "Desired state", x: 82, y: 74, tone: "violet" },
-    { id: "options", label: "Options", meta: "Choices", x: 286, y: 50, tone: "blue" },
-    { id: "tradeoffs", label: "Tradeoffs", meta: "Risks", x: 212, y: 234, tone: "gold" },
-    { id: "next", label: "Next", meta: "Move", x: 462, y: 176, tone: "green" },
-  ],
-};
 
 export function WorkModeSwitcher({
   activeModeId,
@@ -143,27 +95,9 @@ export function WorkModeSwitcher({
 
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
-  const [selectedNode, setSelectedNode] = useState(nodesByScope[DEFAULT_WORK_MODE_ID][0].id);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
-  const [zoom, setZoom] = useState(0.92);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
-  const dragRef = useRef<
-    | { type: "node"; id: string; startX: number; startY: number; originX: number; originY: number }
-    | { type: "pan"; startX: number; startY: number; originX: number; originY: number }
-    | null
-  >(null);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
-  const nodes = useMemo(
-    () =>
-      nodesByScope[activeScope.id].map((node) => ({
-        ...node,
-        ...(positions[`${activeScope.id}:${node.id}`] ?? {}),
-      })),
-    [activeScope.id, positions],
-  );
-  const selected = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
@@ -205,34 +139,6 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
   const setScope = (id: WorkModeId) => {
     setActiveScopeId(id);
-    setSelectedNode(nodesByScope[id][0].id);
-    setOffset({ x: 0, y: 0 });
-  };
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag) return;
-    if (drag.type === "pan") {
-      setOffset({
-        x: drag.originX + event.clientX - drag.startX,
-        y: drag.originY + event.clientY - drag.startY,
-      });
-      return;
-    }
-    setPositions((current) => ({
-      ...current,
-      [`${activeScope.id}:${drag.id}`]: {
-        x: drag.originX + (event.clientX - drag.startX) / zoom,
-        y: drag.originY + (event.clientY - drag.startY) / zoom,
-      },
-    }));
-  };
-
-  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   };
 
   const insertPrompt = () => {
@@ -267,26 +173,6 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
 
-        <div className="agent-office-mode-palette" aria-label="Object palette">
-          <div className="agent-office-workstrip-label">Object palette</div>
-          <div>
-            {activeScope.canvasPalette.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="agent-office-workstrip">
-          <div>
-            <div className="agent-office-workstrip-label">Mode prompt</div>
-            <p>{activeScope.prompt}</p>
-          </div>
-          <div className="agent-office-status-pill">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Mode
-          </div>
-        </div>
-
         <div className="agent-office-workstrip">
           <div>
             <div className="agent-office-workstrip-label">Scope</div>
@@ -297,6 +183,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             Claimed
           </div>
         </div>
+
+        <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
         <div className="agent-office-loop" aria-label="Demand to proof production loop">
           <div className="agent-office-panel-head">
@@ -382,102 +270,6 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             StopConditionLedger: {stopConditionBlockedCount} promotion blockers. Candidate counts,
             readback and missing corpus evidence remain proof-ineligible.
           </p>
-        </div>
-
-        <div
-          className="agent-office-board"
-          onPointerDown={(event) => {
-            if (event.target !== event.currentTarget) return;
-            dragRef.current = {
-              type: "pan",
-              startX: event.clientX,
-              startY: event.clientY,
-              originX: offset.x,
-              originY: offset.y,
-            };
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerMove={onPointerMove}
-          onPointerUp={stopDrag}
-          onPointerCancel={stopDrag}
-        >
-          <div
-            className="agent-office-board-world"
-            style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}
-          >
-            <svg className="agent-office-links" viewBox="0 0 640 360" aria-hidden="true">
-              <path
-                d={`M ${nodes[0].x + 82} ${nodes[0].y + 32} C 190 64, 205 68, ${nodes[1].x} ${nodes[1].y + 32}`}
-              />
-              <path
-                d={`M ${nodes[1].x + 82} ${nodes[1].y + 40} C 388 124, 390 150, ${nodes[3].x} ${nodes[3].y + 28}`}
-              />
-              <path
-                d={`M ${nodes[0].x + 82} ${nodes[0].y + 52} C 118 198, 158 224, ${nodes[2].x} ${nodes[2].y + 32}`}
-              />
-              <path
-                d={`M ${nodes[2].x + 82} ${nodes[2].y + 32} C 342 278, 390 260, ${nodes[3].x} ${nodes[3].y + 52}`}
-              />
-            </svg>
-            {nodes.map((node) => (
-              <button
-                key={node.id}
-                type="button"
-                className={cn(
-                  "agent-office-node",
-                  `agent-office-node-${node.tone}`,
-                  selected.id === node.id && "agent-office-node-selected",
-                )}
-                style={{ transform: `translate(${node.x}px, ${node.y}px)` }}
-                onPointerDown={(event) => {
-                  event.stopPropagation();
-                  setSelectedNode(node.id);
-                  dragRef.current = {
-                    type: "node",
-                    id: node.id,
-                    startX: event.clientX,
-                    startY: event.clientY,
-                    originX: node.x,
-                    originY: node.y,
-                  };
-                  event.currentTarget.parentElement?.parentElement?.setPointerCapture(
-                    event.pointerId,
-                  );
-                }}
-              >
-                <span>{node.label}</span>
-                <small>{node.meta}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="agent-office-toolbar">
-          <button
-            type="button"
-            onClick={() => setZoom((value) => Math.max(0.65, value - 0.08))}
-            title="Zoom ud"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <div className="agent-office-zoom">{Math.round(zoom * 100)}%</div>
-          <button
-            type="button"
-            onClick={() => setZoom((value) => Math.min(1.28, value + 0.08))}
-            title="Zoom ind"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setOffset({ x: 0, y: 0 });
-              setZoom(0.92);
-            }}
-            title="Nulstil view"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </button>
         </div>
 
         <div className="agent-office-governance-grid">
@@ -768,19 +560,6 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               ))}
             </div>
           </div>
-        </div>
-
-        <div className="agent-office-inspector">
-          <div className="agent-office-inspector-icon">
-            <Crosshair className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="agent-office-workstrip-label">Selected</div>
-            <strong>{selected.label}</strong>
-            <p>{selected.meta}</p>
-          </div>
-          <Network className="ml-auto h-4 w-4 text-muted-foreground" />
-          <Settings2 className="h-4 w-4 text-muted-foreground" />
         </div>
       </aside>
     </div>

@@ -168,7 +168,12 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family:
+      "Inter",
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -1337,7 +1342,8 @@
   flex-wrap: wrap;
   gap: 0.4rem;
 }
-.agent-office-mode-palette span {
+.agent-office-mode-palette span,
+.agent-office-mode-palette button {
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
   border-radius: 999px;
   background: color-mix(in oklab, var(--background) 72%, transparent);
@@ -1346,6 +1352,10 @@
   font-size: 0.72rem;
   font-weight: 620;
   line-height: 1.2;
+}
+.agent-office-mode-palette button:hover {
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+  background: color-mix(in oklab, var(--primary) 8%, var(--card));
 }
 .chat-run-indicator {
   --chat-run-accent: var(--muted-foreground);
@@ -1566,17 +1576,27 @@
   font-size: 0.68rem;
   font-weight: 650;
 }
+.canvas-workspace {
+  display: flex;
+  min-height: 24rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
 .agent-office-board {
   position: relative;
   flex: 1 1 auto;
-  min-height: 14rem;
+  min-height: 16rem;
   overflow: hidden;
   border: 1px solid var(--figure-border);
   border-radius: var(--radius-lg);
   background-color: var(--figure-surface);
   background-image:
     linear-gradient(color-mix(in oklab, var(--figure-grid) 52%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--figure-grid) 52%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--figure-grid) 52%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 24px 24px;
   cursor: grab;
   touch-action: none;
@@ -1588,16 +1608,16 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 640px;
-  height: 360px;
+  width: 720px;
+  height: 420px;
   transform-origin: 0 0;
   will-change: transform;
 }
 .agent-office-links {
   position: absolute;
   inset: 0;
-  width: 640px;
-  height: 360px;
+  width: 720px;
+  height: 420px;
   overflow: visible;
   pointer-events: none;
 }
@@ -1684,6 +1704,21 @@
   display: block;
   color: var(--foreground);
   font-size: 0.9rem;
+}
+.agent-office-inspector-meta {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.agent-office-inspector-meta span {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted) 52%, transparent);
+  color: var(--muted-foreground);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: right;
 }
 .agent-office-inspector-icon {
   display: inline-flex;
