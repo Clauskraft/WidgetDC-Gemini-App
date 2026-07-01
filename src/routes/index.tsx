@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef } from "react";
+import { AgentOfficeShell } from "@/components/AgentOfficeShell";
 import { ChatWindow } from "@/components/ChatWindow";
 import { newId } from "@/hooks/useThreads";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WidgeTDC Aurora — Ny samtale" },
+      { title: "WDC Agent Office — Ny samtale" },
       {
         name: "description",
-        content: "Start en ny samtale med Aurora, et Gemini-drevet AI workspace.",
+        content: "Start en WDC Agent Office samtale med chat, scopes og interaktiv canvas.",
       },
     ],
   }),
@@ -35,5 +36,9 @@ function IndexRoute() {
     }
   }, [id]);
 
-  return <ChatWindow threadId={id} initialMessages={[]} onFirstMessage={handleFirstMessage} />;
+  return (
+    <AgentOfficeShell>
+      <ChatWindow threadId={id} initialMessages={[]} onFirstMessage={handleFirstMessage} />
+    </AgentOfficeShell>
+  );
 }

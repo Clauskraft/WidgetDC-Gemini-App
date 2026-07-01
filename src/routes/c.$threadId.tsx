@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { AgentOfficeShell } from "@/components/AgentOfficeShell";
 import { ChatWindow } from "@/components/ChatWindow";
 import { readThreadMessages } from "@/lib/threadStorage";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: ({ params }) => ({
     meta: [
-      { title: `Samtale · WidgeTDC Aurora` },
-      { name: "description", content: `Aurora samtale ${params.threadId}` },
+      { title: "Samtale · WDC Agent Office" },
+      { name: "description", content: `WDC Agent Office samtale ${params.threadId}` },
     ],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
@@ -28,5 +29,14 @@ function ThreadRoute() {
 
   // Key=threadId (KUN) tvinger remount ved tråd-SKIFT, men ikke ved hydrering,
   // så et streamende svar i den nye tråd overlever.
-  return <ChatWindow key={threadId} threadId={threadId} initialMessages={initial} initialInput={prompt} />;
+  return (
+    <AgentOfficeShell>
+      <ChatWindow
+        key={threadId}
+        threadId={threadId}
+        initialMessages={initial}
+        initialInput={prompt}
+      />
+    </AgentOfficeShell>
+  );
 }

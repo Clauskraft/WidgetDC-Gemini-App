@@ -1159,3 +1159,337 @@
     animation: none;
   }
 }
+
+/* ===== WDC Agent Office ===== */
+.agent-office-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 38vw);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 94%, white), var(--background)),
+    var(--background);
+}
+.agent-office-chat {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+}
+.agent-office-chat > .relative.flex.h-screen.flex-1 {
+  height: 100%;
+}
+.agent-office-canvas {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  background: color-mix(in oklab, var(--card) 76%, var(--background));
+}
+.agent-office-canvas-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.agent-office-canvas-head h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.agent-office-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.agent-office-icon-button,
+.agent-office-toolbar button {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  color: var(--foreground);
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+.agent-office-icon-button:hover,
+.agent-office-toolbar button:hover {
+  background: var(--accent);
+}
+.agent-office-icon-button:active,
+.agent-office-toolbar button:active {
+  transform: scale(0.97);
+}
+.agent-office-scopes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--muted) 64%, transparent);
+}
+.agent-office-scope {
+  display: inline-flex;
+  min-width: 0;
+  height: 2.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--muted-foreground);
+  font-size: 0.74rem;
+  font-weight: 650;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+.agent-office-scope span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-office-scope-active {
+  background: var(--card);
+  color: var(--scope-color);
+  box-shadow: 0 1px 8px -6px var(--foreground);
+}
+.agent-office-scope-blue {
+  --scope-color: oklch(0.52 0.17 252);
+}
+.agent-office-scope-gold {
+  --scope-color: oklch(0.6 0.15 72);
+}
+.agent-office-scope-red {
+  --scope-color: oklch(0.56 0.18 24);
+}
+.agent-office-scope-green {
+  --scope-color: oklch(0.5 0.13 158);
+}
+.agent-office-scope-violet {
+  --scope-color: oklch(0.52 0.15 296);
+}
+.agent-office-workstrip,
+.agent-office-inspector {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  padding: 0.75rem;
+}
+.agent-office-workstrip p,
+.agent-office-inspector p {
+  margin: 0.15rem 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.agent-office-workstrip-label {
+  color: var(--muted-foreground);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.agent-office-status-pill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  border-radius: 999px;
+  background: color-mix(in oklab, oklch(0.5 0.13 158) 12%, transparent);
+  color: oklch(0.48 0.14 158);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.agent-office-board {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 18rem;
+  overflow: hidden;
+  border: 1px solid var(--figure-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--figure-surface);
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--figure-grid) 52%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--figure-grid) 52%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  cursor: grab;
+  touch-action: none;
+}
+.agent-office-board:active {
+  cursor: grabbing;
+}
+.agent-office-board-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 640px;
+  height: 360px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.agent-office-links {
+  position: absolute;
+  inset: 0;
+  width: 640px;
+  height: 360px;
+  overflow: visible;
+  pointer-events: none;
+}
+.agent-office-links path {
+  fill: none;
+  stroke: color-mix(in oklab, var(--muted-foreground) 42%, transparent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 5 7;
+}
+.agent-office-node {
+  position: absolute;
+  display: flex;
+  width: 10.6rem;
+  height: 4.4rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.18rem;
+  border: 1px solid color-mix(in oklab, var(--node-color) 35%, var(--border));
+  border-left: 4px solid var(--node-color);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  padding: 0.78rem 0.85rem;
+  text-align: left;
+  box-shadow: 0 16px 35px -30px color-mix(in oklab, var(--foreground) 45%, transparent);
+  cursor: grab;
+  user-select: none;
+}
+.agent-office-node span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.83rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-office-node small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-office-node-selected {
+  border-color: color-mix(in oklab, var(--node-color) 78%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--node-color) 16%, transparent),
+    0 18px 40px -28px color-mix(in oklab, var(--node-color) 75%, transparent);
+}
+.agent-office-node-blue {
+  --node-color: oklch(0.55 0.17 252);
+}
+.agent-office-node-gold {
+  --node-color: oklch(0.66 0.16 74);
+}
+.agent-office-node-red {
+  --node-color: oklch(0.58 0.18 25);
+}
+.agent-office-node-green {
+  --node-color: oklch(0.52 0.13 158);
+}
+.agent-office-node-violet {
+  --node-color: oklch(0.56 0.16 296);
+}
+.agent-office-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.agent-office-zoom {
+  min-width: 3.2rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.agent-office-inspector {
+  min-height: 4.35rem;
+}
+.agent-office-inspector strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 0.9rem;
+}
+.agent-office-inspector-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  color: var(--primary);
+}
+
+@media (max-width: 1180px) {
+  .agent-office-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agent-office-canvas {
+    display: none;
+  }
+  .agent-office-chat {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-sidebar {
+    width: 4rem !important;
+    flex: 0 0 4rem;
+  }
+  .app-sidebar > div:first-child {
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .app-sidebar > div:first-child > .min-w-0,
+  .app-sidebar span,
+  .app-sidebar .mt-5,
+  .app-sidebar .flex-1,
+  .app-sidebar .text-\[11px\] {
+    display: none !important;
+  }
+  .app-sidebar nav,
+  .app-sidebar .border-t {
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+  .app-sidebar a,
+  .app-sidebar button {
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
