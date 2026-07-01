@@ -46,5 +46,11 @@ describe("WorldClassAssessment", () => {
     expect(html).toContain("Human task success");
     expect(html).toContain("Runtime proof readback");
     expect(html).toContain("observed diagnostic_only");
+    expect(html).toContain("External review readiness 1/3");
+    expect(html).toContain("Claude Design");
+    expect(html).toContain("v0 by Vercel");
+    expect(html).toContain("Figma Make");
+    expect(html).toContain("candidate_only external inputs");
+    expect(html).toContain("login_required");
   });
 });
