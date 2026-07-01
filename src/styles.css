@@ -1187,6 +1187,7 @@
   min-height: 0;
   flex-direction: column;
   gap: 0.85rem;
+  overflow-y: auto;
   padding: 1rem;
   background: color-mix(in oklab, var(--card) 76%, var(--background));
 }
@@ -1295,7 +1296,9 @@
   padding: 0.75rem;
 }
 .agent-office-workstrip p,
-.agent-office-inspector p {
+.agent-office-inspector p,
+.agent-office-loop p,
+.agent-office-debt-panel p {
   margin: 0.15rem 0 0;
   color: var(--muted-foreground);
   font-size: 0.78rem;
@@ -1321,10 +1324,160 @@
   font-size: 0.72rem;
   font-weight: 650;
 }
+.agent-office-loop,
+.agent-office-mini-panel,
+.agent-office-debt-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  padding: 0.75rem;
+}
+.agent-office-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.agent-office-panel-head strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+.agent-office-panel-head > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  padding: 0.22rem 0.48rem;
+  font-size: 0.67rem;
+  font-weight: 650;
+}
+.agent-office-loop-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+.agent-office-loop-stage {
+  display: flex;
+  min-width: 0;
+  height: 2.45rem;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.1rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+  border-radius: calc(var(--radius-md) - 1px);
+  background: color-mix(in oklab, var(--background) 54%, transparent);
+  padding: 0.35rem 0.42rem;
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+.agent-office-loop-stage small {
+  color: var(--muted-foreground);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.agent-office-loop-stage span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-office-loop-stage-active {
+  border-color: color-mix(in oklab, var(--primary) 62%, var(--border));
+  background: color-mix(in oklab, var(--primary) 10%, var(--card));
+}
+.agent-office-governance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.65rem;
+}
+.agent-office-ref-list,
+.agent-office-competence-list {
+  display: grid;
+  gap: 0.32rem;
+  margin-top: 0.65rem;
+}
+.agent-office-ref-row,
+.agent-office-competence-row {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: color-mix(in oklab, var(--muted) 42%, transparent);
+  padding: 0.42rem 0.5rem;
+}
+.agent-office-ref-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.agent-office-ref-row code {
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.agent-office-ref-row span,
+.agent-office-competence-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.72rem;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-office-ref-row small,
+.agent-office-competence-row small {
+  color: var(--muted-foreground);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+.agent-office-competence-row {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) auto;
+}
+.agent-office-competence-row small[data-state="matched"],
+.agent-office-competence-row small[data-state="mapped"] {
+  color: oklch(0.48 0.14 158);
+}
+.agent-office-competence-row small[data-state="debt"] {
+  color: oklch(0.58 0.18 25);
+}
+.agent-office-debt-panel {
+  display: flex;
+  gap: 0.7rem;
+}
+.agent-office-debt-panel .agent-office-inspector-icon {
+  color: oklch(0.58 0.18 25);
+  background: color-mix(in oklab, oklch(0.58 0.18 25) 10%, transparent);
+}
+.agent-office-debt-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+.agent-office-debt-list span {
+  border-radius: 999px;
+  background: color-mix(in oklab, oklch(0.58 0.18 25) 9%, transparent);
+  color: color-mix(in oklab, oklch(0.58 0.18 25) 78%, var(--foreground));
+  padding: 0.24rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
 .agent-office-board {
   position: relative;
   flex: 1 1 auto;
-  min-height: 18rem;
+  min-height: 14rem;
   overflow: hidden;
   border: 1px solid var(--figure-border);
   border-radius: var(--radius-lg);
@@ -1461,6 +1614,15 @@
   }
   .agent-office-chat {
     border-right: 0;
+  }
+}
+
+@media (max-width: 1320px) {
+  .agent-office-loop-track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .agent-office-governance-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
