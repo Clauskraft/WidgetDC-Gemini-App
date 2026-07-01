@@ -170,6 +170,18 @@ export type ProofAdoptionLadderItem = {
   runtimeProofEligible: boolean;
 };
 
+export type StopConditionSeverity = "expected-stop" | "approval-required" | "runtime-boundary";
+
+export type StopConditionLedgerItem = {
+  id: string;
+  label: string;
+  severity: StopConditionSeverity;
+  source: "wdc-production-loop-status" | "capability-debt-ledger" | "proof-gate";
+  proofEligible: false;
+  proofBoundary: string;
+  nextAction: string;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -217,7 +229,10 @@ export type LearningBroadcastEnvelope = {
     coverageDebtCount: number;
     proofAdoptionLadderCount: number;
     proofAdoptionBlockedCount: number;
+    stopConditionCount: number;
+    promotionBlockedCount: number;
     capabilityDebtIds: string[];
+    stopConditionIds: string[];
     extractionContracts: ExtractionContract[];
   };
 };
@@ -232,6 +247,7 @@ export type AgentOfficeProductionLoopModel = {
   executionLedger: ExecutionLedgerItem[];
   verificationLedger: VerificationLedgerItem[];
   proofGate: ProofGateLedger;
+  stopConditions: StopConditionLedgerItem[];
   learning: StandardCandidateLearning;
 };
 
@@ -525,6 +541,53 @@ export const agentOfficeProductionLoop = {
     runtimeRequirements: ["merged code", "deployed SHA readback", "three verification passes"],
     boundary: "Candidate, projection, dry-run and read-only output is not runtime proof.",
   },
+  stopConditions: [
+    {
+      id: "MAPPED_COUNT_ZERO_EXPECTED_STOP",
+      label: "Mapped count is zero",
+      severity: "expected-stop",
+      source: "wdc-production-loop-status",
+      proofEligible: false,
+      proofBoundary: "mapped_count must come from graph readback, not candidate count.",
+      nextAction: "Review mapping candidates and wait for graph-backed mapped_count evidence.",
+    },
+    {
+      id: "CANDIDATE_COUNT_NOT_MAPPED_COUNT",
+      label: "Candidate count is not mapped count",
+      severity: "expected-stop",
+      source: "wdc-production-loop-status",
+      proofEligible: false,
+      proofBoundary: "Candidate inventory is planning evidence only.",
+      nextAction: "Keep candidate_count and mapped_count separate in all closeout language.",
+    },
+    {
+      id: "READBACK_NOT_RUNTIME_PROOF",
+      label: "Readback is not runtime proof",
+      severity: "runtime-boundary",
+      source: "proof-gate",
+      proofEligible: false,
+      proofBoundary: "Read-only status cannot satisfy deployment and runtime pass requirements.",
+      nextAction: "Require deployed SHA readback and three verification passes before promotion.",
+    },
+    {
+      id: "MISSING_OSINT_DOCUMENTS",
+      label: "OSINTDocument corpus missing",
+      severity: "approval-required",
+      source: "capability-debt-ledger",
+      proofEligible: false,
+      proofBoundary: "Source corpus debt blocks proof promotion until approved materialization.",
+      nextAction: "Approve governed OSINTDocument backfill plan before materialization.",
+    },
+    {
+      id: "MISSING_OSINT_EMBEDDINGS",
+      label: "OSINT embedding gap",
+      severity: "approval-required",
+      source: "capability-debt-ledger",
+      proofEligible: false,
+      proofBoundary: "Embedding debt is not proof and cannot be inferred from candidates.",
+      nextAction: "Approve embedding backfill plan with EventSpine evidence route.",
+    },
+  ],
   learning: {
     type: "STANDARD_CANDIDATE",
     transport: "A2A",
@@ -862,7 +925,10 @@ export function createLearningBroadcastEnvelope(
       coverageDebtCount: coverage.filter((item) => item.status === "debt").length,
       proofAdoptionLadderCount: proofAdoption.length,
       proofAdoptionBlockedCount: proofAdoption.filter((item) => item.status === "blocked").length,
+      stopConditionCount: model.stopConditions.length,
+      promotionBlockedCount: model.stopConditions.filter((item) => !item.proofEligible).length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
+      stopConditionIds: model.stopConditions.map((item) => item.id),
       extractionContracts: [
         ...model.competenceRows.map((candidate) => candidate.extraction_contract),
         ...model.agentTeamBom.map((member) => member.extraction_contract),
@@ -1233,6 +1299,23 @@ export function validateProductionLoopModel(
   }
   if (!model.proofGate.boundary.includes("not runtime proof")) {
     failures.push("ProofGate boundary must reject candidate/projection/dry-run runtime proof");
+  }
+  if (!model.stopConditions.length) {
+    failures.push("StopConditionLedger is missing");
+  }
+  if (!model.stopConditions.some((item) => item.id === "READBACK_NOT_RUNTIME_PROOF")) {
+    failures.push("StopConditionLedger must include readback runtime-proof boundary");
+  }
+  if (!model.stopConditions.some((item) => item.id === "CANDIDATE_COUNT_NOT_MAPPED_COUNT")) {
+    failures.push("StopConditionLedger must keep candidate and mapped counts separate");
+  }
+  for (const item of model.stopConditions) {
+    if (item.proofEligible) {
+      failures.push(`${item.id} stop condition cannot be proof eligible`);
+    }
+    if (!item.proofBoundary.trim() || !item.nextAction.trim()) {
+      failures.push(`${item.id} stop condition is missing boundary or next action`);
+    }
   }
   for (const item of coverageMatrix) {
     if (item.status === "debt") {
