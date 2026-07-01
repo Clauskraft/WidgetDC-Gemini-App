@@ -207,6 +207,31 @@ export type EvidenceContractLedgerItem = {
   proofBoundary: string;
 };
 
+export type MappingCandidateState = "candidate" | "mapped";
+
+export type MappingCandidateExtractionContract = {
+  contract_version: "production_loop_readback_contract.v0";
+  extraction_mode: "read_only_loop_connection";
+  cardinality: "one_to_one_ordered_loop_edge";
+  required_fields: ["source_fit_score", "extraction_contract"];
+  validation_status: "candidate_only";
+};
+
+export type MappingCandidateLedgerItem = {
+  id: string;
+  source_ref: string;
+  target_ref: string;
+  relation_type: "PRODUCTION_LOOP_NEXT";
+  state: MappingCandidateState;
+  source_fit_score: number;
+  extraction_contract: MappingCandidateExtractionContract;
+  dependency_model: "explicit_order_required";
+  candidate_only: true;
+  projection_only: true;
+  proof_eligible: false;
+  proofBoundary: string;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -260,6 +285,9 @@ export type LearningBroadcastEnvelope = {
     buildabilityBlockedCount: number;
     evidenceContractCount: number;
     evidenceContractIncompleteCount: number;
+    mappingCandidateCount: number;
+    mappingMappedCount: number;
+    mappingCandidateOnlyCount: number;
     capabilityDebtIds: string[];
     stopConditionIds: string[];
     extractionContracts: ExtractionContract[];
@@ -304,6 +332,10 @@ const expectedStageOrder: ProductionLoopStageId[] = [
 ];
 
 const stageIndex = new Map(expectedStageOrder.map((stageId, index) => [stageId, index]));
+
+const mappingCandidateFitScores = [
+  0.86, 0.89, 0.92, 0.95, 0.86, 0.89, 0.92, 0.95, 0.86, 0.89, 0.92,
+];
 
 const stageOrderDependencies: ExplicitDependency[] = expectedStageOrder
   .slice(0, -1)
@@ -933,6 +965,7 @@ export function createLearningBroadcastEnvelope(
   const proofAdoption = buildProofAdoptionLadder(model);
   const buildability = buildBuildabilityLedger(model);
   const evidenceContracts = buildEvidenceContractLedger(model);
+  const mappingCandidates = buildMappingCandidateLedger(model);
   return {
     transport: model.learning.transport,
     messageType: model.learning.type,
@@ -964,6 +997,9 @@ export function createLearningBroadcastEnvelope(
       evidenceContractIncompleteCount: evidenceContracts.filter(
         (item) => item.status === "incomplete",
       ).length,
+      mappingCandidateCount: mappingCandidates.length,
+      mappingMappedCount: mappingCandidates.filter((item) => item.state === "mapped").length,
+      mappingCandidateOnlyCount: mappingCandidates.filter((item) => item.candidate_only).length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       stopConditionIds: model.stopConditions.map((item) => item.id),
       extractionContracts: [
@@ -973,6 +1009,39 @@ export function createLearningBroadcastEnvelope(
       ],
     },
   };
+}
+
+export function buildMappingCandidateLedger(
+  model: AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>,
+): MappingCandidateLedgerItem[] {
+  const labelByStageId = new Map(model.stages.map((stage) => [stage.id, stage.label]));
+  const dependencies = model.explicitDependencies ?? stageOrderDependencies;
+
+  return dependencies.map((dependency, index) => {
+    const sourceRef = labelByStageId.get(dependency.from) ?? dependency.from;
+    const targetRef = labelByStageId.get(dependency.to) ?? dependency.to;
+    return {
+      id: `mapping:${dependency.from}->${dependency.to}`,
+      source_ref: sourceRef,
+      target_ref: targetRef,
+      relation_type: "PRODUCTION_LOOP_NEXT",
+      state: "candidate",
+      source_fit_score: mappingCandidateFitScores[index] ?? 0.86,
+      extraction_contract: {
+        contract_version: "production_loop_readback_contract.v0",
+        extraction_mode: "read_only_loop_connection",
+        cardinality: "one_to_one_ordered_loop_edge",
+        required_fields: ["source_fit_score", "extraction_contract"],
+        validation_status: "candidate_only",
+      },
+      dependency_model: "explicit_order_required",
+      candidate_only: true,
+      projection_only: true,
+      proof_eligible: false,
+      proofBoundary:
+        "Production-loop edge mapping is read-only candidate evidence; mapped_count must come from graph readback.",
+    } satisfies MappingCandidateLedgerItem;
+  });
 }
 
 export function buildEvidenceContractLedger(
@@ -1350,6 +1419,7 @@ export function validateProductionLoopModel(
   const proofAdoptionLadder = buildProofAdoptionLadder(model);
   const buildabilityLedger = buildBuildabilityLedger(model);
   const evidenceContractLedger = buildEvidenceContractLedger(model);
+  const mappingCandidateLedger = buildMappingCandidateLedger(model);
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -1460,6 +1530,31 @@ export function validateProductionLoopModel(
       failures.push(`${item.id} has invalid EvidenceContractLedger source_fit_score`);
     }
   }
+  if (!mappingCandidateLedger.length) {
+    failures.push("MappingCandidateLedger is missing");
+  }
+  if (
+    mappingCandidateLedger.filter((item) => item.state === "mapped").length >
+    mappingCandidateLedger.length
+  ) {
+    failures.push("MappingCandidateLedger mapped count cannot exceed candidate count");
+  }
+  for (const item of mappingCandidateLedger) {
+    if (item.source_fit_score < 0 || item.source_fit_score > 1) {
+      failures.push(`${item.id} has invalid MappingCandidateLedger source_fit_score`);
+    }
+    if (
+      !item.extraction_contract.required_fields.includes("source_fit_score") ||
+      !item.extraction_contract.required_fields.includes("extraction_contract")
+    ) {
+      failures.push(`${item.id} is missing MappingCandidateLedger extraction contract fields`);
+    }
+    if (!item.candidate_only || !item.projection_only || item.proof_eligible) {
+      failures.push(
+        `${item.id} MappingCandidateLedger must stay candidate-only and proof-ineligible`,
+      );
+    }
+  }
   if ("workBom" in model || "routeCatalog" in model) {
     const resolvedModel = model as AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>;
     if (!resolvedModel.workBom?.length) {
@@ -1536,6 +1631,12 @@ export function validateLearningBroadcastEnvelope(envelope: LearningBroadcastEnv
   }
   if (envelope.payload.candidateCount < envelope.payload.mappedCount) {
     failures.push("Learning envelope mapped count cannot exceed candidate count");
+  }
+  if (envelope.payload.mappingCandidateCount < envelope.payload.mappingMappedCount) {
+    failures.push("Learning envelope mapping mapped count cannot exceed candidate count");
+  }
+  if (envelope.payload.mappingCandidateOnlyCount !== envelope.payload.mappingCandidateCount) {
+    failures.push("Learning envelope mapping candidates must remain candidate-only");
   }
   if (!envelope.payload.extractionContracts.length) {
     failures.push("Learning envelope must include extraction contracts");

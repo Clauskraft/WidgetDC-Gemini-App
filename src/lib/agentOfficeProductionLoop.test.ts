@@ -3,6 +3,7 @@ import {
   agentOfficeProductionLoop,
   buildBuildabilityLedger,
   buildEvidenceContractLedger,
+  buildMappingCandidateLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -140,6 +141,9 @@ describe("agentOfficeProductionLoop", () => {
       buildabilityBlockedCount: 2,
       evidenceContractCount: 10,
       evidenceContractIncompleteCount: 0,
+      mappingCandidateCount: 11,
+      mappingMappedCount: 0,
+      mappingCandidateOnlyCount: 11,
     });
     expect(envelope.payload.stopConditionIds).toEqual([
       "MAPPED_COUNT_ZERO_EXPECTED_STOP",
@@ -371,6 +375,36 @@ describe("agentOfficeProductionLoop", () => {
     ).toBe(true);
     expect(ledger.every((item) => item.contractArtifact.length > 0)).toBe(true);
     expect(ledger.every((item) => item.requiredEvidence.length > 0)).toBe(true);
+  });
+
+  it("builds a MappingCandidateLedger for every production-loop edge", () => {
+    const ledger = buildMappingCandidateLedger(resolveAgentOfficeProductionLoop("operate"));
+    expect(ledger).toHaveLength(11);
+    expect(ledger.at(0)).toMatchObject({
+      source_ref: "Demand",
+      target_ref: "CapabilityResolution",
+      relation_type: "PRODUCTION_LOOP_NEXT",
+      state: "candidate",
+      candidate_only: true,
+      projection_only: true,
+      proof_eligible: false,
+    });
+    expect(ledger.at(-1)).toMatchObject({
+      source_ref: "CloseoutTree",
+      target_ref: "LearningExtractor",
+    });
+    expect(ledger.filter((item) => item.state === "mapped")).toHaveLength(0);
+    expect(ledger.every((item) => item.source_fit_score >= 0 && item.source_fit_score <= 1)).toBe(
+      true,
+    );
+    expect(
+      ledger.every(
+        (item) =>
+          item.extraction_contract.required_fields.includes("source_fit_score") &&
+          item.extraction_contract.required_fields.includes("extraction_contract"),
+      ),
+    ).toBe(true);
+    expect(ledger.every((item) => item.proofBoundary.includes("graph readback"))).toBe(true);
   });
 
   it("rejects incomplete evidence contracts surfaced by the ledger", () => {
