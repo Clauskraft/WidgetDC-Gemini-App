@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   AppWindow,
   BookOpen,
   Brain,
@@ -37,6 +38,46 @@ type CanvasNode = {
   y: number;
   tone: string;
 };
+
+type ProductionStage = {
+  id: string;
+  label: string;
+  proofBoundary: string;
+};
+
+const productionLoopStages: ProductionStage[] = [
+  { id: "demand", label: "Demand", proofBoundary: "intake" },
+  { id: "capability", label: "CapabilityResolution", proofBoundary: "required/provided" },
+  { id: "workbom", label: "WorkBOM", proofBoundary: "scope" },
+  { id: "route", label: "RouteCatalog", proofBoundary: "method" },
+  { id: "project", label: "ProjectTree", proofBoundary: "start + closeout" },
+  { id: "agent", label: "AgentTeamBOM", proofBoundary: "competence match" },
+  { id: "environment", label: "EnvironmentBOM", proofBoundary: "repo + branch + deps" },
+  { id: "execution", label: "Execution", proofBoundary: "claim-gated" },
+  { id: "verification", label: "Verification", proofBoundary: "tests + visual" },
+  { id: "proof", label: "ProofGate", proofBoundary: "no dry-run promotion" },
+  { id: "closeout", label: "CloseoutTree", proofBoundary: "handoff" },
+  { id: "learning", label: "LearningExtractor", proofBoundary: "A2A standard" },
+];
+
+const projectTreeRefs = [
+  { ref: "CFG-010", label: "Demand + context", phase: "Start" },
+  { ref: "BOM-020", label: "WorkBOM + gaps", phase: "Start" },
+  { ref: "OP-030", label: "Execution path", phase: "Closeout" },
+  { ref: "GATE-040", label: "Proof boundary", phase: "Closeout" },
+];
+
+const competenceRows = [
+  { required: "source_code mutation", provided: "verified actor + WDC claim", state: "matched" },
+  { required: "visual production loop", provided: "AgentOfficeShell canvas", state: "mapped" },
+  { required: "runtime proof", provided: "candidate-only UI marker", state: "debt" },
+];
+
+const capabilityDebt = [
+  "Live AgentTeamBOM from graph",
+  "EnvironmentBOM readback in UI",
+  "ProofGate promotion readback",
+];
 
 const scopes: WorkScope[] = [
   {
@@ -122,6 +163,7 @@ const nodesByScope: Record<WorkScopeId, CanvasNode[]> = {
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkScopeId>("app");
   const [selectedNode, setSelectedNode] = useState("intent");
+  const [selectedStageId, setSelectedStageId] = useState("demand");
   const [zoom, setZoom] = useState(0.92);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -141,6 +183,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     [activeScope.id, positions],
   );
   const selected = nodes.find((node) => node.id === selectedNode) ?? nodes[0];
+  const selectedStage =
+    productionLoopStages.find((stage) => stage.id === selectedStageId) ?? productionLoopStages[0];
 
   const setScope = (id: WorkScopeId) => {
     setActiveScopeId(id);
@@ -240,6 +284,37 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
+        <div className="agent-office-loop" aria-label="Demand to proof production loop">
+          <div className="agent-office-panel-head">
+            <div>
+              <div className="agent-office-workstrip-label">Production loop</div>
+              <strong>Demand -&gt; LearningExtractor</strong>
+            </div>
+            <span>read-only model</span>
+          </div>
+          <div className="agent-office-loop-track">
+            {productionLoopStages.map((stage, index) => (
+              <button
+                key={stage.id}
+                type="button"
+                className={cn(
+                  "agent-office-loop-stage",
+                  selectedStage.id === stage.id && "agent-office-loop-stage-active",
+                )}
+                onClick={() => setSelectedStageId(stage.id)}
+                title={stage.proofBoundary}
+              >
+                <small>{String(index + 1).padStart(2, "0")}</small>
+                <span>{stage.label}</span>
+              </button>
+            ))}
+          </div>
+          <p>
+            {selectedStage.label}: {selectedStage.proofBoundary}. Candidate, projection, dry-run and
+            read-only output is never runtime proof.
+          </p>
+        </div>
+
         <div
           className="agent-office-board"
           onPointerDown={(event) => {
@@ -334,6 +409,62 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           >
             <RotateCcw className="h-4 w-4" />
           </button>
+        </div>
+
+        <div className="agent-office-governance-grid">
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">ProjectTree</div>
+                <strong>Start + closeout</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {projectTreeRefs.map((item) => (
+                <div key={item.ref} className="agent-office-ref-row">
+                  <code>{item.ref}</code>
+                  <span>{item.label}</span>
+                  <small>{item.phase}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">Competence</div>
+                <strong>Required / provided</strong>
+              </div>
+            </div>
+            <div className="agent-office-competence-list">
+              {competenceRows.map((row) => (
+                <div key={row.required} className="agent-office-competence-row">
+                  <span>{row.required}</span>
+                  <span>{row.provided}</span>
+                  <small data-state={row.state}>{row.state}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="agent-office-debt-panel">
+          <div className="agent-office-inspector-icon">
+            <AlertTriangle className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="agent-office-workstrip-label">CapabilityDebtLedger</div>
+            <p>
+              Candidate count must stay separate from mapped count. Missing pieces become explicit
+              debt before promotion.
+            </p>
+            <div className="agent-office-debt-list">
+              {capabilityDebt.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="agent-office-inspector">
