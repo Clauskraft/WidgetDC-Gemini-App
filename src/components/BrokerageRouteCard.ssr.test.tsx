@@ -23,6 +23,10 @@ describe("BrokerageRouteCard", () => {
     expect(html).toContain("candidate_count");
     expect(html).toContain("mapped_count");
     expect(html).toContain("graph_readback_only");
+    expect(html).toContain("Foundry parity");
+    expect(html).toContain("stats_parity_required");
+    expect(html).toContain("Widget Foundry source readback");
+    expect(html).toContain("candidate_count only");
     expect(html).toContain("candidate_only=true");
     expect(html).toContain("projection_only=true");
     expect(html).toContain("graph_write_allowed=false");

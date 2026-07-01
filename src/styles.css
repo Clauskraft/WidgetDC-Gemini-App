@@ -1535,6 +1535,7 @@
 .brokerage-route-flags span,
 .brokerage-route-chain li,
 .brokerage-route-metrics > div,
+.brokerage-route-source-readback > div,
 .brokerage-route-row,
 .brokerage-route-contract {
   border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
@@ -1576,7 +1577,7 @@
 }
 .brokerage-route-metrics {
   display: grid;
-  grid-template-columns: 0.75fr 0.75fr 1.5fr;
+  grid-template-columns: 0.72fr 0.72fr 1.16fr 1.4fr;
   gap: 0.45rem;
 }
 .brokerage-route-metrics > div {
@@ -1594,6 +1595,45 @@
 .brokerage-route-metrics strong {
   font-size: 0.9rem;
   font-weight: 760;
+}
+.brokerage-route-source-readback {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.brokerage-route-source-readback > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.14rem;
+  border-radius: var(--radius-md);
+  padding: 0.55rem;
+}
+.brokerage-route-source-readback span {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.brokerage-route-source-readback strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.86rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brokerage-route-source-readback small {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .brokerage-route-stop,
 .brokerage-route-boundary {
@@ -2501,7 +2541,10 @@
   .world-class-proof-harness,
   .world-class-grid,
   .world-class-category-grid,
-  .capability-library-filters {
+  .capability-library-filters,
+  .brokerage-route-metrics,
+  .brokerage-route-source-readback,
+  .brokerage-route-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

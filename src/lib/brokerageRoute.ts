@@ -1,6 +1,8 @@
 import type { WorkModeId } from "@/lib/workModes";
 import {
+  getWidgetFoundrySourceReadback,
   getRecommendedWidgetSlots,
+  type WidgetFoundrySourceReadback,
   type WidgetFoundrySlotCandidate,
 } from "@/lib/widgetFoundryBridge";
 
@@ -81,6 +83,7 @@ export type BrokerageRouteCard = {
   route_operation: RouteOperation;
   candidate_systems: CandidateSystem[];
   widget_slots: WidgetSlot[];
+  foundry_source_readback: WidgetFoundrySourceReadback;
   pattern_profit_projection: PatternProfitProjection;
   proof_boundary: ProofBoundary;
   candidate_count: number;
@@ -155,6 +158,7 @@ const widgetSlots: WidgetSlot[] = getRecommendedWidgetSlots().map((slot) => ({
 
 export function buildBrokerageRouteCard(mode: WorkModeId): BrokerageRouteCard {
   const candidateCount = candidateSystems.length + widgetSlots.length;
+  const foundrySourceReadback = getWidgetFoundrySourceReadback();
   return {
     id: `brokerage-route:${mode}`,
     title: "WDC AI Brokerage route visibility",
@@ -170,6 +174,7 @@ export function buildBrokerageRouteCard(mode: WorkModeId): BrokerageRouteCard {
     },
     candidate_systems: candidateSystems,
     widget_slots: widgetSlots,
+    foundry_source_readback: foundrySourceReadback,
     pattern_profit_projection: {
       projection_id: "projection:pattern-profit:route-visibility",
       label: "PatternProfitProjection",
@@ -188,7 +193,7 @@ export function buildBrokerageRouteCard(mode: WorkModeId): BrokerageRouteCard {
       proof_eligible: false,
       missing_competence: "approval.gated.execution",
       hard_stop:
-        "Provider/tool/agent candidates and WidgetSlots are planned rendering surfaces only until approval.gated.execution exists.",
+        "Provider/tool/agent candidates and WidgetSlots are planned rendering surfaces only until approval.gated.execution exists. Foundry candidate counts are not mapped graph coverage.",
     },
     candidate_count: candidateCount,
     mapped_count: 0,

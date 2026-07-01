@@ -41,6 +41,37 @@ export function BrokerageRouteCard({ card }: { card: BrokerageRouteCardModel }) 
           <strong>{card.pattern_profit_projection.label}</strong>
           <small>candidate only</small>
         </div>
+        <div>
+          <span>Foundry parity</span>
+          <strong>{card.foundry_source_readback.parity_status}</strong>
+          <small>{card.foundry_source_readback.mapped_count_source}</small>
+        </div>
+      </div>
+
+      <div className="brokerage-route-source-readback" aria-label="Widget Foundry source readback">
+        <div>
+          <span>Foundry source</span>
+          <strong>{card.foundry_source_readback.source_repo}</strong>
+          <small>{card.foundry_source_readback.source_doc_ref}</small>
+        </div>
+        <div>
+          <span>Local registry</span>
+          <strong>{card.foundry_source_readback.local_component_registry_count}</strong>
+          <small>
+            {card.foundry_source_readback.local_html_embeddable_count} HTML ·{" "}
+            {card.foundry_source_readback.local_pptx_ready_count} PPTX
+          </small>
+        </div>
+        <div>
+          <span>Recommended slots</span>
+          <strong>{card.foundry_source_readback.recommended_slot_candidate_count}</strong>
+          <small>candidate_count only</small>
+        </div>
+        <div>
+          <span>Mapped readback</span>
+          <strong>{card.foundry_source_readback.mapped_count}</strong>
+          <small>{card.foundry_source_readback.parity_reason}</small>
+        </div>
       </div>
 
       <div className="brokerage-route-stop" role="status">
