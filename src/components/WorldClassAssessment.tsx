@@ -47,6 +47,16 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
         <span>{`coverage ${kpiSummary.objectiveCoverage.toFixed(2)}`}</span>
       </div>
 
+      {assessment.uxEvidence && (
+        <div className="world-class-proof-harness">
+          <span>UX diagnostic evidence</span>
+          <span>{`search ${assessment.uxEvidence.library_search.successful_queries}/${assessment.uxEvidence.library_search.query_tests}`}</span>
+          <span>{`recipes ${assessment.uxEvidence.recipe_validation.valid_recipes}/${assessment.uxEvidence.recipe_validation.recipe_attempts}`}</span>
+          <span>{`inspectors ${assessment.uxEvidence.inspector.objects_with_inspector}/${assessment.uxEvidence.inspector.selectable_objects}`}</span>
+          <span>{`stops ${assessment.uxEvidence.stop_harvest.harvested_stops}/${assessment.uxEvidence.stop_harvest.expected_stops}`}</span>
+        </div>
+      )}
+
       <p className="agent-office-boundary-copy">
         WorldClassSatisfied = all(HardGates) and WCI at least 0.95 and every category at least 0.90
         and P0 defects equal 0.
