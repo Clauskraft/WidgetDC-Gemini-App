@@ -132,7 +132,16 @@ describe("agentOfficeProductionLoop", () => {
       coverageDebtCount: 0,
       proofAdoptionLadderCount: 5,
       proofAdoptionBlockedCount: 2,
+      stopConditionCount: 5,
+      promotionBlockedCount: 5,
     });
+    expect(envelope.payload.stopConditionIds).toEqual([
+      "MAPPED_COUNT_ZERO_EXPECTED_STOP",
+      "CANDIDATE_COUNT_NOT_MAPPED_COUNT",
+      "READBACK_NOT_RUNTIME_PROOF",
+      "MISSING_OSINT_DOCUMENTS",
+      "MISSING_OSINT_EMBEDDINGS",
+    ]);
     expect(envelope.payload.stageOrder.at(0)).toBe("demand");
     expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
     expect(envelope.payload.extractionContracts.length).toBe(
@@ -311,6 +320,31 @@ describe("agentOfficeProductionLoop", () => {
     ]);
     expect(ladder.every((item) => item.runtimeProofEligible === false)).toBe(true);
     expect(ladder.at(-1)?.proofBoundary).toContain("candidate");
+  });
+
+  it("keeps WDC stop conditions explicit and proof-ineligible", () => {
+    const model = resolveAgentOfficeProductionLoop("operate");
+    expect(model.stopConditions).toHaveLength(5);
+    expect(model.stopConditions.map((item) => item.id)).toContain("READBACK_NOT_RUNTIME_PROOF");
+    expect(model.stopConditions.map((item) => item.id)).toContain(
+      "CANDIDATE_COUNT_NOT_MAPPED_COUNT",
+    );
+    expect(model.stopConditions.every((item) => item.proofEligible === false)).toBe(true);
+    expect(model.stopConditions.every((item) => item.proofBoundary.length > 0)).toBe(true);
+    expect(model.stopConditions.every((item) => item.nextAction.length > 0)).toBe(true);
+    expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("rejects production loops that hide runtime readback stop conditions", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      stopConditions: resolveAgentOfficeProductionLoop("operate").stopConditions.filter(
+        (item) => item.id !== "READBACK_NOT_RUNTIME_PROOF",
+      ),
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "StopConditionLedger must include readback runtime-proof boundary",
+    );
   });
 
   it("rejects runtime proof without deployment readback and three verification passes", () => {

@@ -166,6 +166,9 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const proofAdoptionBlockedCount = proofAdoptionLadder.filter(
     (item) => item.status === "blocked",
   ).length;
+  const stopConditionBlockedCount = productionLoop.stopConditions.filter(
+    (item) => !item.proofEligible,
+  ).length;
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -329,6 +332,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <p>
             ProofAdoptionLadder: {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
             {proofAdoptionLadder.length} satisfied; blocked {proofAdoptionBlockedCount}.
+          </p>
+          <p>
+            StopConditionLedger: {stopConditionBlockedCount} promotion blockers. Candidate counts,
+            readback and missing corpus evidence remain proof-ineligible.
           </p>
         </div>
 
@@ -612,6 +619,25 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
                 <small>
                   {item.availableEvidence.length}/{item.requiredEvidence.length}
                 </small>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="agent-office-loop" aria-label="Stop condition ledger">
+          <div className="agent-office-panel-head">
+            <div>
+              <div className="agent-office-workstrip-label">StopConditionLedger</div>
+              <strong>Promotion blockers</strong>
+            </div>
+            <span>blocked {stopConditionBlockedCount}</span>
+          </div>
+          <div className="agent-office-ref-list">
+            {productionLoop.stopConditions.map((item) => (
+              <div key={item.id} className="agent-office-ref-row">
+                <code>{item.severity}</code>
+                <span title={item.proofBoundary}>{item.label}</span>
+                <small title={item.nextAction}>{item.source}</small>
               </div>
             ))}
           </div>
