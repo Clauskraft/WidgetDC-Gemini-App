@@ -2078,6 +2078,86 @@
   font-size: 0.68rem;
   font-weight: 650;
 }
+.capability-library-nav {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+}
+.capability-library-nav button,
+.compose-recipe-panel button {
+  min-height: 2rem;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  color: var(--foreground);
+  padding: 0.35rem 0.62rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.capability-library-nav button[aria-pressed="true"],
+.capability-library-card[aria-pressed="true"] {
+  border-color: color-mix(in oklab, var(--primary) 58%, var(--border));
+  background: color-mix(in oklab, var(--primary) 10%, var(--card));
+}
+.capability-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.7rem;
+}
+.capability-library-card {
+  display: grid;
+  min-height: 10rem;
+  align-content: start;
+  gap: 0.34rem;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--background) 62%, transparent);
+  padding: 0.68rem;
+  text-align: left;
+}
+.capability-library-card span {
+  color: var(--primary);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.capability-library-card strong {
+  color: var(--foreground);
+  font-size: 0.84rem;
+  line-height: 1.15;
+}
+.capability-library-card p,
+.compose-recipe-panel p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.capability-library-card small {
+  color: var(--muted-foreground);
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+.agent-office-project-tree,
+.capability-library,
+.compose-recipe-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  padding: 0.875rem;
+}
+.agent-office-boundary-copy {
+  margin: 0.75rem 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.agent-office-watermark-icon {
+  display: none;
+}
 .canvas-workspace {
   display: flex;
   min-height: 24rem;

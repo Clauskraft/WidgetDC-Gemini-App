@@ -1,4 +1,8 @@
 import type { WorkModeId } from "@/lib/workModes";
+import {
+  getRecommendedWidgetSlots,
+  type WidgetFoundrySlotCandidate,
+} from "@/lib/widgetFoundryBridge";
 
 export type RouteChainStep =
   | "Demand"
@@ -15,14 +19,18 @@ export type RouteChainStep =
 export type WidgetSlot = {
   slot_id: string;
   source_ref: string;
-  widget_family: "canvas" | "approval" | "cost" | "message" | "observability" | "graph";
+  widget_family: WidgetFoundrySlotCandidate["widget_family"];
   artifact_types: string[];
   embed_strategy: string;
   input_contract: string;
   required_competences: string[];
   provided_competences: string[];
+  source_fit_score: number;
+  extraction_contract: WidgetFoundrySlotCandidate["extraction_contract"];
   candidate_only: true;
   projection_only: true;
+  graph_write_allowed: false;
+  proof_eligible: false;
 };
 
 export type ProofBoundary = {
@@ -128,56 +136,22 @@ const candidateSystems: CandidateSystem[] = [
   },
 ];
 
-const widgetSlots: WidgetSlot[] = [
-  {
-    slot_id: "slot:canvas-route-map",
-    source_ref: "src/components/CanvasPanel.tsx",
-    widget_family: "canvas",
-    artifact_types: ["route-chain", "system-map", "proof-boundary"],
-    embed_strategy: "right-panel visual canvas projection",
-    input_contract: "widgetdc.bridge.v1 candidate artifact envelope",
-    required_competences: ["canvas.rendering", "route.visibility"],
-    provided_competences: ["visual.workspace", "artifact.preview"],
-    candidate_only: true,
-    projection_only: true,
-  },
-  {
-    slot_id: "slot:approval-hard-stop",
-    source_ref: "src/components/ApprovalQueuePanel.tsx",
-    widget_family: "approval",
-    artifact_types: ["approval-gap", "expected-stop", "operator-action"],
-    embed_strategy: "disabled approval surface until competence exists",
-    input_contract: "approval.gated.execution missing-competence marker",
-    required_competences: ["approval.gated.execution"],
-    provided_competences: ["approval.surface.readback"],
-    candidate_only: true,
-    projection_only: true,
-  },
-  {
-    slot_id: "slot:message-explanation",
-    source_ref: "src/components/MessageContent.tsx",
-    widget_family: "message",
-    artifact_types: ["human-readable-proof-boundary", "route-explanation"],
-    embed_strategy: "chat-adjacent rendered explanation",
-    input_contract: "markdown route summary without raw JSON default",
-    required_competences: ["message.rendering", "proof.boundary.copy"],
-    provided_competences: ["human-readable.route"],
-    candidate_only: true,
-    projection_only: true,
-  },
-  {
-    slot_id: "slot:observability-readback",
-    source_ref: "src/routes/observability.tsx",
-    widget_family: "observability",
-    artifact_types: ["readback", "candidate-count", "mapped-count"],
-    embed_strategy: "library readback surface",
-    input_contract: "graph-readback-only mapped_count evidence",
-    required_competences: ["readback.rendering", "count.separation"],
-    provided_competences: ["candidate.count.visibility", "mapped.count.visibility"],
-    candidate_only: true,
-    projection_only: true,
-  },
-];
+const widgetSlots: WidgetSlot[] = getRecommendedWidgetSlots().map((slot) => ({
+  slot_id: slot.slot_id,
+  source_ref: slot.source_ref,
+  widget_family: slot.widget_family,
+  artifact_types: slot.artifact_types,
+  embed_strategy: slot.embed_strategy,
+  input_contract: slot.input_contract,
+  required_competences: slot.required_competences,
+  provided_competences: slot.provided_competences,
+  source_fit_score: slot.source_fit_score,
+  extraction_contract: slot.extraction_contract,
+  candidate_only: true,
+  projection_only: true,
+  graph_write_allowed: false,
+  proof_eligible: false,
+}));
 
 export function buildBrokerageRouteCard(mode: WorkModeId): BrokerageRouteCard {
   const candidateCount = candidateSystems.length + widgetSlots.length;

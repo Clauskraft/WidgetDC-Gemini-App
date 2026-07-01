@@ -21,12 +21,16 @@ describe("brokerageRoute", () => {
 
     expect(card.widget_slots.length).toBeGreaterThanOrEqual(3);
     for (const slot of card.widget_slots) {
-      expect(slot.slot_id).toMatch(/^slot:/);
-      expect(slot.source_ref).toContain("src/");
+      expect(slot.slot_id).toMatch(/^widget\.slot\./);
+      expect(slot.source_ref).toContain("widgetdc-consulting-frontend");
       expect(slot.required_competences.length).toBeGreaterThan(0);
       expect(slot.provided_competences.length).toBeGreaterThan(0);
+      expect(slot.source_fit_score).toBeGreaterThanOrEqual(0);
+      expect(slot.extraction_contract.validation_status).toBe("candidate_only");
       expect(slot.candidate_only).toBe(true);
       expect(slot.projection_only).toBe(true);
+      expect(slot.graph_write_allowed).toBe(false);
+      expect(slot.proof_eligible).toBe(false);
     }
   });
 });

@@ -14,6 +14,10 @@ describe("AgentOfficeShell", () => {
       expect(html).toContain(label);
     }
     expect(html).toContain("Object palette");
+    expect(html).toContain("Capability Library");
+    expect(html).toContain("Compose");
+    expect(html).toContain("Activate blocked");
+    expect(html).toContain("candidate-only");
     expect(html).toContain("System status");
     expect(html).toContain("Boot");
     expect(html).toContain("Session");

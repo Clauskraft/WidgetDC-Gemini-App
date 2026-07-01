@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, MessageSquare, Minus, Network, Plus, RotateCcw, Settings2 } from "lucide-react";
+import { MessageSquare, Minus, Plus, RotateCcw } from "lucide-react";
+import { ObjectInspector } from "@/components/ObjectInspector";
 import {
   createCanvasObjectFromPalette,
   createCanvasWorkspaceDocument,
@@ -53,36 +54,6 @@ function edgePath(from: CanvasWorkspaceObject, to: CanvasWorkspaceObject) {
   const b = getObjectCenter(to);
   const midX = (a.x + b.x) / 2;
   return `M ${a.x} ${a.y} C ${midX} ${a.y}, ${midX} ${b.y}, ${b.x} ${b.y}`;
-}
-
-export function ObjectInspector({
-  object,
-  document,
-}: {
-  object: CanvasWorkspaceObject;
-  document: CanvasWorkspaceDocument;
-}) {
-  return (
-    <div className="agent-office-inspector" aria-label="Object inspector">
-      <div className="agent-office-inspector-icon">
-        <Crosshair className="h-4 w-4" />
-      </div>
-      <div>
-        <div className="agent-office-workstrip-label">Object inspector</div>
-        <strong>{object.title}</strong>
-        <p>
-          {object.type} · {object.summary}
-        </p>
-        <p>{object.proofBoundary}</p>
-      </div>
-      <div className="agent-office-inspector-meta">
-        <span>{document.canvasMode}</span>
-        <span>{document.persistence.kind}</span>
-      </div>
-      <Network className="ml-auto h-4 w-4 text-muted-foreground" />
-      <Settings2 className="h-4 w-4 text-muted-foreground" />
-    </div>
-  );
 }
 
 export function CanvasWorkspace({
