@@ -1,6 +1,9 @@
 import type { ProjectTreeRef } from "@/lib/agentOfficeProductionLoop";
 import type { BrokerageRouteCard } from "@/lib/brokerageRoute";
-import type { CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
+import {
+  CAPABILITY_KIND_LABELS,
+  type CapabilityLibraryEntry,
+} from "@/lib/capabilityLibrary";
 import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
 import { buildWorldClassKpis } from "@/lib/worldClassKpiMatrix";
 import {
@@ -308,15 +311,7 @@ export function buildWorldClassAssessment({
   wdcEvidence?: WorldClassWdcEvidence;
   uxEvidence?: WorldClassUxEvidence;
 }): WorldClassAssessment {
-  const requiredKinds = new Set([
-    "skill",
-    "agent",
-    "pattern",
-    "widget",
-    "route",
-    "proof_gate",
-    "work_mode",
-  ]);
+  const requiredKinds = new Set(CAPABILITY_KIND_LABELS.map((item) => item.kind));
   const visibleKinds = new Set(capabilityEntries.map((entry) => entry.kind));
   const categoryCoverage = [...requiredKinds].filter((kind) => visibleKinds.has(kind)).length;
   const metadataComplete = capabilityEntries.every(
@@ -543,8 +538,8 @@ export function buildWorldClassAssessment({
         status: uxSummary.rawJsonAvoidanceRatio >= 0.98 ? "met" : "below_target",
       },
       category_coverage: {
-        value: `${categoryCoverage}/7`,
-        status: categoryCoverage === 7 ? "met" : "below_target",
+        value: `${categoryCoverage}/${requiredKinds.size}`,
+        status: categoryCoverage === requiredKinds.size ? "met" : "below_target",
       },
       search_success: {
         value: uxSummary.searchSuccessRatio.toFixed(2),

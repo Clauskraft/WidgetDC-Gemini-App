@@ -1,17 +1,21 @@
-import type { CapabilityKind, CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
+import {
+  filterCapabilityLibrary,
+  type CapabilityLibraryEntry,
+  type CapabilityLibraryFilters,
+} from "@/lib/capabilityLibrary";
 
 export function CapabilityLibrary({
   entries,
-  activeKind,
+  filters,
   selectedIds,
   onToggle,
 }: {
   entries: CapabilityLibraryEntry[];
-  activeKind: CapabilityKind;
+  filters: CapabilityLibraryFilters;
   selectedIds: string[];
   onToggle: (id: string) => void;
 }) {
-  const visible = entries.filter((entry) => entry.kind === activeKind);
+  const visible = filterCapabilityLibrary(entries, filters);
 
   return (
     <section className="capability-library" aria-label="Capability Library">
@@ -19,10 +23,10 @@ export function CapabilityLibrary({
         <div>
           <div className="agent-office-workstrip-label">Capability Library</div>
           <strong>
-            {visible.length} {activeKind.replace("_", " ")} candidates
+            {visible.length} {filters.kind.replace(/_/g, " ")} candidates
           </strong>
         </div>
-        <span>candidate-only</span>
+        <span>{filters.evidence === "all" ? "candidate-only" : filters.evidence}</span>
       </div>
       <div className="capability-library-grid">
         {visible.map((entry, index) => (
@@ -37,11 +41,16 @@ export function CapabilityLibrary({
             <span>{entry.kind === "widget" ? "Widget" : entry.kind}</span>
             <strong>{entry.label}</strong>
             <p>{entry.description}</p>
+            <small>{entry.domain}</small>
             <small>{entry.readiness}</small>
+            <small>{entry.evidence}</small>
             <small>{`graph write: ${entry.graph_write_allowed ? "allowed" : "blocked"}`}</small>
             <small>{`proof: ${entry.proof_eligible ? "eligible" : "blocked"}`}</small>
           </button>
         ))}
+        {visible.length === 0 ? (
+          <div className="capability-library-empty">No matching capability candidates.</div>
+        ) : null}
       </div>
     </section>
   );

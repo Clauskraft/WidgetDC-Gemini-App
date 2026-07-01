@@ -1,5 +1,8 @@
 import type { BrokerageRouteCard } from "@/lib/brokerageRoute";
-import type { CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
+import {
+  CAPABILITY_KIND_LABELS,
+  type CapabilityLibraryEntry,
+} from "@/lib/capabilityLibrary";
 import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
 
 export type WorldClassUxEvidence = {
@@ -88,7 +91,7 @@ function recipeIsValid(recipe: CapabilityRecipe) {
 }
 
 function buildSearchQueries(entries: CapabilityLibraryEntry[]) {
-  const requiredKinds = ["skill", "agent", "pattern", "widget", "route", "proof_gate", "work_mode"];
+  const requiredKinds = CAPABILITY_KIND_LABELS.map((item) => item.kind);
   const requiredDomains = ["strategy", "osint", "cyber", "visual", "governance"];
   const kindQueries = requiredKinds.filter((kind) => entries.some((entry) => entry.kind === kind));
   const domainQueries = requiredDomains.filter((domain) =>

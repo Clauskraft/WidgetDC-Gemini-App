@@ -73,7 +73,7 @@ const definitions = [
     category: "capability_discovery",
     label: "Category coverage",
     formula: "visible_categories / required_categories",
-    target: "7/7",
+    target: "9/9",
   },
   {
     id: "search_success",
