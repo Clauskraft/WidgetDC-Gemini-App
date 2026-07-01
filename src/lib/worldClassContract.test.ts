@@ -118,6 +118,31 @@ describe("worldClassContract", () => {
           id: "interaction_latency",
           status: "met",
         }),
+        expect.objectContaining({
+          id: "wdc_route_shown",
+          status: "met",
+          value: "MCP",
+        }),
+        expect.objectContaining({
+          id: "observability_surfaced",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "lego_bom_visibility",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "a2a_exit_review",
+          status: "met",
+          value: "1.00",
+        }),
+        expect.objectContaining({
+          id: "stop_harvest",
+          status: "missing_evidence",
+          value: "0.00",
+        }),
       ]),
     );
     expect(assessment.kpis).toHaveLength(WORLD_CLASS_KPI_TARGETS.length);
