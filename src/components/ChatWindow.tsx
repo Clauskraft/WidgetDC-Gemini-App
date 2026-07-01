@@ -719,7 +719,7 @@ export function ChatWindow({
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {empty ? (
-            <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 text-center">
+            <div className="mx-auto flex h-full w-full min-w-0 max-w-2xl flex-col items-center justify-center px-4 text-center sm:px-6">
               <div
                 className={cn(
                   "mb-6 flex h-[72px] w-[72px] items-center justify-center rounded-3xl shadow-glow",
@@ -730,7 +730,7 @@ export function ChatWindow({
               </div>
               <h1
                 className={cn(
-                  "bg-clip-text text-[2.2rem] font-semibold tracking-tight text-transparent leading-tight",
+                  "max-w-full text-balance bg-clip-text text-[1.8rem] font-semibold leading-tight tracking-tight text-transparent sm:text-[2.2rem]",
                   gem?.accent ? `bg-gradient-to-br ${gem.accent}` : "bg-gradient-aurora",
                 )}
               >
