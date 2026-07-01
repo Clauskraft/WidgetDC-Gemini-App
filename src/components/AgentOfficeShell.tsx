@@ -44,7 +44,7 @@ import {
 } from "@/lib/agentOfficeProductionLoop";
 import { buildAgentOfficeStatus } from "@/lib/agentOfficeStatus";
 import { buildBrokerageRouteCard } from "@/lib/brokerageRoute";
-import { buildCapabilityLibrary, type CapabilityKind } from "@/lib/capabilityLibrary";
+import { buildCapabilityLibrary, type CapabilityLibraryFilters } from "@/lib/capabilityLibrary";
 import { buildCapabilityRecipe } from "@/lib/capabilityRecipe";
 import { buildWDCObjectCards } from "@/lib/wdcObjectCards";
 import { cn } from "@/lib/utils";
@@ -111,7 +111,13 @@ export function WorkModeSwitcher({
 export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
-  const [activeCapabilityKind, setActiveCapabilityKind] = useState<CapabilityKind>("agent");
+  const [capabilityFilters, setCapabilityFilters] = useState<CapabilityLibraryFilters>({
+    kind: "agent",
+    domain: "all",
+    readiness: "all",
+    evidence: "all",
+    query: "",
+  });
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
@@ -296,11 +302,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <LibraryNav activeKind={activeCapabilityKind} onSelectKind={setActiveCapabilityKind} />
+        <LibraryNav filters={capabilityFilters} onChange={setCapabilityFilters} />
 
         <CapabilityLibrary
           entries={capabilityLibrary}
-          activeKind={activeCapabilityKind}
+          filters={capabilityFilters}
           selectedIds={selectedCapabilityIds}
           onToggle={toggleCapability}
         />

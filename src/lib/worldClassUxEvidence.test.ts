@@ -36,9 +36,18 @@ describe("worldClassUxEvidence", () => {
     const recipe = buildCapabilityRecipe("World-class capability cockpit", entries.slice(0, 4));
     const evidence = buildWorldClassUxEvidence({ capabilityEntries: entries, recipe, routeCard });
 
-    expect(evidence.library_search.query_tests).toBeGreaterThanOrEqual(7);
+    expect(evidence.library_search.query_tests).toBeGreaterThanOrEqual(9);
     expect(evidence.library_search.queries).toEqual(
-      expect.arrayContaining(["skill", "agent", "pattern", "widget", "route", "proof_gate"]),
+      expect.arrayContaining([
+        "skill",
+        "agent",
+        "pattern",
+        "widget",
+        "route",
+        "proof_gate",
+        "style_profile",
+        "visual_strategy",
+      ]),
     );
   });
 });

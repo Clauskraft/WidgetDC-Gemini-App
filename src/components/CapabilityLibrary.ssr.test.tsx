@@ -9,7 +9,7 @@ describe("CapabilityLibrary", () => {
     const html = renderToString(
       <CapabilityLibrary
         entries={entries}
-        activeKind="widget"
+        filters={{ kind: "widget", domain: "all", readiness: "all", evidence: "all", query: "" }}
         selectedIds={[]}
         onToggle={() => undefined}
       />,
