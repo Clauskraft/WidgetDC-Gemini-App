@@ -18,5 +18,6 @@ describe("CapabilityLibrary", () => {
     expect(html).toContain("candidate-only");
     expect(html).toContain("graph write: blocked");
     expect(html).toContain("Widget");
+    expect(html).toContain('aria-label="Select widget capability 1"');
   });
 });

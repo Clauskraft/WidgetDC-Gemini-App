@@ -25,12 +25,13 @@ export function CapabilityLibrary({
         <span>candidate-only</span>
       </div>
       <div className="capability-library-grid">
-        {visible.map((entry) => (
+        {visible.map((entry, index) => (
           <button
             key={entry.id}
             type="button"
             className="capability-library-card"
             aria-pressed={selectedIds.includes(entry.id)}
+            aria-label={`${selectedIds.includes(entry.id) ? "Remove" : "Select"} ${entry.kind} capability ${index + 1}`}
             onClick={() => onToggle(entry.id)}
           >
             <span>{entry.kind === "widget" ? "Widget" : entry.kind}</span>
