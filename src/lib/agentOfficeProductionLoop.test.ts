@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   agentOfficeProductionLoop,
   buildBuildabilityLedger,
+  buildEvidenceContractLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -137,6 +138,8 @@ describe("agentOfficeProductionLoop", () => {
       promotionBlockedCount: 5,
       buildabilityLedgerCount: 7,
       buildabilityBlockedCount: 2,
+      evidenceContractCount: 10,
+      evidenceContractIncompleteCount: 0,
     });
     expect(envelope.payload.stopConditionIds).toEqual([
       "MAPPED_COUNT_ZERO_EXPECTED_STOP",
@@ -343,6 +346,46 @@ describe("agentOfficeProductionLoop", () => {
     ]);
     expect(ledger.every((item) => item.requiredEvidence.length > 0)).toBe(true);
     expect(ledger.every((item) => item.proofBoundary.length > 0)).toBe(true);
+  });
+
+  it("builds an EvidenceContractLedger with source fit and extraction contracts", () => {
+    const ledger = buildEvidenceContractLedger(resolveAgentOfficeProductionLoop("operate"));
+    expect(ledger).toHaveLength(10);
+    expect(ledger.map((item) => item.source)).toEqual([
+      "competence",
+      "competence",
+      "competence",
+      "competence",
+      "agent-team",
+      "agent-team",
+      "agent-team",
+      "environment",
+      "environment",
+      "environment",
+    ]);
+    expect(ledger.every((item) => item.status === "complete")).toBe(true);
+    expect(
+      ledger
+        .filter((item) => item.source !== "environment")
+        .every((item) => item.source_fit_score !== null && item.source_fit_score >= 0),
+    ).toBe(true);
+    expect(ledger.every((item) => item.contractArtifact.length > 0)).toBe(true);
+    expect(ledger.every((item) => item.requiredEvidence.length > 0)).toBe(true);
+  });
+
+  it("rejects incomplete evidence contracts surfaced by the ledger", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("operate"),
+      competenceRows: [
+        {
+          ...resolveAgentOfficeProductionLoop("operate").competenceRows[0],
+          source_fit_score: 1.2,
+        },
+      ],
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "EvidenceContractLedger contains incomplete extraction contracts",
+    );
   });
 
   it("keeps every demand scope buildable through WorkBOM and RouteCatalog readiness", () => {

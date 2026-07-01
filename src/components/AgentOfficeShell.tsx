@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   buildBuildabilityLedger,
+  buildEvidenceContractLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -164,6 +165,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const buildabilityLedger = buildBuildabilityLedger(productionLoop);
   const buildabilityBlockedCount = buildabilityLedger.filter(
     (item) => item.status === "blocked",
+  ).length;
+  const evidenceContractLedger = buildEvidenceContractLedger(productionLoop);
+  const evidenceContractIncompleteCount = evidenceContractLedger.filter(
+    (item) => item.status === "incomplete",
   ).length;
   const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
   const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
@@ -318,6 +323,12 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             RouteCatalog stay separate from runtime proof.
           </p>
           <p>
+            EvidenceContractLedger:{" "}
+            {evidenceContractLedger.length - evidenceContractIncompleteCount}/
+            {evidenceContractLedger.length} complete; incomplete {evidenceContractIncompleteCount}.
+            source_fit_score and extraction_contract stay visible.
+          </p>
+          <p>
             AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
             {operationalSummary.executionLedgerCount} with{" "}
             {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
@@ -446,6 +457,28 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="agent-office-governance-grid">
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">EvidenceContractLedger</div>
+                <strong>Fit score + extraction</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {evidenceContractLedger.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.status}</code>
+                  <span title={item.contractArtifact}>{item.label}</span>
+                  <small title={item.proofBoundary}>
+                    {item.source_fit_score === null
+                      ? item.source
+                      : `${item.source} ${item.source_fit_score.toFixed(2)}`}
+                  </small>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="agent-office-mini-panel">
             <div className="agent-office-panel-head">
               <div>

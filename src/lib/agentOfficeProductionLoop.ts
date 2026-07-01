@@ -194,6 +194,19 @@ export type BuildabilityLedgerItem = {
   proofBoundary: string;
 };
 
+export type EvidenceContractLedgerSource = "competence" | "agent-team" | "environment";
+
+export type EvidenceContractLedgerItem = {
+  id: string;
+  label: string;
+  source: EvidenceContractLedgerSource;
+  source_fit_score: number | null;
+  contractArtifact: string;
+  requiredEvidence: string[];
+  status: "complete" | "incomplete";
+  proofBoundary: string;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -245,6 +258,8 @@ export type LearningBroadcastEnvelope = {
     promotionBlockedCount: number;
     buildabilityLedgerCount: number;
     buildabilityBlockedCount: number;
+    evidenceContractCount: number;
+    evidenceContractIncompleteCount: number;
     capabilityDebtIds: string[];
     stopConditionIds: string[];
     extractionContracts: ExtractionContract[];
@@ -917,6 +932,7 @@ export function createLearningBroadcastEnvelope(
   const coverage = buildProductionLoopCoverageMatrix(model);
   const proofAdoption = buildProofAdoptionLadder(model);
   const buildability = buildBuildabilityLedger(model);
+  const evidenceContracts = buildEvidenceContractLedger(model);
   return {
     transport: model.learning.transport,
     messageType: model.learning.type,
@@ -944,6 +960,10 @@ export function createLearningBroadcastEnvelope(
       promotionBlockedCount: model.stopConditions.filter((item) => !item.proofEligible).length,
       buildabilityLedgerCount: buildability.length,
       buildabilityBlockedCount: buildability.filter((item) => item.status === "blocked").length,
+      evidenceContractCount: evidenceContracts.length,
+      evidenceContractIncompleteCount: evidenceContracts.filter(
+        (item) => item.status === "incomplete",
+      ).length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       stopConditionIds: model.stopConditions.map((item) => item.id),
       extractionContracts: [
@@ -953,6 +973,61 @@ export function createLearningBroadcastEnvelope(
       ],
     },
   };
+}
+
+export function buildEvidenceContractLedger(
+  model: AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>,
+): EvidenceContractLedgerItem[] {
+  const complete = (contract: ExtractionContract, sourceFitScore: number | null) =>
+    contract.artifact.trim().length > 0 &&
+    contract.requiredEvidence.length > 0 &&
+    (sourceFitScore === null || (sourceFitScore >= 0 && sourceFitScore <= 1));
+
+  return [
+    ...model.competenceRows.map(
+      (item) =>
+        ({
+          id: `competence:${item.required}`,
+          label: `${item.required} -> ${item.provided}`,
+          source: "competence",
+          source_fit_score: item.source_fit_score,
+          contractArtifact: item.extraction_contract.artifact,
+          requiredEvidence: item.extraction_contract.requiredEvidence,
+          status: complete(item.extraction_contract, item.source_fit_score)
+            ? "complete"
+            : "incomplete",
+          proofBoundary: "Competence evidence supports matching, not runtime proof.",
+        }) satisfies EvidenceContractLedgerItem,
+    ),
+    ...model.agentTeamBom.map(
+      (item) =>
+        ({
+          id: `agent:${item.id}`,
+          label: `${item.required} -> ${item.provided}`,
+          source: "agent-team",
+          source_fit_score: item.source_fit_score,
+          contractArtifact: item.extraction_contract.artifact,
+          requiredEvidence: item.extraction_contract.requiredEvidence,
+          status: complete(item.extraction_contract, item.source_fit_score)
+            ? "complete"
+            : "incomplete",
+          proofBoundary: "AgentTeamBOM evidence supports lane matching, not runtime proof.",
+        }) satisfies EvidenceContractLedgerItem,
+    ),
+    ...(model.environmentBom ?? []).map(
+      (item) =>
+        ({
+          id: `environment:${item.id}`,
+          label: item.label,
+          source: "environment",
+          source_fit_score: null,
+          contractArtifact: item.extraction_contract.artifact,
+          requiredEvidence: item.extraction_contract.requiredEvidence,
+          status: complete(item.extraction_contract, null) ? "complete" : "incomplete",
+          proofBoundary: item.proofBoundary,
+        }) satisfies EvidenceContractLedgerItem,
+    ),
+  ];
 }
 
 export function buildBuildabilityLedger(
@@ -1274,6 +1349,7 @@ export function validateProductionLoopModel(
   const coverageMatrix = buildProductionLoopCoverageMatrix(model);
   const proofAdoptionLadder = buildProofAdoptionLadder(model);
   const buildabilityLedger = buildBuildabilityLedger(model);
+  const evidenceContractLedger = buildEvidenceContractLedger(model);
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -1363,6 +1439,26 @@ export function validateProductionLoopModel(
   }
   if (!model.proofGate.boundary.includes("not runtime proof")) {
     failures.push("ProofGate boundary must reject candidate/projection/dry-run runtime proof");
+  }
+  if (!evidenceContractLedger.length) {
+    failures.push("EvidenceContractLedger is missing");
+  }
+  if (evidenceContractLedger.some((item) => item.status === "incomplete")) {
+    failures.push("EvidenceContractLedger contains incomplete extraction contracts");
+  }
+  if (
+    !evidenceContractLedger.some((item) => item.source === "competence") ||
+    !evidenceContractLedger.some((item) => item.source === "agent-team")
+  ) {
+    failures.push("EvidenceContractLedger must include competence and AgentTeamBOM contracts");
+  }
+  for (const item of evidenceContractLedger) {
+    if (
+      item.source !== "environment" &&
+      (item.source_fit_score === null || item.source_fit_score < 0 || item.source_fit_score > 1)
+    ) {
+      failures.push(`${item.id} has invalid EvidenceContractLedger source_fit_score`);
+    }
   }
   if ("workBom" in model || "routeCatalog" in model) {
     const resolvedModel = model as AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>;
