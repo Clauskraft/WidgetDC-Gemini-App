@@ -14,7 +14,17 @@ describe("AgentOfficeShell", () => {
       expect(html).toContain(label);
     }
     expect(html).toContain("Object palette");
+    expect(html).toContain("System status");
+    expect(html).toContain("Boot");
+    expect(html).toContain("Session");
+    expect(html).toContain("Proof");
+    expect(html).toContain("Not runtime proof");
+    expect(html).toContain("Open Agent Office command palette");
     expect(html).toContain("Readable process cards");
+    expect(html).toContain("BrokerageRouteCard");
+    expect(html).toContain("WidgetSlot");
+    expect(html).toContain("approval.gated.execution");
+    expect(html).toContain("graph_write_allowed=false");
     expect(html).toContain("ProjectTree");
     expect(html).toContain("ProofGate");
     expect(html).toContain("no raw JSON default");

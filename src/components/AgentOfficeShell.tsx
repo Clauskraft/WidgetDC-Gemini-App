@@ -14,11 +14,13 @@ import {
   Brain,
   CheckCircle2,
   FileSearch,
-  MessageSquare,
   Radar,
   Sparkles,
 } from "lucide-react";
+import { AgentOfficeCommandPalette } from "@/components/AgentOfficeCommandPalette";
+import { BrokerageRouteCard } from "@/components/BrokerageRouteCard";
 import { CanvasWorkspace } from "@/components/CanvasWorkspace";
+import { SystemStatusPill } from "@/components/SystemStatusPill";
 import { WDCObjectCard } from "@/components/WDCObjectCard";
 import {
   buildBuildabilityLedger,
@@ -34,6 +36,8 @@ import {
   summarizeProofGate,
   type ProductionLoopStageId,
 } from "@/lib/agentOfficeProductionLoop";
+import { buildAgentOfficeStatus } from "@/lib/agentOfficeStatus";
+import { buildBrokerageRouteCard } from "@/lib/brokerageRoute";
 import { buildWDCObjectCards } from "@/lib/wdcObjectCards";
 import { cn } from "@/lib/utils";
 import {
@@ -101,6 +105,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
+  const systemStatus = buildAgentOfficeStatus(productionLoop);
+  const brokerageRouteCard = buildBrokerageRouteCard(activeScope.id);
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
@@ -164,14 +170,16 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             </div>
             <h1>{activeScope.title}</h1>
           </div>
-          <button
-            type="button"
-            className="agent-office-icon-button"
-            onClick={insertPrompt}
-            title="Kopier scope-prompt"
-          >
-            <MessageSquare className="h-4 w-4" />
-          </button>
+          <div className="agent-office-header-actions">
+            <SystemStatusPill status={systemStatus} />
+            <AgentOfficeCommandPalette
+              modes={WORK_MODES}
+              activeModeId={activeScope.id}
+              status={systemStatus}
+              onSelectMode={setScope}
+              onCopyPrompt={insertPrompt}
+            />
+          </div>
         </div>
 
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
@@ -188,6 +196,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         </div>
 
         <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
+
+        <BrokerageRouteCard card={brokerageRouteCard} />
 
         <section className="wdc-object-card-section" aria-label="WDC visual object cards">
           <div className="agent-office-panel-head">
