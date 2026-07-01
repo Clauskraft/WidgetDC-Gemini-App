@@ -43,6 +43,41 @@ export type CapabilityEvidence =
   | "graph_readback"
   | "runtime_proof";
 
+export type StyleProfileCandidate = {
+  profile_id: string;
+  brand_name: string;
+  palette: string[];
+  density: "compact" | "balanced" | "dense";
+  tone: string;
+  diagram_family: string;
+  artifact_targets: string[];
+  executive_depth: string;
+  visual_risk_level: "low" | "medium" | "high";
+  candidate_only: true;
+  projection_only: true;
+  graph_write_allowed: false;
+  proof_eligible: false;
+};
+
+export type VisualStrategyCandidate = {
+  strategy_id: string;
+  intent: string;
+  visualization_family: string;
+  mermaid_type: string;
+  drawio_type: string;
+  artifact_target: string;
+  widget_slot: string;
+  style_profile_ids: string[];
+  proof_boundary: "candidate_only_visual_strategy";
+  provider_executions: 0;
+  graph_writes: 0;
+  claim_mutations: 0;
+  candidate_only: true;
+  projection_only: true;
+  graph_write_allowed: false;
+  proof_eligible: false;
+};
+
 export type CapabilityLibraryFilters = {
   kind: CapabilityKind;
   domain: CapabilityDomain | "all";
@@ -69,6 +104,8 @@ export type CapabilityLibraryEntry = {
   projection_only: true;
   graph_write_allowed: false;
   proof_eligible: false;
+  style_profile?: StyleProfileCandidate;
+  visual_strategy?: VisualStrategyCandidate;
 };
 
 export const CAPABILITY_KIND_LABELS: ReadonlyArray<{ kind: CapabilityKind; label: string }> = [
@@ -135,6 +172,47 @@ function domainForWorkMode(id: string): CapabilityDomain {
   if (id === "investigation") return "osint";
   if (id === "operate") return "governance";
   return "consulting";
+}
+
+function buildStyleProfileCandidate(values: {
+  id: string;
+  label: string;
+  palette: string[];
+  density: StyleProfileCandidate["density"];
+  tone: string;
+  diagram_family: string;
+  artifact_targets: string[];
+  executive_depth: string;
+  visual_risk_level: StyleProfileCandidate["visual_risk_level"];
+}): StyleProfileCandidate {
+  return {
+    profile_id: values.id,
+    brand_name: values.label,
+    palette: values.palette,
+    density: values.density,
+    tone: values.tone,
+    diagram_family: values.diagram_family,
+    artifact_targets: values.artifact_targets,
+    executive_depth: values.executive_depth,
+    visual_risk_level: values.visual_risk_level,
+    ...boundary,
+  };
+}
+
+function styleProfilesForVisualIntent(intent: string): string[] {
+  if (intent === "data-model" || intent === "system-architecture") {
+    return ["style_profile:technical-architecture", "style_profile:lego-factory"];
+  }
+  if (intent === "business-process" || intent === "value-stream") {
+    return ["style_profile:executive-strategy", "style_profile:boardroom-report"];
+  }
+  if (intent === "data-flow" || intent === "interaction-flow") {
+    return ["style_profile:osint-brief", "style_profile:technical-architecture"];
+  }
+  if (intent === "decision-logic" || intent === "state-lifecycle") {
+    return ["style_profile:cyber-threat-model", "style_profile:technical-architecture"];
+  }
+  return ["style_profile:executive-strategy"];
 }
 
 function entry(
@@ -317,35 +395,115 @@ export function buildCapabilityLibrary(): CapabilityLibraryEntry[] {
     }),
   );
 
-  const styleProfiles = [
-    ["style_profile:executive-strategy", "Executive strategy", "Boardroom-ready strategy artifacts."],
-    ["style_profile:technical-architecture", "Technical architecture", "Precise system and API diagrams."],
-    ["style_profile:osint-brief", "OSINT intelligence brief", "Source-forward intelligence summaries."],
-    ["style_profile:cyber-threat-model", "Cyber threat model", "Risk, attack surface and controls visuals."],
-    ["style_profile:lego-factory", "Manufacturing / LEGO factory", "Reusable block and route assembly views."],
-    ["style_profile:boardroom-report", "Boardroom report", "Dense executive report and slide structure."],
-  ].map(([id, label, description]) =>
+  const styleProfileSpecs = [
+    {
+      id: "style_profile:executive-strategy",
+      label: "Executive strategy",
+      description: "Boardroom-ready strategy artifacts.",
+      palette: ["ink", "signal-blue", "value-green"],
+      density: "balanced",
+      tone: "executive",
+      diagram_family: "strategy_map",
+      artifact_targets: ["strategy-brief", "board-slide", "decision-map"],
+      executive_depth: "decision-and-value",
+      visual_risk_level: "medium",
+    },
+    {
+      id: "style_profile:technical-architecture",
+      label: "Technical architecture",
+      description: "Precise system and API diagrams.",
+      palette: ["ink", "system-blue", "interface-green"],
+      density: "dense",
+      tone: "technical",
+      diagram_family: "system_architecture",
+      artifact_targets: ["architecture-diagram", "api-map", "dependency-view"],
+      executive_depth: "implementation-and-boundary",
+      visual_risk_level: "medium",
+    },
+    {
+      id: "style_profile:osint-brief",
+      label: "OSINT intelligence brief",
+      description: "Source-forward intelligence summaries.",
+      palette: ["ink", "source-cyan", "warning-amber"],
+      density: "dense",
+      tone: "source-forward",
+      diagram_family: "evidence_map",
+      artifact_targets: ["source-brief", "signal-map", "confidence-overlay"],
+      executive_depth: "source-and-confidence",
+      visual_risk_level: "high",
+    },
+    {
+      id: "style_profile:cyber-threat-model",
+      label: "Cyber threat model",
+      description: "Risk, attack surface and controls visuals.",
+      palette: ["ink", "signal-red", "control-blue"],
+      density: "dense",
+      tone: "risk-focused",
+      diagram_family: "attack_surface",
+      artifact_targets: ["threat-model", "risk-brief", "control-map"],
+      executive_depth: "controls-and-risk",
+      visual_risk_level: "high",
+    },
+    {
+      id: "style_profile:lego-factory",
+      label: "Manufacturing / LEGO factory",
+      description: "Reusable block and route assembly views.",
+      palette: ["ink", "assembly-yellow", "route-blue"],
+      density: "balanced",
+      tone: "assembly-oriented",
+      diagram_family: "assembly_flow",
+      artifact_targets: ["bom-map", "block-inventory", "route-assembly"],
+      executive_depth: "reuse-and-throughput",
+      visual_risk_level: "medium",
+    },
+    {
+      id: "style_profile:boardroom-report",
+      label: "Boardroom report",
+      description: "Dense executive report and slide structure.",
+      palette: ["ink", "executive-blue", "proof-green"],
+      density: "compact",
+      tone: "boardroom",
+      diagram_family: "executive_report",
+      artifact_targets: ["report-page", "one-pager", "investment-slide"],
+      executive_depth: "summary-and-proof",
+      visual_risk_level: "low",
+    },
+  ] satisfies Array<{
+    id: string;
+    label: string;
+    description: string;
+    palette: string[];
+    density: StyleProfileCandidate["density"];
+    tone: string;
+    diagram_family: string;
+    artifact_targets: string[];
+    executive_depth: string;
+    visual_risk_level: StyleProfileCandidate["visual_risk_level"];
+  }>;
+
+  const styleProfiles = styleProfileSpecs.map((spec) =>
     entry({
-      id,
-      label,
+      id: spec.id,
+      label: spec.label,
       kind: "style_profile",
-      domain: id.includes("osint")
+      domain: spec.id.includes("osint")
         ? "osint"
-        : id.includes("cyber")
+        : spec.id.includes("cyber")
           ? "cyber"
-          : id.includes("architecture")
+          : spec.id.includes("architecture")
             ? "devops"
-            : id.includes("lego")
+            : spec.id.includes("lego")
               ? "app-building"
               : "strategy",
-      description,
+      description: spec.description,
       source_repo: "WidgeTDC",
       source_ref: "docs/superpowers/specs/2026-07-01-world-class-capability-cockpit-design.md",
       required_competences: ["style.selection", "artifact.intent"],
-      provided_competences: [id.replace("style_profile:", "style_profile.")],
+      provided_competences: [spec.id.replace("style_profile:", "style_profile.")],
       source_fit_score: 0.87,
       readiness: "preview_ready",
       evidence: "source_backed_candidate",
+      style_profile: buildStyleProfileCandidate(spec),
     }),
   );
 
@@ -371,6 +529,21 @@ export function buildCapabilityLibrary(): CapabilityLibraryEntry[] {
       source_fit_score: 0.9,
       readiness: "preview_ready",
       evidence: "source_backed_candidate",
+      visual_strategy: {
+        strategy_id: `visual_strategy:${standard.intent}`,
+        intent: standard.intent,
+        visualization_family: standard.family,
+        mermaid_type: standard.mermaidType,
+        drawio_type: standard.drawioType,
+        artifact_target: "structured-diagram",
+        widget_slot: "widget.slot.vibe-canvas",
+        style_profile_ids: styleProfilesForVisualIntent(standard.intent),
+        proof_boundary: "candidate_only_visual_strategy",
+        provider_executions: 0,
+        graph_writes: 0,
+        claim_mutations: 0,
+        ...boundary,
+      },
     }),
   );
 

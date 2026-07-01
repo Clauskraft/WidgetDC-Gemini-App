@@ -52,4 +52,53 @@ describe("capabilityLibrary", () => {
       proof_eligible: false,
     });
   });
+
+  it("emits first-class style profile candidates with explicit style contract boundaries", () => {
+    const library = buildCapabilityLibrary();
+    const cyberProfile = library.find((entry) => entry.id === "style_profile:cyber-threat-model");
+
+    expect(cyberProfile?.style_profile).toMatchObject({
+      profile_id: "style_profile:cyber-threat-model",
+      brand_name: "Cyber threat model",
+      density: "dense",
+      tone: "risk-focused",
+      diagram_family: "attack_surface",
+      executive_depth: "controls-and-risk",
+      visual_risk_level: "high",
+      candidate_only: true,
+      projection_only: true,
+      graph_write_allowed: false,
+      proof_eligible: false,
+    });
+    expect(cyberProfile?.style_profile?.palette).toEqual(
+      expect.arrayContaining(["ink", "signal-red", "control-blue"]),
+    );
+    expect(cyberProfile?.style_profile?.artifact_targets).toEqual(
+      expect.arrayContaining(["threat-model", "risk-brief", "control-map"]),
+    );
+  });
+
+  it("emits first-class visual strategy candidates with no provider or graph side effects", () => {
+    const library = buildCapabilityLibrary();
+    const dataModelStrategy = library.find((entry) => entry.id === "visual_strategy:data-model");
+
+    expect(dataModelStrategy?.visual_strategy).toMatchObject({
+      strategy_id: "visual_strategy:data-model",
+      intent: "data-model",
+      visualization_family: "erd",
+      mermaid_type: "er",
+      drawio_type: "er",
+      artifact_target: "structured-diagram",
+      widget_slot: "widget.slot.vibe-canvas",
+      proof_boundary: "candidate_only_visual_strategy",
+      provider_executions: 0,
+      graph_writes: 0,
+      claim_mutations: 0,
+      graph_write_allowed: false,
+      proof_eligible: false,
+    });
+    expect(dataModelStrategy?.visual_strategy?.style_profile_ids).toContain(
+      "style_profile:technical-architecture",
+    );
+  });
 });
