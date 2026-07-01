@@ -7,7 +7,7 @@ import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
 
 export type WorldClassUxEvidence = {
   evidence_ref: string;
-  evidence_level: "diagnostic_only";
+  evidence_level: "diagnostic_only" | "user_evidence";
   candidate_only: true;
   projection_only: true;
   graph_write_allowed: false;

@@ -4,6 +4,7 @@ import { buildBrokerageRouteCard } from "@/lib/brokerageRoute";
 import { buildCapabilityLibrary } from "@/lib/capabilityLibrary";
 import { buildCapabilityRecipe } from "@/lib/capabilityRecipe";
 import {
+  WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE,
   WORLD_CLASS_CATEGORY_WEIGHTS,
   buildWorldClassAssessment,
   evaluateWorldClass,
@@ -79,6 +80,101 @@ describe("worldClassContract", () => {
     expect(assessment.criticalP0Defects).toBe(0);
   });
 
+  it("does not let diagnostic evidence satisfy user or runtime proof gates", () => {
+    const assessment = evaluateWorldClass({
+      hardGates: Object.fromEntries(
+        hardGateIds.map((id) => [id, { passed: true, evidence: "verified" }]),
+      ) as Record<HardGateId, { passed: boolean; evidence: string }>,
+      categoryScores: Object.fromEntries(
+        categoryIds.map((id) => [id, { score: 0.96, blockers: [] }]),
+      ) as Record<WorldClassCategoryId, { score: number; blockers: string[] }>,
+      criticalDefects: Object.fromEntries(criticalDefectIds.map((id) => [id, 0])) as Record<
+        CriticalP0DefectId,
+        number
+      >,
+      kpis: [],
+      evidenceGates: [
+        {
+          id: "human_task_success",
+          label: "Human task success",
+          required_level: "user_evidence",
+          observed_level: "diagnostic_only",
+          evidence: "diagnostic walkthrough only",
+        },
+        {
+          id: "runtime_proof_readback",
+          label: "Runtime proof readback",
+          required_level: "runtime_proof",
+          observed_level: "diagnostic_only",
+          evidence: "no deployed SHA or 3-pass proof",
+        },
+      ],
+    });
+
+    expect(assessment.worldClassSatisfied).toBe(false);
+    expect(assessment.status).toBe("not_world_class");
+    expect(assessment.evidenceGatePassCount).toBe(0);
+    expect(assessment.evidenceGateTotal).toBe(2);
+    expect(assessment.evidenceGates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "human_task_success",
+          passed: false,
+          required_level: "user_evidence",
+          observed_level: "diagnostic_only",
+        }),
+        expect.objectContaining({
+          id: "runtime_proof_readback",
+          passed: false,
+          required_level: "runtime_proof",
+          observed_level: "diagnostic_only",
+        }),
+      ]),
+    );
+    expect(assessment.blockers).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Human task success"),
+        expect.stringContaining("Runtime proof readback"),
+      ]),
+    );
+  });
+
+  it("allows world-class only when required evidence levels are also satisfied", () => {
+    const assessment = evaluateWorldClass({
+      hardGates: Object.fromEntries(
+        hardGateIds.map((id) => [id, { passed: true, evidence: "verified" }]),
+      ) as Record<HardGateId, { passed: boolean; evidence: string }>,
+      categoryScores: Object.fromEntries(
+        categoryIds.map((id) => [id, { score: 0.96, blockers: [] }]),
+      ) as Record<WorldClassCategoryId, { score: number; blockers: string[] }>,
+      criticalDefects: Object.fromEntries(criticalDefectIds.map((id) => [id, 0])) as Record<
+        CriticalP0DefectId,
+        number
+      >,
+      kpis: [],
+      evidenceGates: [
+        {
+          id: "human_task_success",
+          label: "Human task success",
+          required_level: "user_evidence",
+          observed_level: "user_evidence",
+          evidence: "task success sample attached",
+        },
+        {
+          id: "runtime_proof_readback",
+          label: "Runtime proof readback",
+          required_level: "runtime_proof",
+          observed_level: "runtime_proof",
+          evidence: "deployed SHA and 3 consecutive passes attached",
+        },
+      ],
+    });
+
+    expect(assessment.worldClassSatisfied).toBe(true);
+    expect(assessment.status).toBe("world_class");
+    expect(assessment.evidenceGatePassCount).toBe(2);
+  });
+
   it("keeps current P0 cockpit as expected not-world-class until runtime and human evidence is attached", () => {
     const entries = buildCapabilityLibrary();
     const selectedEntries = entries.slice(0, 3);
@@ -102,6 +198,20 @@ describe("worldClassContract", () => {
     expect(assessment.proofHarness.performance_status).toBe("passed");
     expect(assessment.proofHarness.runtime_status).toBe("missing_evidence");
     expect(assessment.uxEvidence?.evidence_level).toBe("diagnostic_only");
+    expect(assessment.evidenceGates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "human_task_success",
+          passed: false,
+          observed_level: "diagnostic_only",
+        }),
+        expect.objectContaining({
+          id: "runtime_proof_readback",
+          passed: false,
+          observed_level: "diagnostic_only",
+        }),
+      ]),
+    );
     expect(assessment.blockers).toEqual(
       expect.arrayContaining([
         expect.stringContaining("Diagnostic UX evidence is attached"),
@@ -180,5 +290,6 @@ describe("worldClassContract", () => {
     expect(
       assessment.kpis.filter((kpi) => kpi.status === "missing_evidence").length,
     ).toBeGreaterThan(0);
+    expect(WORLD_CLASS_DIAGNOSTIC_WDC_EVIDENCE.evidence_level).toBe("diagnostic_only");
   });
 });

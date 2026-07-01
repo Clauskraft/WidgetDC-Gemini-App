@@ -54,6 +54,13 @@ export type CriticalP0DefectId =
 
 export type KpiStatus = "met" | "missing_evidence" | "below_target";
 
+export type WorldClassEvidenceLevel = "diagnostic_only" | "user_evidence" | "runtime_proof";
+
+export type EvidenceGateId =
+  | "diagnostic_contract"
+  | "human_task_success"
+  | "runtime_proof_readback";
+
 export type WorldClassKpi = {
   id: string;
   category: WorldClassCategoryId;
@@ -85,6 +92,18 @@ export type CriticalP0DefectAssessment = {
   count: number;
 };
 
+export type EvidenceGateInput = {
+  id: EvidenceGateId;
+  label: string;
+  required_level: WorldClassEvidenceLevel;
+  observed_level: WorldClassEvidenceLevel;
+  evidence: string;
+};
+
+export type EvidenceGateAssessment = EvidenceGateInput & {
+  passed: boolean;
+};
+
 export type WorldClassAssessment = {
   status: "world_class" | "not_world_class";
   worldClassSatisfied: boolean;
@@ -92,8 +111,11 @@ export type WorldClassAssessment = {
   minCategoryScore: number;
   hardGatePassCount: number;
   hardGateTotal: number;
+  evidenceGatePassCount: number;
+  evidenceGateTotal: number;
   criticalP0Defects: number;
   hardGates: HardGateAssessment[];
+  evidenceGates: EvidenceGateAssessment[];
   categories: WeightedCategoryScore[];
   kpis: WorldClassKpi[];
   criticalDefects: CriticalP0DefectAssessment[];
@@ -108,7 +130,7 @@ export type WorldClassAssessment = {
 
 export type WorldClassWdcEvidence = {
   evidence_ref: string;
-  evidence_level: "diagnostic_only" | "runtime_proof";
+  evidence_level: WorldClassEvidenceLevel;
   candidate_only: true;
   projection_only: true;
   graph_write_allowed: false;
@@ -219,10 +241,24 @@ export type EvaluateWorldClassInput = {
   criticalDefects: Record<CriticalP0DefectId, number>;
   kpis: WorldClassKpi[];
   proofHarness?: WorldClassProofHarnessSummary;
+  evidenceGates?: EvidenceGateInput[];
 };
 
 function clampScore(score: number) {
   return Math.max(0, Math.min(1, Number.isFinite(score) ? score : 0));
+}
+
+const evidenceLevelRank: Record<WorldClassEvidenceLevel, number> = {
+  diagnostic_only: 0,
+  user_evidence: 1,
+  runtime_proof: 2,
+};
+
+function evidenceMeetsRequirement(
+  observed: WorldClassEvidenceLevel,
+  required: WorldClassEvidenceLevel,
+) {
+  return evidenceLevelRank[observed] >= evidenceLevelRank[required];
 }
 
 export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAssessment {
@@ -245,6 +281,10 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
     label: criticalDefectLabels[id as CriticalP0DefectId],
     count,
   }));
+  const evidenceGates = (input.evidenceGates ?? []).map((gate) => ({
+    ...gate,
+    passed: evidenceMeetsRequirement(gate.observed_level, gate.required_level),
+  }));
   const worldClassIndex = Number(
     categories.reduce((sum, category) => sum + category.weight * category.score, 0).toFixed(4),
   );
@@ -253,10 +293,16 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
   const proofHarness =
     input.proofHarness ?? summarizeWorldClassProofHarness(WORLD_CLASS_DIAGNOSTIC_PROOF);
   const failedHardGates = hardGates.filter((gate) => !gate.passed);
+  const failedEvidenceGates = evidenceGates.filter((gate) => !gate.passed);
   const lowCategories = categories.filter((category) => category.score < 0.9);
   const hardGatePassCount = hardGates.length - failedHardGates.length;
+  const evidenceGatePassCount = evidenceGates.length - failedEvidenceGates.length;
   const blockers = [
     ...failedHardGates.map((gate) => `${gate.label}: ${gate.evidence}`),
+    ...failedEvidenceGates.map(
+      (gate) =>
+        `${gate.label}: requires ${gate.required_level}, observed ${gate.observed_level}. ${gate.evidence}`,
+    ),
     ...lowCategories.flatMap((category) =>
       category.blockers.length > 0
         ? category.blockers.map((blocker) => `${category.label}: ${blocker}`)
@@ -269,6 +315,7 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
   ];
   const worldClassSatisfied =
     failedHardGates.length === 0 &&
+    failedEvidenceGates.length === 0 &&
     worldClassIndex >= 0.95 &&
     minCategoryScore >= 0.9 &&
     criticalP0Defects === 0;
@@ -280,8 +327,11 @@ export function evaluateWorldClass(input: EvaluateWorldClassInput): WorldClassAs
     minCategoryScore,
     hardGatePassCount,
     hardGateTotal: hardGates.length,
+    evidenceGatePassCount,
+    evidenceGateTotal: evidenceGates.length,
     criticalP0Defects,
     hardGates,
+    evidenceGates,
     categories,
     kpis: input.kpis,
     criticalDefects,
@@ -633,6 +683,32 @@ export function buildWorldClassAssessment({
       },
     }),
     proofHarness,
+    evidenceGates: [
+      {
+        id: "diagnostic_contract",
+        label: "Diagnostic contract",
+        required_level: "diagnostic_only",
+        observed_level: "diagnostic_only",
+        evidence:
+          "P0 cockpit has diagnostic WDC, UX and proof-harness evidence for candidate evaluation.",
+      },
+      {
+        id: "human_task_success",
+        label: "Human task success",
+        required_level: "user_evidence",
+        observed_level: uxEvidence.evidence_level,
+        evidence:
+          "Human task-success evidence is not attached; diagnostic UX measurements cannot prove user success.",
+      },
+      {
+        id: "runtime_proof_readback",
+        label: "Runtime proof readback",
+        required_level: "runtime_proof",
+        observed_level: proofHarness.evidence_level,
+        evidence:
+          "Runtime proof requires deployed SHA readback and 3 consecutive verification passes.",
+      },
+    ],
   });
 
   return {

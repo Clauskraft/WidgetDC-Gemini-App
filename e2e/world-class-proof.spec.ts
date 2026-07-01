@@ -68,9 +68,10 @@ test.describe("World-class capability cockpit proof harness", () => {
     await page.goto("/");
     await waitForHydration(page);
 
-    await expectUsablePanel(page.getByRole("region", { name: /World-class contract/i }));
-    await expect(page.getByText("diagnostic_only")).toBeVisible();
-    await expect(page.getByText("runtime missing_evidence")).toBeVisible();
+    const contractPanel = page.getByRole("region", { name: /World-class contract/i });
+    await expectUsablePanel(contractPanel);
+    await expect(contractPanel.getByText("diagnostic_only", { exact: true })).toBeVisible();
+    await expect(contractPanel.getByText("runtime missing_evidence")).toBeVisible();
   });
 
   test("supports keyboard-safe composition and keeps interaction latency under diagnostic targets", async ({
