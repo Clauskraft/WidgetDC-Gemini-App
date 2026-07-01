@@ -1,4 +1,9 @@
-import type { KpiStatus, WorldClassCategoryId, WorldClassKpi } from "@/lib/worldClassContract";
+import type {
+  KpiStatus,
+  WorldClassCategoryId,
+  WorldClassEvidenceLevel,
+  WorldClassKpi,
+} from "@/lib/worldClassContract";
 
 export type WorldClassKpiId =
   | "first_useful_route"
@@ -27,13 +32,18 @@ export type WorldClassKpiId =
   | "a2a_exit_review"
   | "stop_harvest";
 
-export type WorldClassKpiDefinition = Omit<WorldClassKpi, "value" | "status"> & {
+export type WorldClassKpiDefinition = Omit<
+  WorldClassKpi,
+  "value" | "status" | "required_level" | "observed_level" | "evidence_ref" | "proof_ready"
+> & {
   id: WorldClassKpiId;
 };
 
 export type WorldClassKpiMeasurement = {
   value: string;
   status: KpiStatus;
+  observed_level?: WorldClassEvidenceLevel;
+  evidence_ref?: string;
 };
 
 export type WorldClassKpiMeasurements = Partial<Record<WorldClassKpiId, WorldClassKpiMeasurement>>;
@@ -41,10 +51,32 @@ export type WorldClassKpiMeasurements = Partial<Record<WorldClassKpiId, WorldCla
 export type WorldClassKpiMatrixSummary = {
   total: number;
   met: number;
+  proofReady: number;
+  proofPending: number;
   missingEvidence: number;
   belowTarget: number;
   objectiveCoverage: number;
 };
+
+const defaultRequiredLevel: WorldClassEvidenceLevel = "diagnostic_only";
+
+const requiredEvidenceLevelByKpi = {
+  next_action_clarity: "user_evidence",
+  runtime_overclaim_defects: "runtime_proof",
+} satisfies Partial<Record<WorldClassKpiId, WorldClassEvidenceLevel>>;
+
+const evidenceLevelRank: Record<WorldClassEvidenceLevel, number> = {
+  diagnostic_only: 0,
+  user_evidence: 1,
+  runtime_proof: 2,
+};
+
+function evidenceMeetsRequirement(
+  observed: WorldClassEvidenceLevel,
+  required: WorldClassEvidenceLevel,
+) {
+  return evidenceLevelRank[observed] >= evidenceLevelRank[required];
+}
 
 const definitions = [
   {
@@ -229,22 +261,38 @@ export const WORLD_CLASS_KPI_TARGETS: ReadonlyArray<WorldClassKpiDefinition> = d
 export function buildWorldClassKpis(measurements: WorldClassKpiMeasurements): WorldClassKpi[] {
   return WORLD_CLASS_KPI_TARGETS.map((definition) => {
     const measurement = measurements[definition.id];
+    const requiredLevel = requiredEvidenceLevelByKpi[definition.id] ?? defaultRequiredLevel;
+    const observedLevel = measurement?.observed_level ?? "diagnostic_only";
+    const evidenceRef = measurement
+      ? (measurement.evidence_ref ?? "diagnostic KPI measurement")
+      : "missing";
+    const status = measurement?.status ?? "missing_evidence";
     return {
       ...definition,
+      required_level: requiredLevel,
+      observed_level: observedLevel,
+      evidence_ref: evidenceRef,
       value: measurement?.value ?? "missing",
-      status: measurement?.status ?? "missing_evidence",
+      status,
+      proof_ready:
+        status === "met" &&
+        evidenceRef !== "missing" &&
+        evidenceMeetsRequirement(observedLevel, requiredLevel),
     };
   });
 }
 
 export function summarizeWorldClassKpiMatrix(kpis: WorldClassKpi[]): WorldClassKpiMatrixSummary {
   const met = kpis.filter((kpi) => kpi.status === "met").length;
+  const proofReady = kpis.filter((kpi) => kpi.proof_ready).length;
   const missingEvidence = kpis.filter((kpi) => kpi.status === "missing_evidence").length;
   const belowTarget = kpis.filter((kpi) => kpi.status === "below_target").length;
 
   return {
     total: kpis.length,
     met,
+    proofReady,
+    proofPending: kpis.length - proofReady,
     missingEvidence,
     belowTarget,
     objectiveCoverage: Number((kpis.length / WORLD_CLASS_KPI_TARGETS.length).toFixed(4)),

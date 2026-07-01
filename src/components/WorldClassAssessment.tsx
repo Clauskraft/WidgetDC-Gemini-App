@@ -42,6 +42,8 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
       <div className="world-class-proof-harness">
         <span>{`${kpiSummary.total} KPI targets`}</span>
         <span>{`${kpiSummary.met} met`}</span>
+        <span>{`${kpiSummary.proofReady} proof-ready`}</span>
+        <span>{`${kpiSummary.proofPending} proof-pending`}</span>
         <span>{`${kpiSummary.missingEvidence} missing evidence`}</span>
         <span>{`${kpiSummary.belowTarget} below target`}</span>
         <span>{`coverage ${kpiSummary.objectiveCoverage.toFixed(2)}`}</span>
@@ -84,9 +86,13 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
       <div className="agent-office-ref-list">
         {assessment.kpis.map((kpi) => (
           <div key={kpi.id} className="agent-office-ref-row">
-            <code>{kpi.status}</code>
+            <code>{kpi.proof_ready ? "proof-ready" : "proof-pending"}</code>
             <span title={kpi.formula}>{kpi.label}</span>
-            <small>{`${kpi.value} / ${kpi.target}`}</small>
+            <small
+              title={`requires ${kpi.required_level}; observed ${kpi.observed_level}; evidence ${kpi.evidence_ref}`}
+            >
+              {`${kpi.status}: ${kpi.value} / ${kpi.target} · requires ${kpi.required_level}`}
+            </small>
           </div>
         ))}
       </div>

@@ -55,7 +55,7 @@ export const WORLD_CLASS_PROOF_TARGETS = {
   keyboard_path_ratio: 1,
   work_mode_switch_p95_ms: 250,
   library_filter_p95_ms: 150,
-  recipe_preview_p95_ms: 500,
+  recipe_preview_p95_ms: 250,
   runtime_passes: 3,
 } as const;
 

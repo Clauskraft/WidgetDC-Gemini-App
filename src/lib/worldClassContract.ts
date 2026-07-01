@@ -69,6 +69,10 @@ export type WorldClassKpi = {
   target: string;
   value: string;
   status: KpiStatus;
+  required_level: WorldClassEvidenceLevel;
+  observed_level: WorldClassEvidenceLevel;
+  evidence_ref: string;
+  proof_ready: boolean;
 };
 
 export type WeightedCategoryScore = {
