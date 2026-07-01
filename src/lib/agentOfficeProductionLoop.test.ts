@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentOfficeProductionLoop,
+  buildBuildabilityLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -134,6 +135,8 @@ describe("agentOfficeProductionLoop", () => {
       proofAdoptionBlockedCount: 2,
       stopConditionCount: 5,
       promotionBlockedCount: 5,
+      buildabilityLedgerCount: 7,
+      buildabilityBlockedCount: 2,
     });
     expect(envelope.payload.stopConditionIds).toEqual([
       "MAPPED_COUNT_ZERO_EXPECTED_STOP",
@@ -320,6 +323,52 @@ describe("agentOfficeProductionLoop", () => {
     ]);
     expect(ladder.every((item) => item.runtimeProofEligible === false)).toBe(true);
     expect(ladder.at(-1)?.proofBoundary).toContain("candidate");
+  });
+
+  it("builds a BuildabilityLedger from WorkBOM, RouteCatalog and EnvironmentBOM", () => {
+    const ledger = buildBuildabilityLedger(resolveAgentOfficeProductionLoop("operate"));
+    expect(ledger).toHaveLength(7);
+    expect(ledger.map((item) => item.source)).toEqual([
+      "workbom",
+      "workbom",
+      "workbom",
+      "route-catalog",
+      "environment-bom",
+      "environment-bom",
+      "environment-bom",
+    ]);
+    expect(ledger.filter((item) => item.status === "blocked").map((item) => item.id)).toEqual([
+      "workbom:operate-proof",
+      "environment:operate-runtime",
+    ]);
+    expect(ledger.every((item) => item.requiredEvidence.length > 0)).toBe(true);
+    expect(ledger.every((item) => item.proofBoundary.length > 0)).toBe(true);
+  });
+
+  it("keeps every demand scope buildable through WorkBOM and RouteCatalog readiness", () => {
+    for (const scopeId of Object.keys(demandLoopProfiles) as Array<
+      keyof typeof demandLoopProfiles
+    >) {
+      const model = resolveAgentOfficeProductionLoop(scopeId);
+      const ledger = buildBuildabilityLedger(model);
+      expect(ledger.some((item) => item.source === "workbom" && item.status === "ready")).toBe(
+        true,
+      );
+      expect(
+        ledger.some((item) => item.source === "route-catalog" && item.status === "ready"),
+      ).toBe(true);
+      expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+    }
+  });
+
+  it("rejects demand loops without a routed build method", () => {
+    const model = {
+      ...resolveAgentOfficeProductionLoop("app"),
+      routeCatalog: [{ ...resolveAgentOfficeProductionLoop("app").routeCatalog[0], method: "" }],
+    };
+    expect(validateProductionLoopModel(model).failures).toContain(
+      "RouteCatalog entries must include an execution method",
+    );
   });
 
   it("keeps WDC stop conditions explicit and proof-ineligible", () => {

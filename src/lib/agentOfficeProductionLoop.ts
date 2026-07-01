@@ -182,6 +182,18 @@ export type StopConditionLedgerItem = {
   nextAction: string;
 };
 
+export type BuildabilityLedgerSource = "workbom" | "route-catalog" | "environment-bom";
+
+export type BuildabilityLedgerItem = {
+  id: string;
+  label: string;
+  source: BuildabilityLedgerSource;
+  status: "ready" | "blocked";
+  stage?: ProductionLoopStageId;
+  requiredEvidence: string[];
+  proofBoundary: string;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -231,6 +243,8 @@ export type LearningBroadcastEnvelope = {
     proofAdoptionBlockedCount: number;
     stopConditionCount: number;
     promotionBlockedCount: number;
+    buildabilityLedgerCount: number;
+    buildabilityBlockedCount: number;
     capabilityDebtIds: string[];
     stopConditionIds: string[];
     extractionContracts: ExtractionContract[];
@@ -902,6 +916,7 @@ export function createLearningBroadcastEnvelope(
   const summary = summarizeCompetenceMapping(model.competenceRows);
   const coverage = buildProductionLoopCoverageMatrix(model);
   const proofAdoption = buildProofAdoptionLadder(model);
+  const buildability = buildBuildabilityLedger(model);
   return {
     transport: model.learning.transport,
     messageType: model.learning.type,
@@ -927,6 +942,8 @@ export function createLearningBroadcastEnvelope(
       proofAdoptionBlockedCount: proofAdoption.filter((item) => item.status === "blocked").length,
       stopConditionCount: model.stopConditions.length,
       promotionBlockedCount: model.stopConditions.filter((item) => !item.proofEligible).length,
+      buildabilityLedgerCount: buildability.length,
+      buildabilityBlockedCount: buildability.filter((item) => item.status === "blocked").length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       stopConditionIds: model.stopConditions.map((item) => item.id),
       extractionContracts: [
@@ -936,6 +953,52 @@ export function createLearningBroadcastEnvelope(
       ],
     },
   };
+}
+
+export function buildBuildabilityLedger(
+  model: AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>,
+): BuildabilityLedgerItem[] {
+  const workBom = model.workBom ?? [];
+  const routeCatalog = model.routeCatalog ?? [];
+  const environmentBom = model.environmentBom ?? [];
+  return [
+    ...workBom.map(
+      (item) =>
+        ({
+          id: `workbom:${item.id}`,
+          label: item.label,
+          source: "workbom",
+          status: item.buildable ? "ready" : "blocked",
+          stage: item.stage,
+          requiredEvidence: [`stage:${item.stage}`, `workbom:${item.id}`],
+          proofBoundary: item.buildable
+            ? "Buildable WorkBOM item is implementation readiness, not runtime proof."
+            : "Blocked WorkBOM item remains CapabilityDebtLedger input before promotion.",
+        }) satisfies BuildabilityLedgerItem,
+    ),
+    ...routeCatalog.map(
+      (item) =>
+        ({
+          id: `route:${item.id}`,
+          label: item.label,
+          source: "route-catalog",
+          status: item.method.trim() ? "ready" : "blocked",
+          requiredEvidence: [`method:${item.method}`, `route:${item.id}`],
+          proofBoundary: "RouteCatalog selects an execution method; it does not prove execution.",
+        }) satisfies BuildabilityLedgerItem,
+    ),
+    ...environmentBom.map(
+      (item) =>
+        ({
+          id: `environment:${item.id}`,
+          label: item.label,
+          source: "environment-bom",
+          status: item.status === "debt" ? "blocked" : "ready",
+          requiredEvidence: item.extraction_contract.requiredEvidence,
+          proofBoundary: item.proofBoundary,
+        }) satisfies BuildabilityLedgerItem,
+    ),
+  ];
 }
 
 export function buildProofAdoptionLadder(
@@ -1210,6 +1273,7 @@ export function validateProductionLoopModel(
   const environmentBom = model.environmentBom ?? [];
   const coverageMatrix = buildProductionLoopCoverageMatrix(model);
   const proofAdoptionLadder = buildProofAdoptionLadder(model);
+  const buildabilityLedger = buildBuildabilityLedger(model);
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -1299,6 +1363,30 @@ export function validateProductionLoopModel(
   }
   if (!model.proofGate.boundary.includes("not runtime proof")) {
     failures.push("ProofGate boundary must reject candidate/projection/dry-run runtime proof");
+  }
+  if ("workBom" in model || "routeCatalog" in model) {
+    const resolvedModel = model as AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>;
+    if (!resolvedModel.workBom?.length) {
+      failures.push("BuildabilityLedger requires WorkBOM entries");
+    }
+    if (!resolvedModel.routeCatalog?.length) {
+      failures.push("BuildabilityLedger requires RouteCatalog entries");
+    }
+    if (!resolvedModel.workBom?.some((item) => item.buildable)) {
+      failures.push("BuildabilityLedger requires at least one buildable WorkBOM item");
+    }
+    if (
+      buildabilityLedger.some(
+        (item) => item.source === "route-catalog" && item.status === "blocked",
+      )
+    ) {
+      failures.push("RouteCatalog entries must include an execution method");
+    }
+    for (const item of buildabilityLedger) {
+      if (!item.requiredEvidence.length || !item.proofBoundary.trim()) {
+        failures.push(`${item.id} is missing BuildabilityLedger evidence or boundary`);
+      }
+    }
   }
   if (!model.stopConditions.length) {
     failures.push("StopConditionLedger is missing");

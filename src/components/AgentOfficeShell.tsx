@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  buildBuildabilityLedger,
   buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
@@ -160,6 +161,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
   const operationalSummary = summarizeOperationalLedgers(productionLoop);
+  const buildabilityLedger = buildBuildabilityLedger(productionLoop);
+  const buildabilityBlockedCount = buildabilityLedger.filter(
+    (item) => item.status === "blocked",
+  ).length;
   const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
   const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
   const proofAdoptionLadder = buildProofAdoptionLadder(productionLoop);
@@ -308,6 +313,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             {operationalSummary.environmentDebtCount}.
           </p>
           <p>
+            BuildabilityLedger: {buildabilityLedger.length - buildabilityBlockedCount}/
+            {buildabilityLedger.length} ready; blocked {buildabilityBlockedCount}. WorkBOM and
+            RouteCatalog stay separate from runtime proof.
+          </p>
+          <p>
             AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
             {operationalSummary.executionLedgerCount} with{" "}
             {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
@@ -436,6 +446,24 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="agent-office-governance-grid">
+          <section className="agent-office-mini-panel">
+            <div className="agent-office-panel-head">
+              <div>
+                <div className="agent-office-workstrip-label">BuildabilityLedger</div>
+                <strong>WorkBOM + RouteCatalog</strong>
+              </div>
+            </div>
+            <div className="agent-office-ref-list">
+              {buildabilityLedger.map((item) => (
+                <div key={item.id} className="agent-office-ref-row">
+                  <code>{item.status}</code>
+                  <span title={item.proofBoundary}>{item.label}</span>
+                  <small>{item.source}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="agent-office-mini-panel">
             <div className="agent-office-panel-head">
               <div>
