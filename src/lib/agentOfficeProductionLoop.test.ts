@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentOfficeProductionLoop,
+  buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
   demandLoopProfiles,
@@ -129,6 +130,8 @@ describe("agentOfficeProductionLoop", () => {
       closeoutTreeCount: 3,
       coverageRequirementCount: 10,
       coverageDebtCount: 0,
+      proofAdoptionLadderCount: 5,
+      proofAdoptionBlockedCount: 2,
     });
     expect(envelope.payload.stageOrder.at(0)).toBe("demand");
     expect(envelope.payload.stageOrder.at(-1)).toBe("learning");
@@ -286,6 +289,28 @@ describe("agentOfficeProductionLoop", () => {
     });
     expect(model.proofGate.boundary).toContain("not runtime proof");
     expect(validateProductionLoopModel(model)).toEqual({ ok: true, failures: [] });
+  });
+
+  it("builds a proof adoption ladder without promoting readback to runtime proof", () => {
+    const ladder = buildProofAdoptionLadder(resolveAgentOfficeProductionLoop("operate"));
+    expect(ladder.map((item) => item.id)).toEqual([
+      "code-model-evidence",
+      "ci-verification",
+      "deployment-readback",
+      "runtime-pass-chain",
+      "adoption-readback",
+    ]);
+    expect(ladder.filter((item) => item.status === "satisfied").map((item) => item.id)).toEqual([
+      "code-model-evidence",
+      "ci-verification",
+      "adoption-readback",
+    ]);
+    expect(ladder.filter((item) => item.status === "blocked").map((item) => item.id)).toEqual([
+      "deployment-readback",
+      "runtime-pass-chain",
+    ]);
+    expect(ladder.every((item) => item.runtimeProofEligible === false)).toBe(true);
+    expect(ladder.at(-1)?.proofBoundary).toContain("candidate");
   });
 
   it("rejects runtime proof without deployment readback and three verification passes", () => {
