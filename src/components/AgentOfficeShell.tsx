@@ -26,6 +26,7 @@ import { LibraryNav } from "@/components/LibraryNav";
 import { ProjectTreePanel } from "@/components/ProjectTreePanel";
 import { SystemStatusPill } from "@/components/SystemStatusPill";
 import { WDCObjectCard } from "@/components/WDCObjectCard";
+import { WorldClassAssessment } from "@/components/WorldClassAssessment";
 import {
   buildBuildabilityLedger,
   buildEvidenceContractLedger,
@@ -46,6 +47,7 @@ import { buildCapabilityLibrary, type CapabilityKind } from "@/lib/capabilityLib
 import { buildCapabilityRecipe } from "@/lib/capabilityRecipe";
 import { buildWDCObjectCards } from "@/lib/wdcObjectCards";
 import { cn } from "@/lib/utils";
+import { buildWorldClassAssessment } from "@/lib/worldClassContract";
 import {
   DEFAULT_WORK_MODE_ID,
   WORK_MODES,
@@ -124,6 +126,16 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   );
   const systemStatus = buildAgentOfficeStatus(productionLoop);
   const brokerageRouteCard = buildBrokerageRouteCard(activeScope.id);
+  const worldClassAssessment = useMemo(
+    () =>
+      buildWorldClassAssessment({
+        capabilityEntries: capabilityLibrary,
+        recipe,
+        routeCard: brokerageRouteCard,
+        projectTreeRefs: productionLoop.projectTreeRefs,
+      }),
+    [brokerageRouteCard, capabilityLibrary, productionLoop.projectTreeRefs, recipe],
+  );
   const productionLoopSummary = summarizeCompetenceMapping(productionLoop.competenceRows);
   const learningEnvelope = createLearningBroadcastEnvelope(productionLoop);
   const proofGateSummary = summarizeProofGate(productionLoop.proofGate);
@@ -230,6 +242,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         />
 
         <ComposeRecipePanel recipe={recipe} />
+
+        <WorldClassAssessment assessment={worldClassAssessment} />
 
         <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
