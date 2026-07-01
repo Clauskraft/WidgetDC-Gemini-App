@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  buildProofAdoptionLadder,
   buildProductionLoopCoverageMatrix,
   createLearningBroadcastEnvelope,
   getProductionStage,
@@ -161,6 +162,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const operationalSummary = summarizeOperationalLedgers(productionLoop);
   const coverageMatrix = buildProductionLoopCoverageMatrix(productionLoop);
   const coverageDebtCount = coverageMatrix.filter((item) => item.status === "debt").length;
+  const proofAdoptionLadder = buildProofAdoptionLadder(productionLoop);
+  const proofAdoptionBlockedCount = proofAdoptionLadder.filter(
+    (item) => item.status === "blocked",
+  ).length;
   const selectedStage = getProductionStage(productionLoop, selectedStageId);
 
   const setScope = (id: WorkScopeId) => {
@@ -320,6 +325,10 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             {proofGateSummary.presentCount + proofGateSummary.missingCount}; verification passes{" "}
             {proofGateSummary.passedVerifications}/{proofGateSummary.requiredPasses}.{" "}
             {productionLoop.proofGate.boundary}
+          </p>
+          <p>
+            ProofAdoptionLadder: {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
+            {proofAdoptionLadder.length} satisfied; blocked {proofAdoptionBlockedCount}.
           </p>
         </div>
 
@@ -579,6 +588,30 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
                 <code>{item.status}</code>
                 <span title={item.proofBoundary}>{item.label}</span>
                 <small>{item.evidence.length}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="agent-office-loop" aria-label="Proof adoption ladder">
+          <div className="agent-office-panel-head">
+            <div>
+              <div className="agent-office-workstrip-label">ProofAdoptionLadder</div>
+              <strong>From evidence to runtime proof</strong>
+            </div>
+            <span>
+              satisfied {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
+              {proofAdoptionLadder.length}
+            </span>
+          </div>
+          <div className="agent-office-ref-list">
+            {proofAdoptionLadder.map((item) => (
+              <div key={item.id} className="agent-office-ref-row">
+                <code>{item.status}</code>
+                <span title={item.proofBoundary}>{item.label}</span>
+                <small>
+                  {item.availableEvidence.length}/{item.requiredEvidence.length}
+                </small>
               </div>
             ))}
           </div>

@@ -153,6 +153,23 @@ export type ProductionLoopCoverageItem = {
   proofBoundary: string;
 };
 
+export type ProofAdoptionStageId =
+  | "code-model-evidence"
+  | "ci-verification"
+  | "deployment-readback"
+  | "runtime-pass-chain"
+  | "adoption-readback";
+
+export type ProofAdoptionLadderItem = {
+  id: ProofAdoptionStageId;
+  label: string;
+  status: "satisfied" | "blocked";
+  requiredEvidence: string[];
+  availableEvidence: string[];
+  proofBoundary: string;
+  runtimeProofEligible: boolean;
+};
+
 export type ExplicitDependency = {
   from: ProductionLoopStageId;
   to: ProductionLoopStageId;
@@ -198,6 +215,8 @@ export type LearningBroadcastEnvelope = {
     closeoutTreeCount: number;
     coverageRequirementCount: number;
     coverageDebtCount: number;
+    proofAdoptionLadderCount: number;
+    proofAdoptionBlockedCount: number;
     capabilityDebtIds: string[];
     extractionContracts: ExtractionContract[];
   };
@@ -819,6 +838,7 @@ export function createLearningBroadcastEnvelope(
 ): LearningBroadcastEnvelope {
   const summary = summarizeCompetenceMapping(model.competenceRows);
   const coverage = buildProductionLoopCoverageMatrix(model);
+  const proofAdoption = buildProofAdoptionLadder(model);
   return {
     transport: model.learning.transport,
     messageType: model.learning.type,
@@ -840,6 +860,8 @@ export function createLearningBroadcastEnvelope(
       closeoutTreeCount: model.closeoutTree.length,
       coverageRequirementCount: coverage.length,
       coverageDebtCount: coverage.filter((item) => item.status === "debt").length,
+      proofAdoptionLadderCount: proofAdoption.length,
+      proofAdoptionBlockedCount: proofAdoption.filter((item) => item.status === "blocked").length,
       capabilityDebtIds: model.capabilityDebt.map((item) => item.id),
       extractionContracts: [
         ...model.competenceRows.map((candidate) => candidate.extraction_contract),
@@ -848,6 +870,95 @@ export function createLearningBroadcastEnvelope(
       ],
     },
   };
+}
+
+export function buildProofAdoptionLadder(
+  model: AgentOfficeProductionLoopModel & Partial<DemandLoopProfile>,
+): ProofAdoptionLadderItem[] {
+  const evidence = model.proofGate.evidence;
+  const presentEvidence = evidence.filter((item) => item.status === "present");
+  const deploymentReadback = evidence.find((item) => item.kind === "deploy");
+  const verificationPasses = evidence.filter((item) => item.kind === "verification-pass");
+  const presentVerificationPasses = verificationPasses.filter((item) => item.status === "present");
+  const hasA2aCloseout = model.closeoutTree.some((item) => item.handoff === "a2a");
+  const hasAdoptionFollowup = model.closeoutTree.some(
+    (item) => item.handoff === "adoption-followup",
+  );
+  const availableEvidence = (items: ProofGateEvidence[]) =>
+    items.filter((item) => item.status === "present").map((item) => item.label);
+  const runtimeChainEligible =
+    model.proofGate.runtimeProof &&
+    deploymentReadback?.status === "present" &&
+    presentVerificationPasses.length === 3;
+  const ladder = (
+    item: Omit<ProofAdoptionLadderItem, "status" | "runtimeProofEligible">,
+    satisfied: boolean,
+  ) =>
+    ({
+      ...item,
+      status: satisfied ? "satisfied" : "blocked",
+      runtimeProofEligible: item.id === "runtime-pass-chain" && satisfied && runtimeChainEligible,
+    }) satisfies ProofAdoptionLadderItem;
+
+  return [
+    ladder(
+      {
+        id: "code-model-evidence",
+        label: "Code/model evidence",
+        requiredEvidence: ["merged PR / code evidence"],
+        availableEvidence: presentEvidence.map((item) => item.label),
+        proofBoundary: "Code/model evidence is required but cannot prove runtime alone.",
+      },
+      presentEvidence.some((item) => item.kind === "code"),
+    ),
+    ladder(
+      {
+        id: "ci-verification",
+        label: "CI/local verification evidence",
+        requiredEvidence: model.verificationLedger.map((item) => item.label),
+        availableEvidence: model.verificationLedger
+          .filter((item) => item.status === "modelled")
+          .map((item) => item.label),
+        proofBoundary: "Verification evidence is build confidence, not deployment readback.",
+      },
+      model.verificationLedger.some((item) => item.status === "modelled"),
+    ),
+    ladder(
+      {
+        id: "deployment-readback",
+        label: "Deployment SHA readback",
+        requiredEvidence: ["deployed SHA equals merge SHA"],
+        availableEvidence: deploymentReadback ? availableEvidence([deploymentReadback]) : [],
+        proofBoundary: "Runtime proof cannot start before deployed SHA readback.",
+      },
+      deploymentReadback?.status === "present",
+    ),
+    ladder(
+      {
+        id: "runtime-pass-chain",
+        label: "Three consecutive runtime passes",
+        requiredEvidence: model.proofGate.runtimeRequirements.filter((item) =>
+          item.toLowerCase().includes("verification"),
+        ),
+        availableEvidence: availableEvidence(verificationPasses),
+        proofBoundary: "All three verification passes must be present before runtime proof.",
+      },
+      presentVerificationPasses.length === 3,
+    ),
+    ladder(
+      {
+        id: "adoption-readback",
+        label: "Reusable learning adoption readback",
+        requiredEvidence: ["A2A STANDARD_CANDIDATE broadcast", "adoption follow-up readback"],
+        availableEvidence: [
+          ...(hasA2aCloseout ? ["A2A closeout handoff modelled"] : []),
+          ...(hasAdoptionFollowup ? ["adoption follow-up modelled"] : []),
+        ],
+        proofBoundary: "A2A learning remains candidate until reused, adopted and verified.",
+      },
+      hasA2aCloseout && hasAdoptionFollowup,
+    ),
+  ];
 }
 
 export function buildProductionLoopCoverageMatrix(
@@ -1032,6 +1143,7 @@ export function validateProductionLoopModel(
   const failures: string[] = [];
   const environmentBom = model.environmentBom ?? [];
   const coverageMatrix = buildProductionLoopCoverageMatrix(model);
+  const proofAdoptionLadder = buildProofAdoptionLadder(model);
   const stageOrder = model.stages.map((stage) => stage.id);
   if (stageOrder.join(">") !== expectedStageOrder.join(">")) {
     failures.push("production loop stage order changed");
@@ -1125,6 +1237,14 @@ export function validateProductionLoopModel(
   for (const item of coverageMatrix) {
     if (item.status === "debt") {
       failures.push(`coverage debt: ${item.id}`);
+    }
+  }
+  for (const item of proofAdoptionLadder) {
+    if (item.runtimeProofEligible && !model.proofGate.runtimeProof) {
+      failures.push(`proof adoption boundary violated: ${item.id}`);
+    }
+    if (item.id !== "runtime-pass-chain" && item.runtimeProofEligible) {
+      failures.push(`proof adoption ladder cannot promote individual step: ${item.id}`);
     }
   }
   if ("explicitDependencies" in model) {
