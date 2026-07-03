@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AgentOfficeShell } from "./AgentOfficeShell";
 
 describe("AgentOfficeShell", () => {
-  it("server-renders the required WorkModeSwitcher and object palette", () => {
+  it("server-renders a chat-first shell with secondary workspace panels", () => {
     const html = renderToString(
       <AgentOfficeShell>
         <div>Chat surface</div>
@@ -13,10 +13,19 @@ describe("AgentOfficeShell", () => {
     for (const label of ["General", "Build App", "Write Book", "Investigate", "Operate WDC"]) {
       expect(html).toContain(label);
     }
-    expect(html).toContain("Object palette");
+    expect(html).toContain("Chat-first WDC Agent Office");
+    expect(html).toContain("WDC CLI Chat workspace");
+    expect(html).toContain("Resizable workspace");
+    expect(html).toContain("Chat state contract");
+    expect(html).toContain("pending");
+    expect(html).toContain("streaming");
+    expect(html).toContain("complete");
+    expect(html).toContain("error");
+    expect(html).toContain("Capability Library and recipe composer");
     expect(html).toContain("Capability Library");
     expect(html).toContain("Compose");
     expect(html).toContain("Activate blocked");
+    expect(html).toContain("ApprovalGatePanel");
     expect(html).toContain("candidate-only");
     expect(html).toContain("System status");
     expect(html).toContain("Boot");
