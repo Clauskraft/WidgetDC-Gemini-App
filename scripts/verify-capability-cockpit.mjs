@@ -5,8 +5,10 @@ const sliceLintFiles = [
   "src/components/AppSidebar.tsx",
   "src/components/WdcLogo.tsx",
   "src/components/CapabilityResolverPanel.tsx",
+  "src/components/AuditFactoryCockpit.tsx",
   "src/lib/wdcBrand.ts",
   "src/lib/capabilityOrchestration.ts",
+  "src/routes/audit-factory.tsx",
   "src/routes/capabilities.tsx",
 ];
 
@@ -18,13 +20,17 @@ const proofBoundaryFiles = [
   "docs/frontend/universal-capability-orchestration-closure-v3.md",
   "docs/frontend/wdc-brand-contract.md",
   "src/components/CapabilityResolverPanel.tsx",
+  "src/components/AuditFactoryCockpit.tsx",
   "src/lib/capabilityOrchestration.ts",
+  "src/routes/audit-factory.tsx",
   "src/routes/capabilities.tsx",
 ];
 
 const runtimeCodeFiles = [
   "src/components/CapabilityResolverPanel.tsx",
+  "src/components/AuditFactoryCockpit.tsx",
   "src/lib/capabilityOrchestration.ts",
+  "src/routes/audit-factory.tsx",
   "src/routes/capabilities.tsx",
 ];
 
@@ -89,6 +95,43 @@ const routeContent = readRequiredFile("src/routes/capabilities.tsx");
 for (const evidenceClass of ["candidate", "diagnostic", "runtime", "claim"]) {
   if (!routeContent.includes(evidenceClass)) {
     failures.push(`src/routes/capabilities.tsx: missing evidence class ${evidenceClass}`);
+  }
+}
+
+const auditFactoryContent = readRequiredFile("src/components/AuditFactoryCockpit.tsx");
+for (const required of [
+  "DemandIngress",
+  "CapabilityResolver",
+  "RequiredCapabilities",
+  "CandidateProviders",
+  "ProofReceipt",
+  "EventSpine / Readback",
+  "A2A Handoff",
+  "SentinelQA",
+  "Next safe action",
+  "AuditLoopCockpitViewModel",
+  "TaskBOM",
+  "PhantomBOMRun",
+  "BOMItems",
+  "EvidenceGates",
+  "StopConditions",
+  "ProviderHealth",
+  "CanaryState",
+  "ClaimMaturity",
+  "CriticalQuestioner",
+]) {
+  if (!auditFactoryContent.includes(required)) {
+    failures.push(
+      `src/components/AuditFactoryCockpit.tsx: missing audit-factory contract text ${required}`,
+    );
+  }
+}
+
+for (const evidenceClass of ["candidate", "diagnostic", "runtime", "claim"]) {
+  if (!auditFactoryContent.includes(evidenceClass)) {
+    failures.push(
+      `src/components/AuditFactoryCockpit.tsx: missing evidence class ${evidenceClass}`,
+    );
   }
 }
 

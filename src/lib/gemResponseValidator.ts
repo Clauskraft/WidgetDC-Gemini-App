@@ -272,11 +272,9 @@ const KEY_JUDG_RE = /key judgments?/i;
 
 // McKinsey Pyramid Principle detection
 // Governing thought = bold/italic first sentence OR heading at top of response
-const GOVERNING_THOUGHT_RE =
-  /^(?:\s*#{1,3}\s+.{10,}|\*\*[^*]{10,}\*\*|__[^_]{10,}__)\s*\n/m;
+const GOVERNING_THOUGHT_RE = /^(?:\s*#{1,3}\s+.{10,}|\*\*[^*]{10,}\*\*|__[^_]{10,}__)\s*\n/m;
 // Three-pillar structure: 3+ distinct H2/H3 sections OR numbered sections
-const THREE_PILLAR_RE =
-  /(?:^#{2,3}\s+.+$\s*){3,}|(?:^\d+\.\s+\*{0,2}.{5,}\*{0,2}$\s*){3,}/m;
+const THREE_PILLAR_RE = /(?:^#{2,3}\s+.+$\s*){3,}|(?:^\d+\.\s+\*{0,2}.{5,}\*{0,2}$\s*){3,}/m;
 
 type Rule = (a: ValidationArtifacts, text: string) => ValidationIssue[];
 
@@ -461,7 +459,7 @@ const GEM_RULES: Record<string, Rule[]> = {
     },
   ],
 
-  "default": [
+  default: [
     (_, text) => {
       // McKinsey Pyramid: answer must lead with a governing thought (bold/heading)
       if (text.length < 200) return []; // skip trivial responses

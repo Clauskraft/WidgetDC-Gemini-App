@@ -60,7 +60,10 @@ function jsonRes(body: unknown, status: number): Response {
 }
 
 function briefRelevanceScore(brief: string, title: string | null, content: string): number {
-  const terms = brief.toLowerCase().split(/\s+/).filter((t) => t.length > 3);
+  const terms = brief
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 3);
   if (terms.length === 0) return 0;
   const haystack = `${(title ?? "").toLowerCase()} ${content.slice(0, 400).toLowerCase()}`;
   const hits = terms.filter((t) => haystack.includes(t)).length;
@@ -100,7 +103,10 @@ export const Route = createFileRoute("/api/consulting/assemble")({
         ).catch(() => null);
 
         if (result == null) {
-          return jsonRes({ cps: [], error: "Platform utilgængeligt" } satisfies CpListResponse, 503);
+          return jsonRes(
+            { cps: [], error: "Platform utilgængeligt" } satisfies CpListResponse,
+            503,
+          );
         }
 
         const r = result as Record<string, unknown>;
@@ -121,20 +127,31 @@ export const Route = createFileRoute("/api/consulting/assemble")({
         try {
           body = (await request.json()) as AssembleBody;
         } catch {
-          return jsonRes({ bom: [], cp_name: "", total: 0, error: "Ugyldig JSON" } satisfies AssembleResponse, 400);
+          return jsonRes(
+            { bom: [], cp_name: "", total: 0, error: "Ugyldig JSON" } satisfies AssembleResponse,
+            400,
+          );
         }
 
         const cpName = body.cp_name?.trim() ?? "";
         const brief = body.brief?.trim();
         if (!brief) {
           return jsonRes(
-            { bom: [], cp_name: cpName, total: 0, error: "brief er påkrævet" } satisfies AssembleResponse,
+            {
+              bom: [],
+              cp_name: cpName,
+              total: 0,
+              error: "brief er påkrævet",
+            } satisfies AssembleResponse,
             400,
           );
         }
 
         // F1: NaN-safe parse — floor+fallback guards against non-numeric input
-        const maxBlocks = Math.min(50, Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10));
+        const maxBlocks = Math.min(
+          50,
+          Math.max(1, Math.floor(Number(body.max_blocks ?? 10)) || 10),
+        );
         const domainFilter = body.domain_filter?.trim() ?? "";
 
         // F2: parameterized Cypher — no string interpolation of user input
@@ -167,7 +184,12 @@ export const Route = createFileRoute("/api/consulting/assemble")({
 
           if (boResult == null) {
             return jsonRes(
-              { bom: [], cp_name: "", total: 0, error: "Platform utilgængeligt" } satisfies AssembleResponse,
+              {
+                bom: [],
+                cp_name: "",
+                total: 0,
+                error: "Platform utilgængeligt",
+              } satisfies AssembleResponse,
               503,
             );
           }
@@ -185,7 +207,15 @@ export const Route = createFileRoute("/api/consulting/assemble")({
             content_truncated: String(row.content ?? "").length > 800,
           }));
           const boBom = reRankByBrief(brief, boBomRaw);
-          return jsonRes({ bom: boBom, cp_name: "", total: boBom.length, fallback_mode: "global_quality" } satisfies AssembleResponse, 200);
+          return jsonRes(
+            {
+              bom: boBom,
+              cp_name: "",
+              total: boBom.length,
+              fallback_mode: "global_quality",
+            } satisfies AssembleResponse,
+            200,
+          );
         }
 
         // First try REQUIRES edges (seeded by legofactory.seed_cp_ab_edges)
@@ -216,7 +246,12 @@ export const Route = createFileRoute("/api/consulting/assemble")({
 
         if (result == null) {
           return jsonRes(
-            { bom: [], cp_name: cpName, total: 0, error: "Platform utilgængeligt" } satisfies AssembleResponse,
+            {
+              bom: [],
+              cp_name: cpName,
+              total: 0,
+              error: "Platform utilgængeligt",
+            } satisfies AssembleResponse,
             503,
           );
         }
@@ -268,7 +303,15 @@ export const Route = createFileRoute("/api/consulting/assemble")({
             }));
             const bom = reRankByBrief(brief, fbBomRaw);
 
-            return jsonRes({ bom, cp_name: cpName, total: bom.length, fallback_mode: "domain_match" } satisfies AssembleResponse, 200);
+            return jsonRes(
+              {
+                bom,
+                cp_name: cpName,
+                total: bom.length,
+                fallback_mode: "domain_match",
+              } satisfies AssembleResponse,
+              200,
+            );
           }
         }
 
@@ -281,7 +324,15 @@ export const Route = createFileRoute("/api/consulting/assemble")({
         }));
         const bom = reRankByBrief(brief, bomRaw);
 
-        return jsonRes({ bom, cp_name: cpName, total: bom.length, fallback_mode: "requires" } satisfies AssembleResponse, 200);
+        return jsonRes(
+          {
+            bom,
+            cp_name: cpName,
+            total: bom.length,
+            fallback_mode: "requires",
+          } satisfies AssembleResponse,
+          200,
+        );
       },
     },
   },

@@ -18,14 +18,23 @@ import { ThemePicker, THEMES } from "@/components/ThemePicker";
 import { MeceResultPanel } from "@/components/MeceResultPanel";
 import { ExportToolbar } from "@/components/ExportToolbar";
 import type { DocTheme } from "@/lib/output-generators";
-import type { HeadlineSlide, StorylineResponse, MeceResponse, ComplianceTier } from "./api/storyline";
+import type {
+  HeadlineSlide,
+  StorylineResponse,
+  MeceResponse,
+  ComplianceTier,
+} from "./api/storyline";
 import type { AssemblyBlockRow, AssembleResponse } from "./api/consulting.assemble";
 
 export const Route = createFileRoute("/storyline")({
   head: () => ({
     meta: [
       { title: "Storyline Builder — WidgeTDC Aurora" },
-      { name: "description", content: "Outline-first McKinsey-stil præsentationsbuilder med MECE-check og governing-thought headlines." },
+      {
+        name: "description",
+        content:
+          "Outline-first McKinsey-stil præsentationsbuilder med MECE-check og governing-thought headlines.",
+      },
     ],
   }),
   component: StorylineRoute,
@@ -35,15 +44,15 @@ type Kind = "analysis" | "roadmap" | "assessment";
 type Step = 1 | 2 | 3;
 
 const KINDS: { id: Kind; label: string; hint: string }[] = [
-  { id: "analysis",   label: "Analyse",    hint: "Problem → findings → anbefalinger" },
-  { id: "roadmap",    label: "Roadmap",    hint: "Vision → faser → milepæle" },
+  { id: "analysis", label: "Analyse", hint: "Problem → findings → anbefalinger" },
+  { id: "roadmap", label: "Roadmap", hint: "Vision → faser → milepæle" },
   { id: "assessment", label: "Assessment", hint: "Kriterier → vurdering → score" },
 ];
 
 const COMPLIANCE_TIERS: { id: ComplianceTier; label: string; hint: string }[] = [
-  { id: "public",       label: "Public",       hint: "Kan deles frit" },
+  { id: "public", label: "Public", hint: "Kan deles frit" },
   { id: "confidential", label: "Confidential", hint: "Kun internt" },
-  { id: "restricted",   label: "Restricted",   hint: "Strengt fortroligt" },
+  { id: "restricted", label: "Restricted", hint: "Strengt fortroligt" },
 ];
 
 const STEPS = [
@@ -125,7 +134,10 @@ function StorylineRoute() {
         }),
       });
       const data = (await res.json()) as StorylineResponse & { error?: string };
-      if (!res.ok) { setError(data.error ?? `Fejl (${res.status})`); return; }
+      if (!res.ok) {
+        setError(data.error ?? `Fejl (${res.status})`);
+        return;
+      }
       setSlides(data.slides);
       setDegraded(data.degraded ?? false);
       setStep(2);
@@ -147,7 +159,9 @@ function StorylineRoute() {
       });
       const data = (await res.json()) as MeceResponse & { error?: string };
       if (res.ok) setMeceResult(data);
-    } catch { /* best-effort */ } finally {
+    } catch {
+      /* best-effort */
+    } finally {
       setMeceLoading(false);
     }
   }, [slides]);
@@ -173,7 +187,6 @@ function StorylineRoute() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-
         <header className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
             <Presentation className="h-5 w-5 text-white" />
@@ -181,7 +194,8 @@ function StorylineRoute() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Storyline Builder</h1>
             <p className="text-sm text-muted-foreground">
-              McKinsey Pyramid Principle — outline-first med governing-thought headlines og MECE-check.
+              McKinsey Pyramid Principle — outline-first med governing-thought headlines og
+              MECE-check.
             </p>
           </div>
         </header>
@@ -196,13 +210,15 @@ function StorylineRoute() {
                   step === n
                     ? "bg-primary text-primary-foreground"
                     : step > n
-                    ? "bg-emerald-500 text-white"
-                    : "bg-muted text-muted-foreground",
+                      ? "bg-emerald-500 text-white"
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {step > n ? <Check className="h-3 w-3" /> : n}
               </div>
-              <span className={step >= n ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+              <span className={step >= n ? "text-foreground" : "text-muted-foreground"}>
+                {label}
+              </span>
               {n < 3 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
             </div>
           ))}
@@ -218,7 +234,9 @@ function StorylineRoute() {
         {step === 1 && (
           <div className="space-y-5 rounded-2xl border border-border bg-card p-5">
             <div>
-              <label htmlFor="brief" className="mb-1.5 block text-sm font-medium">Brief</label>
+              <label htmlFor="brief" className="mb-1.5 block text-sm font-medium">
+                Brief
+              </label>
               <textarea
                 id="brief"
                 value={brief}
@@ -253,7 +271,9 @@ function StorylineRoute() {
 
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">Antal slides: {slideCount}</label>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Antal slides: {slideCount}
+                  </label>
                   <input
                     type="range"
                     min={3}
@@ -263,7 +283,8 @@ function StorylineRoute() {
                     className="w-full"
                   />
                   <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                    <span>3</span><span>10</span>
+                    <span>3</span>
+                    <span>10</span>
                   </div>
                 </div>
 
@@ -301,9 +322,15 @@ function StorylineRoute() {
               className="inline-flex items-center gap-2 rounded-full bg-gradient-aurora px-5 py-2.5 text-sm font-medium text-white shadow-glow transition disabled:opacity-40 disabled:shadow-none"
             >
               {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Genererer outline…</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Genererer outline…
+                </>
               ) : (
-                <><Sparkles className="h-4 w-4" />Generer storyline-outline</>
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generer storyline-outline
+                </>
               )}
             </button>
           </div>
@@ -315,13 +342,15 @@ function StorylineRoute() {
             {degraded && (
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                Platform-pipeline ikke tilgængelig — outline er et placeholder. Udfyld governing thoughts manuelt.
+                Platform-pipeline ikke tilgængelig — outline er et placeholder. Udfyld governing
+                thoughts manuelt.
               </div>
             )}
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                {slides.length} slides — klik for at redigere titel, governing thought og key points.
+                {slides.length} slides — klik for at redigere titel, governing thought og key
+                points.
               </p>
               <button
                 onClick={() => setStep(1)}
@@ -387,7 +416,9 @@ function StorylineRoute() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground">{s.title}</div>
                       {s.governing_thought && (
-                        <div className="text-xs text-primary italic mt-0.5">{s.governing_thought}</div>
+                        <div className="text-xs text-primary italic mt-0.5">
+                          {s.governing_thought}
+                        </div>
                       )}
 
                       {/* B3: BOM-blocks knap + resultater */}
@@ -398,19 +429,29 @@ function StorylineRoute() {
                           className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-600 dark:text-cyan-400 transition hover:bg-cyan-500/20 disabled:opacity-50"
                         >
                           {slideBomLoading[i] ? (
-                            <><Loader2 className="h-3 w-3 animate-spin" />Henter…</>
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Henter…
+                            </>
                           ) : (
-                            <><Database className="h-3 w-3" />Hent BOM-blocks fra knowledge graph</>
+                            <>
+                              <Database className="h-3 w-3" />
+                              Hent BOM-blocks fra knowledge graph
+                            </>
                           )}
                         </button>
                       ) : (
                         <div className="mt-2 space-y-1.5">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setSlideBomVisible((prev) => ({ ...prev, [i]: !prev[i] }))}
+                              onClick={() =>
+                                setSlideBomVisible((prev) => ({ ...prev, [i]: !prev[i] }))
+                              }
                               className="text-[10px] text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 transition"
                             >
-                              {slideBomVisible[i] ? "Skjul blocks" : `Vis ${slideBom[i].length} blocks`}
+                              {slideBomVisible[i]
+                                ? "Skjul blocks"
+                                : `Vis ${slideBom[i].length} blocks`}
                             </button>
                             <span className="text-muted-foreground/30">·</span>
                             <button
@@ -426,34 +467,36 @@ function StorylineRoute() {
                               Ingen relevante blocks fundet for denne slide.
                             </p>
                           )}
-                          {slideBomVisible[i] && slideBom[i].length > 0 && slideBom[i].map((block) => (
-                            <div
-                              key={block.id}
-                              className="group flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2"
-                            >
-                              <div className="flex-1 min-w-0">
-                                {block.domain && (
-                                  <span className="mr-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                                    {block.domain}
-                                  </span>
-                                )}
-                                <span className="text-[11px] text-foreground/80 leading-snug">
-                                  {block.title ?? block.content.slice(0, 80)}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => copySlideBomNote(block.id, block.content)}
-                                className="shrink-0 rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent transition"
-                                title="Kopiér som speaker note"
+                          {slideBomVisible[i] &&
+                            slideBom[i].length > 0 &&
+                            slideBom[i].map((block) => (
+                              <div
+                                key={block.id}
+                                className="group flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2"
                               >
-                                {slideBomCopied === block.id ? (
-                                  <Check className="h-3 w-3 text-emerald-500" />
-                                ) : (
-                                  <Copy className="h-3 w-3" />
-                                )}
-                              </button>
-                            </div>
-                          ))}
+                                <div className="flex-1 min-w-0">
+                                  {block.domain && (
+                                    <span className="mr-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                                      {block.domain}
+                                    </span>
+                                  )}
+                                  <span className="text-[11px] text-foreground/80 leading-snug">
+                                    {block.title ?? block.content.slice(0, 80)}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => copySlideBomNote(block.id, block.content)}
+                                  className="shrink-0 rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent transition"
+                                  title="Kopiér som speaker note"
+                                >
+                                  {slideBomCopied === block.id ? (
+                                    <Check className="h-3 w-3 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>
@@ -465,7 +508,13 @@ function StorylineRoute() {
             <ExportToolbar slides={slides} theme={theme} onThemeChange={setTheme} />
 
             <button
-              onClick={() => { setStep(1); setSlides([]); setMeceResult(null); setBrief(""); setKind("analysis"); }}
+              onClick={() => {
+                setStep(1);
+                setSlides([]);
+                setMeceResult(null);
+                setBrief("");
+                setKind("analysis");
+              }}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
               Start forfra

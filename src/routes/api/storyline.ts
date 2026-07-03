@@ -102,9 +102,14 @@ export const Route = createFileRoute("/api/storyline")({
         // Route: /api/storyline/mece
         if (url.pathname.endsWith("/mece")) {
           let raw: unknown;
-          try { raw = await request.json(); } catch { return jsonRes({ error: "Invalid JSON" }, 400, correlationId); }
+          try {
+            raw = await request.json();
+          } catch {
+            return jsonRes({ error: "Invalid JSON" }, 400, correlationId);
+          }
           const parsed = MeceBodySchema.safeParse(raw);
-          if (!parsed.success) return jsonRes({ error: "Invalid slides payload" }, 422, correlationId);
+          if (!parsed.success)
+            return jsonRes({ error: "Invalid slides payload" }, 422, correlationId);
 
           const { slides } = parsed.data;
           let result: MeceResponse = { passed: true, issues: [], suggestions: [], correlationId };
@@ -112,13 +117,21 @@ export const Route = createFileRoute("/api/storyline")({
           if (isPlatformConfigured()) {
             try {
               const slideText = slides
-                .map((s) => `Slide: "${s.governing_thought || s.title}"\nPoints: ${s.key_points.join("; ")}`)
+                .map(
+                  (s) =>
+                    `Slide: "${s.governing_thought || s.title}"\nPoints: ${s.key_points.join("; ")}`,
+                )
                 .join("\n\n");
-              const meceResult = await callMcpTool<{ score: number; feedback: string; issues: string[] }>(
+              const meceResult = await callMcpTool<{
+                score: number;
+                feedback: string;
+                issues: string[];
+              }>(
                 "verify_output",
                 {
                   content: slideText,
-                  criteria: "MECE check: Er slides Mutually Exclusive (ingen overlap) og Collectively Exhaustive (dækker problemet fuldt ud)? Er governing thoughts argumentbærende (ikke bare emneoverskrifter)?",
+                  criteria:
+                    "MECE check: Er slides Mutually Exclusive (ingen overlap) og Collectively Exhaustive (dækker problemet fuldt ud)? Er governing thoughts argumentbærende (ikke bare emneoverskrifter)?",
                   output_type: "consulting_storyline",
                 },
                 { timeoutMs: 30000 },
@@ -144,12 +157,27 @@ export const Route = createFileRoute("/api/storyline")({
 
         // Route: /api/storyline (outline generation)
         let raw: unknown;
-        try { raw = await request.json(); } catch { return jsonRes({ error: "Invalid JSON" }, 400, correlationId); }
+        try {
+          raw = await request.json();
+        } catch {
+          return jsonRes({ error: "Invalid JSON" }, 400, correlationId);
+        }
         const parsed = OutlineBodySchema.safeParse(raw);
-        if (!parsed.success) return jsonRes({ error: "Invalid request", details: parsed.error.flatten() }, 422, correlationId);
+        if (!parsed.success)
+          return jsonRes(
+            { error: "Invalid request", details: parsed.error.flatten() },
+            422,
+            correlationId,
+          );
 
         const { brief, kind, slide_count, compliance_tier } = parsed.data;
-        logServer("info", { event: "storyline_generate_start", correlationId, kind, slide_count, compliance_tier });
+        logServer("info", {
+          event: "storyline_generate_start",
+          correlationId,
+          kind,
+          slide_count,
+          compliance_tier,
+        });
 
         try {
           let slides: HeadlineSlide[] = [];
@@ -169,7 +197,9 @@ export const Route = createFileRoute("/api/storyline")({
                 if (jsonMatch) {
                   const raw = JSON.parse(jsonMatch[0]) as unknown[];
                   slides = raw
-                    .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+                    .filter(
+                      (s): s is Record<string, unknown> => typeof s === "object" && s !== null,
+                    )
                     .map((s) => ({
                       title: String(s.title ?? ""),
                       governing_thought: String(s.governing_thought ?? ""),
@@ -179,7 +209,11 @@ export const Route = createFileRoute("/api/storyline")({
                     }));
                 }
               } catch (parseErr) {
-                logServer("warn", { event: "storyline_json_parse_failed", correlationId, summary: summarizeError(parseErr) });
+                logServer("warn", {
+                  event: "storyline_json_parse_failed",
+                  correlationId,
+                  summary: summarizeError(parseErr),
+                });
               }
             }
           }
@@ -187,7 +221,16 @@ export const Route = createFileRoute("/api/storyline")({
           if (slides.length === 0) {
             slides = await generateOutlineFallback(brief, kind, slide_count);
             logServer("warn", { event: "storyline_fallback", correlationId });
-            return jsonRes({ slides, correlationId, compliance_tier, degraded: true } satisfies StorylineResponse, 200, correlationId);
+            return jsonRes(
+              {
+                slides,
+                correlationId,
+                compliance_tier,
+                degraded: true,
+              } satisfies StorylineResponse,
+              200,
+              correlationId,
+            );
           }
 
           // Best-effort BOMItem emit — PRODUCED edge (non-blocking)
@@ -204,14 +247,33 @@ export const Route = createFileRoute("/api/storyline")({
               }),
               type: "consulting_artifact",
               tags: ["storyline", "outline", kind, compliance_tier],
-            }).catch(() => {/* fire-and-forget */});
+            }).catch(() => {
+              /* fire-and-forget */
+            });
           }
 
-          logServer("info", { event: "storyline_generate_success", correlationId, slideCount: slides.length, compliance_tier });
-          return jsonRes({ slides, correlationId, compliance_tier } satisfies StorylineResponse, 200, correlationId);
+          logServer("info", {
+            event: "storyline_generate_success",
+            correlationId,
+            slideCount: slides.length,
+            compliance_tier,
+          });
+          return jsonRes(
+            { slides, correlationId, compliance_tier } satisfies StorylineResponse,
+            200,
+            correlationId,
+          );
         } catch (error) {
-          logServer("error", { event: "storyline_exception", correlationId, summary: summarizeError(error) }, error);
-          return jsonRes({ error: "Storyline generation failed", correlationId }, 500, correlationId);
+          logServer(
+            "error",
+            { event: "storyline_exception", correlationId, summary: summarizeError(error) },
+            error,
+          );
+          return jsonRes(
+            { error: "Storyline generation failed", correlationId },
+            500,
+            correlationId,
+          );
         }
       },
     },

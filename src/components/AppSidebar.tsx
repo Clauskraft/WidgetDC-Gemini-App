@@ -19,6 +19,7 @@ import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
 
 const libraryLinks = [
+  { to: "/audit-factory", label: "Audit Factory", icon: AppWindow },
   { to: "/capabilities", label: "Capabilities", icon: GitBranch },
   { to: "/graph", label: "Graph", icon: Network },
   { to: "/engagements", label: "Engagements", icon: Boxes },

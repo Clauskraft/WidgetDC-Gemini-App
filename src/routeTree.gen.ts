@@ -23,6 +23,7 @@ import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConsultingRouteImport } from './routes/consulting'
 import { Route as CapabilitiesRouteImport } from './routes/capabilities'
+import { Route as AuditFactoryRouteImport } from './routes/audit-factory'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GemsIndexRouteImport } from './routes/gems.index'
@@ -123,6 +124,11 @@ const ConsultingRoute = ConsultingRouteImport.update({
 const CapabilitiesRoute = CapabilitiesRouteImport.update({
   id: '/capabilities',
   path: '/capabilities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditFactoryRoute = AuditFactoryRouteImport.update({
+  id: '/audit-factory',
+  path: '/audit-factory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdoptionRoute = AdoptionRouteImport.update({
@@ -287,6 +293,7 @@ const ApiEngagementsIdDeliverableRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
@@ -334,6 +341,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
@@ -430,6 +439,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/adoption'
+    | '/audit-factory'
     | '/capabilities'
     | '/consulting'
     | '/dashboard'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/adoption'
+    | '/audit-factory'
     | '/capabilities'
     | '/consulting'
     | '/dashboard'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/adoption'
+    | '/audit-factory'
     | '/capabilities'
     | '/consulting'
     | '/dashboard'
@@ -571,6 +583,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdoptionRoute: typeof AdoptionRoute
+  AuditFactoryRoute: typeof AuditFactoryRoute
   CapabilitiesRoute: typeof CapabilitiesRoute
   ConsultingRoute: typeof ConsultingRoute
   DashboardRoute: typeof DashboardRoute
@@ -708,6 +721,13 @@ declare module '@tanstack/react-router' {
       path: '/capabilities'
       fullPath: '/capabilities'
       preLoaderRoute: typeof CapabilitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit-factory': {
+      id: '/audit-factory'
+      path: '/audit-factory'
+      fullPath: '/audit-factory'
+      preLoaderRoute: typeof AuditFactoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/adoption': {
@@ -972,6 +992,7 @@ const ApiNewsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
+  AuditFactoryRoute: AuditFactoryRoute,
   CapabilitiesRoute: CapabilitiesRoute,
   ConsultingRoute: ConsultingRoute,
   DashboardRoute: DashboardRoute,

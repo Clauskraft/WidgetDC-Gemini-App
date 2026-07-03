@@ -18,11 +18,11 @@ interface Slide {
 }
 
 const THEME_COLORS: Record<DocTheme, { primary: string; bg: string; text: string }> = {
-  modern:   { primary: "#3b82f6", bg: "#0f172a", text: "#f8fafc" },
+  modern: { primary: "#3b82f6", bg: "#0f172a", text: "#f8fafc" },
   mckinsey: { primary: "#6366f1", bg: "#1e1b4b", text: "#eef2ff" },
-  bcg:      { primary: "#10b981", bg: "#064e3b", text: "#ecfdf5" },
-  bain:     { primary: "#ef4444", bg: "#1c0707", text: "#fef2f2" },
-  dark:     { primary: "#94a3b8", bg: "#0f172a", text: "#e2e8f0" },
+  bcg: { primary: "#10b981", bg: "#064e3b", text: "#ecfdf5" },
+  bain: { primary: "#ef4444", bg: "#1c0707", text: "#fef2f2" },
+  dark: { primary: "#94a3b8", bg: "#0f172a", text: "#e2e8f0" },
 };
 
 export function cleanMarkdown(text: string): string {
@@ -42,12 +42,22 @@ export function parseContentSections(content: string): Section[] {
   let inCodeFence = false;
 
   for (const line of lines) {
-    if (line.startsWith("```")) { inCodeFence = !inCodeFence; continue; }
-    if (inCodeFence) { current.lines.push(line); continue; }
+    if (line.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+    if (inCodeFence) {
+      current.lines.push(line);
+      continue;
+    }
     const headingMatch = /^(#{1,3})\s+(.+)/.exec(line);
     if (headingMatch) {
       if (current.lines.length > 0 || sections.length > 0) sections.push(current);
-      current = { heading: cleanMarkdown(headingMatch[2]), level: headingMatch[1].length, lines: [] };
+      current = {
+        heading: cleanMarkdown(headingMatch[2]),
+        level: headingMatch[1].length,
+        lines: [],
+      };
     } else {
       current.lines.push(line);
     }
@@ -58,7 +68,12 @@ export function parseContentSections(content: string): Section[] {
 
 export function extractTextContent(lines: string[]): string[] {
   return lines
-    .map((l) => l.replace(/^[-*•▸]\s+/, "").replace(/^\d+\.\s+/, "").trim())
+    .map((l) =>
+      l
+        .replace(/^[-*•▸]\s+/, "")
+        .replace(/^\d+\.\s+/, "")
+        .trim(),
+    )
     .filter((l) => l.length > 0 && !l.startsWith("#"));
 }
 
@@ -68,7 +83,11 @@ export function extractTitle(content: string): string {
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {
@@ -130,12 +149,28 @@ export function contentToHtmlBody(content: string): string {
   let inList = false;
   let inCode = false;
 
-  const closeList = () => { if (inList) { out.push("</ul>"); inList = false; } };
+  const closeList = () => {
+    if (inList) {
+      out.push("</ul>");
+      inList = false;
+    }
+  };
 
   for (const raw of lines) {
     const line = raw.trimEnd();
-    if (line.startsWith("```")) { inCode = !inCode; if (!inCode) out.push("</pre>"); else { out.push("<pre>"); closeList(); } continue; }
-    if (inCode) { out.push(escapeXml(line)); continue; }
+    if (line.startsWith("```")) {
+      inCode = !inCode;
+      if (!inCode) out.push("</pre>");
+      else {
+        out.push("<pre>");
+        closeList();
+      }
+      continue;
+    }
+    if (inCode) {
+      out.push(escapeXml(line));
+      continue;
+    }
 
     const h3 = /^###\s+(.+)/.exec(line);
     const h2 = /^##\s+(.+)/.exec(line);
@@ -143,11 +178,20 @@ export function contentToHtmlBody(content: string): string {
     const li = /^[-*•▸]\s+(.+)/.exec(line);
     const num = /^\d+\.\s+(.+)/.exec(line);
 
-    if (h1) { closeList(); out.push(`<h1>${escapeXml(cleanMarkdown(h1[1]))}</h1>`); }
-    else if (h2) { closeList(); out.push(`<h2>${escapeXml(cleanMarkdown(h2[1]))}</h2>`); }
-    else if (h3) { closeList(); out.push(`<h3>${escapeXml(cleanMarkdown(h3[1]))}</h3>`); }
-    else if (li || num) {
-      if (!inList) { out.push("<ul>"); inList = true; }
+    if (h1) {
+      closeList();
+      out.push(`<h1>${escapeXml(cleanMarkdown(h1[1]))}</h1>`);
+    } else if (h2) {
+      closeList();
+      out.push(`<h2>${escapeXml(cleanMarkdown(h2[1]))}</h2>`);
+    } else if (h3) {
+      closeList();
+      out.push(`<h3>${escapeXml(cleanMarkdown(h3[1]))}</h3>`);
+    } else if (li || num) {
+      if (!inList) {
+        out.push("<ul>");
+        inList = true;
+      }
       out.push(`<li>${escapeXml(cleanMarkdown((li ?? num)![1]))}</li>`);
     } else if (line.length === 0) {
       closeList();
@@ -191,24 +235,42 @@ export function generateXLSX(content: string): Blob {
   const tables: string[] = [];
   let match: RegExpExecArray | null;
 
-  // eslint-disable-next-line no-cond-assign
   while ((match = tableMatch.exec(content)) !== null) {
-    const header = match[1].split("|").map((c) => `<th>${escapeXml(c.trim())}</th>`).join("");
-    const rows = match[2].trim().split("\n").map((row) =>
-      "<tr>" + row.split("|").filter((_, i, a) => i > 0 && i < a.length - 1)
-        .map((c) => `<td>${escapeXml(c.trim())}</td>`).join("") + "</tr>"
-    ).join("");
-    tables.push(`<table border="1"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table><br>`);
+    const header = match[1]
+      .split("|")
+      .map((c) => `<th>${escapeXml(c.trim())}</th>`)
+      .join("");
+    const rows = match[2]
+      .trim()
+      .split("\n")
+      .map(
+        (row) =>
+          "<tr>" +
+          row
+            .split("|")
+            .filter((_, i, a) => i > 0 && i < a.length - 1)
+            .map((c) => `<td>${escapeXml(c.trim())}</td>`)
+            .join("") +
+          "</tr>",
+      )
+      .join("");
+    tables.push(
+      `<table border="1"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table><br>`,
+    );
   }
 
   if (tables.length === 0) {
     const lines = content.split("\n").filter((l) => l.match(/^[-*•▸]\s+.+:\s+.+/));
     if (lines.length > 0) {
-      const rows = lines.map((l) => {
-        const [key, ...rest] = l.replace(/^[-*•▸]\s+/, "").split(":");
-        return `<tr><td>${escapeXml(key.trim())}</td><td>${escapeXml(rest.join(":").trim())}</td></tr>`;
-      }).join("");
-      tables.push(`<table border="1"><thead><tr><th>Nøgle</th><th>Værdi</th></tr></thead><tbody>${rows}</tbody></table>`);
+      const rows = lines
+        .map((l) => {
+          const [key, ...rest] = l.replace(/^[-*•▸]\s+/, "").split(":");
+          return `<tr><td>${escapeXml(key.trim())}</td><td>${escapeXml(rest.join(":").trim())}</td></tr>`;
+        })
+        .join("");
+      tables.push(
+        `<table border="1"><thead><tr><th>Nøgle</th><th>Værdi</th></tr></thead><tbody>${rows}</tbody></table>`,
+      );
     }
   }
 

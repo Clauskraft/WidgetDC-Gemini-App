@@ -12,9 +12,7 @@ const DEV_FALLBACK_SECRET = "widgetdc-dev-secret-do-not-use-in-prod";
 
 function getSecret(): string {
   const secret =
-    process.env.CANVAS_SIGNING_SECRET ??
-    process.env.WIDGETDC_API_KEY ??
-    DEV_FALLBACK_SECRET;
+    process.env.CANVAS_SIGNING_SECRET ?? process.env.WIDGETDC_API_KEY ?? DEV_FALLBACK_SECRET;
 
   // AUR-11: refuse to sign with the insecure dev fallback in production.
   if (process.env.NODE_ENV === "production" && secret === DEV_FALLBACK_SECRET) {

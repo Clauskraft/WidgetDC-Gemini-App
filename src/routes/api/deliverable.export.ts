@@ -38,7 +38,7 @@ async function callBackendGenerate(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${bearerKey}`,
+        Authorization: `Bearer ${bearerKey}`,
         "x-correlation-id": opts.correlationId,
       },
       body: JSON.stringify({
@@ -56,8 +56,10 @@ async function callBackendGenerate(
     const contentType = res.headers.get("content-type") ?? "";
     const buf = await res.arrayBuffer();
     const base64 = Buffer.from(buf).toString("base64");
-    const mediaType = format === "pdf" ? "application/pdf"
-      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const mediaType =
+      format === "pdf"
+        ? "application/pdf"
+        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     const ext = format === "pdf" ? "pdf" : "docx";
     const filename = `${opts.title ?? `deliverable-${opts.kind ?? "analysis"}`}.${ext}`;
 

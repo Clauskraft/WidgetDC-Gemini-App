@@ -13,7 +13,7 @@ function extractMermaid(content: string): { text: string; diagrams: string[] } {
   const diagrams: string[] = [];
   const text = content.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
     diagrams.push(code.trim());
-    return '';
+    return "";
   });
   return { text, diagrams };
 }
@@ -219,7 +219,10 @@ export function CanvasPanel({ messages, onClose }: { messages: UIMessage[]; onCl
                   <Layers className="w-4 h-4" /> Diagrams
                 </h3>
                 {diagrams.map((d, i) => (
-                  <div key={i} className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 overflow-auto">
+                  <div
+                    key={i}
+                    className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 overflow-auto"
+                  >
                     <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">{d}</pre>
                     <div className="mt-2 text-xs text-zinc-500 italic">
                       Mermaid diagram {i + 1} — render with Mermaid.js for visualization

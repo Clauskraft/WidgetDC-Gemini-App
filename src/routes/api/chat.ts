@@ -1,8 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-} from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { z } from "zod";
 import { isPlatformConfigured } from "@/lib/widgetdc.server";
 
@@ -39,13 +36,15 @@ const messageSchema = z
   })
   .passthrough();
 
-const routeSchema = z.object({
-  id: z.string().optional(),
-  messages: z.array(messageSchema),
-  model: z.string().optional(),
-  deep: z.boolean().optional(),
-  council: z.boolean().optional(),
-}).passthrough();
+const routeSchema = z
+  .object({
+    id: z.string().optional(),
+    messages: z.array(messageSchema),
+    model: z.string().optional(),
+    deep: z.boolean().optional(),
+    council: z.boolean().optional(),
+  })
+  .passthrough();
 
 type ChatMessage = z.infer<typeof messageSchema>;
 
@@ -121,9 +120,9 @@ export const Route = createFileRoute("/api/chat")({
             const resp = await fetch(`${WDC_BACKEND}/api/wdc-chat/stream`, {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${WDC_TOKEN}`,
+                Authorization: `Bearer ${WDC_TOKEN}`,
                 "Content-Type": "application/json",
-                "Accept": "text/event-stream",
+                Accept: "text/event-stream",
                 "x-correlation-id": correlationId,
               },
               body: JSON.stringify({

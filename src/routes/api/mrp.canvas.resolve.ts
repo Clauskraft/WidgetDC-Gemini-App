@@ -90,10 +90,8 @@ export const Route = createFileRoute("/api/mrp/canvas/resolve")({
           ),
         ]);
 
-        const platform =
-          platformCanvas.status === "fulfilled" ? platformCanvas.value : null;
-        const graphResult =
-          graphRows.status === "fulfilled" ? graphRows.value : null;
+        const platform = platformCanvas.status === "fulfilled" ? platformCanvas.value : null;
+        const graphResult = graphRows.status === "fulfilled" ? graphRows.value : null;
 
         // Resolve intent + standard: prefer platform, then local.
         const resolvedIntent = (platform?.intent as VisualizationIntent | undefined) ?? localIntent;

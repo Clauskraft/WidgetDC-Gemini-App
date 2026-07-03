@@ -27,10 +27,10 @@ export function MeceResultPanel({
             {loading
               ? "Kører MECE-check…"
               : result?.passed
-              ? "MECE godkendt"
-              : result
-              ? "MECE: mulige forbedringer"
-              : "MECE-check ikke kørt"}
+                ? "MECE godkendt"
+                : result
+                  ? "MECE: mulige forbedringer"
+                  : "MECE-check ikke kørt"}
           </span>
         </div>
         <button
@@ -47,11 +47,14 @@ export function MeceResultPanel({
         <div className="space-y-3">
           {result.issues.length > 0 && (
             <div>
-              <p className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">Problemer:</p>
+              <p className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                Problemer:
+              </p>
               <ul className="space-y-1">
                 {result.issues.map((issue, i) => (
                   <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                    <span className="text-amber-500">•</span>{issue}
+                    <span className="text-amber-500">•</span>
+                    {issue}
                   </li>
                 ))}
               </ul>
@@ -63,7 +66,8 @@ export function MeceResultPanel({
               <ul className="space-y-1">
                 {result.suggestions.map((s, i) => (
                   <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                    <span className="text-primary">→</span>{s}
+                    <span className="text-primary">→</span>
+                    {s}
                   </li>
                 ))}
               </ul>

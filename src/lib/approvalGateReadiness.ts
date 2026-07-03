@@ -40,7 +40,12 @@ const boundary = {
 } as const;
 
 const allowed_actions = ["preview", "compose", "explain", "dry-run", "request approval"] as const;
-const blocked_actions = ["execute provider", "deploy agent", "write graph", "promote claim"] as const;
+const blocked_actions = [
+  "execute provider",
+  "deploy agent",
+  "write graph",
+  "promote claim",
+] as const;
 
 export function buildApprovalGateReadiness(
   readback?: ApprovalReadback | null,

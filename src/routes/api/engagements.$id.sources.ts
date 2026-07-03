@@ -49,7 +49,10 @@ export const Route = createFileRoute("/api/engagements/$id/sources")({
       GET: async ({ params }: { params: { id: string } }) => {
         const engId = params.id?.trim();
         if (!engId) {
-          return jsonRes({ sources: [], total: 0, error: "id påkrævet" } satisfies EngagementSourcesResponse, 400);
+          return jsonRes(
+            { sources: [], total: 0, error: "id påkrævet" } satisfies EngagementSourcesResponse,
+            400,
+          );
         }
 
         const result = await callMcpTool<unknown>(
@@ -74,7 +77,14 @@ export const Route = createFileRoute("/api/engagements/$id/sources")({
         ).catch(() => null);
 
         if (result == null) {
-          return jsonRes({ sources: [], total: 0, error: "Platform utilgængeligt" } satisfies EngagementSourcesResponse, 503);
+          return jsonRes(
+            {
+              sources: [],
+              total: 0,
+              error: "Platform utilgængeligt",
+            } satisfies EngagementSourcesResponse,
+            503,
+          );
         }
 
         const r = result as Record<string, unknown>;
@@ -97,14 +107,20 @@ export const Route = createFileRoute("/api/engagements/$id/sources")({
       POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
         const engId = params.id?.trim();
         if (!engId) {
-          return jsonRes({ pinned: false, block_id: "", error: "id påkrævet" } satisfies PinSourceResponse, 400);
+          return jsonRes(
+            { pinned: false, block_id: "", error: "id påkrævet" } satisfies PinSourceResponse,
+            400,
+          );
         }
 
         let body: PinSourceBody;
         try {
           body = (await request.json()) as PinSourceBody;
         } catch {
-          return jsonRes({ pinned: false, block_id: "", error: "Ugyldig JSON" } satisfies PinSourceResponse, 400);
+          return jsonRes(
+            { pinned: false, block_id: "", error: "Ugyldig JSON" } satisfies PinSourceResponse,
+            400,
+          );
         }
 
         let blockId = body.block_id?.trim() ?? "";
@@ -134,12 +150,26 @@ export const Route = createFileRoute("/api/engagements/$id/sources")({
           ).catch(() => null);
 
           if (createResult == null) {
-            return jsonRes({ pinned: false, block_id: "", error: "Kunne ikke oprette block" } satisfies PinSourceResponse, 503);
+            return jsonRes(
+              {
+                pinned: false,
+                block_id: "",
+                error: "Kunne ikke oprette block",
+              } satisfies PinSourceResponse,
+              503,
+            );
           }
         }
 
         if (!blockId) {
-          return jsonRes({ pinned: false, block_id: "", error: "block_id eller text påkrævet" } satisfies PinSourceResponse, 400);
+          return jsonRes(
+            {
+              pinned: false,
+              block_id: "",
+              error: "block_id eller text påkrævet",
+            } satisfies PinSourceResponse,
+            400,
+          );
         }
 
         // MERGE HAS_SOURCE edge — idempotent
@@ -159,7 +189,14 @@ export const Route = createFileRoute("/api/engagements/$id/sources")({
         ).catch(() => null);
 
         if (edgeResult == null) {
-          return jsonRes({ pinned: false, block_id: blockId, error: "Platform utilgængeligt" } satisfies PinSourceResponse, 503);
+          return jsonRes(
+            {
+              pinned: false,
+              block_id: blockId,
+              error: "Platform utilgængeligt",
+            } satisfies PinSourceResponse,
+            503,
+          );
         }
 
         return jsonRes({ pinned: true, block_id: blockId } satisfies PinSourceResponse, 200);

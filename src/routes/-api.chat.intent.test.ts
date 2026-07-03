@@ -104,7 +104,7 @@ describe("/api/chat WDC CLI chat stream routing", () => {
     expect(init.method).toBe("POST");
     expect(init.headers).toMatchObject({
       "Content-Type": "application/json",
-      "Accept": "text/event-stream",
+      Accept: "text/event-stream",
     });
     const payload = JSON.parse(String(init.body)) as {
       message: string;
@@ -126,7 +126,7 @@ describe("/api/chat WDC CLI chat stream routing", () => {
         [
           'data:{"type":"token","content":"WDC_"}',
           'data:{"type":"token","content":"CHAT_OK"}',
-          'data:[DONE]',
+          "data:[DONE]",
         ].join("\n\n"),
         { status: 200, headers: { "content-type": "text/event-stream" } },
       ),

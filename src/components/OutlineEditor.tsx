@@ -45,7 +45,12 @@ export function OutlineEditor({ value, onChange, placeholder, className }: Outli
   if (!editor) return null;
 
   return (
-    <div className={cn("rounded-lg border border-primary/40 bg-background focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition", className)}>
+    <div
+      className={cn(
+        "rounded-lg border border-primary/40 bg-background focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition",
+        className,
+      )}
+    >
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 border-b border-border/50 px-2 py-1">
         <ToolbarBtn

@@ -33,7 +33,9 @@ export function ActiveEngagementProvider({ children }: { children: ReactNode }) 
     try {
       if (e) sessionStorage.setItem(SESSION_KEY, JSON.stringify(e));
       else sessionStorage.removeItem(SESSION_KEY);
-    } catch {}
+    } catch {
+      // Best-effort persistence: storage can be unavailable in private or embedded contexts.
+    }
   }, []);
 
   return (

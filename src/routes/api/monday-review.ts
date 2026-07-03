@@ -146,16 +146,35 @@ export const Route = createFileRoute("/api/monday-review")({
         `;
 
         const [engResult, artResult, patResult] = await Promise.all([
-          callMcpTool<unknown>("data_graph_read", { query: engagementsCypher }, { timeoutMs: 15000 }).catch(() => null),
-          callMcpTool<unknown>("data_graph_read", { query: artifactsCypher }, { timeoutMs: 12000 }).catch(() => null),
-          callMcpTool<unknown>("data_graph_read", { query: patternsCypher }, { timeoutMs: 12000 }).catch(() => null),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: engagementsCypher },
+            { timeoutMs: 15000 },
+          ).catch(() => null),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: artifactsCypher },
+            { timeoutMs: 12000 },
+          ).catch(() => null),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: patternsCypher },
+            { timeoutMs: 12000 },
+          ).catch(() => null),
         ]);
 
         if (engResult == null && artResult == null) {
           return jsonRes(
             {
               week_label: "",
-              stats: { active_engagements: 0, total_engagements: 0, recent_artifacts: 0, patterns_used: 0, avg_confidence: 0, open_action_items: 0 },
+              stats: {
+                active_engagements: 0,
+                total_engagements: 0,
+                recent_artifacts: 0,
+                patterns_used: 0,
+                avg_confidence: 0,
+                open_action_items: 0,
+              },
               engagements: [],
               recent_artifacts: [],
               top_patterns: [],
@@ -209,7 +228,8 @@ export const Route = createFileRoute("/api/monday-review")({
                 type: "no_patterns",
                 engagement_id: e.id,
                 engagement_name: e.name,
-                message: "Ingen patterns koblet — tilføj relevante patterns for at styrke vidensgrundlaget.",
+                message:
+                  "Ingen patterns koblet — tilføj relevante patterns for at styrke vidensgrundlaget.",
                 priority: "high",
               });
             } else if (e.artifact_count === 0) {
@@ -217,7 +237,8 @@ export const Route = createFileRoute("/api/monday-review")({
                 type: "no_artifacts",
                 engagement_id: e.id,
                 engagement_name: e.name,
-                message: "Ingen deliverables genereret endnu — overvej at producere en første analyse.",
+                message:
+                  "Ingen deliverables genereret endnu — overvej at producere en første analyse.",
                 priority: "medium",
               });
             } else if (!e.domain || !e.client) {
@@ -232,22 +253,27 @@ export const Route = createFileRoute("/api/monday-review")({
           }
         }
 
-        const activeCount = engagements.filter((e) => e.status === "active" || e.status == null).length;
+        const activeCount = engagements.filter(
+          (e) => e.status === "active" || e.status == null,
+        ).length;
 
         // avg_confidence: mean engagement health score across active engagements
         function engScore(e: EngagementSummary): number {
           let s = 0;
           if (e.pattern_count >= 3) s += 0.35;
           else if (e.pattern_count >= 1) s += 0.15;
-          if (e.client) s += 0.20;
-          if (e.domain) s += 0.20;
+          if (e.client) s += 0.2;
+          if (e.domain) s += 0.2;
           if (e.artifact_count >= 1) s += 0.25;
           return s;
         }
         const activeEngs = engagements.filter((e) => e.status === "active" || e.status == null);
-        const avgConfidence = activeEngs.length > 0
-          ? Math.round((activeEngs.reduce((s, e) => s + engScore(e), 0) / activeEngs.length) * 100)
-          : 0;
+        const avgConfidence =
+          activeEngs.length > 0
+            ? Math.round(
+                (activeEngs.reduce((s, e) => s + engScore(e), 0) / activeEngs.length) * 100,
+              )
+            : 0;
 
         const now = new Date();
         const weekLabel = `Uge ${String(getWeekNumber(now))} — ${now.toLocaleDateString("da-DK", { month: "long", year: "numeric" })}`;

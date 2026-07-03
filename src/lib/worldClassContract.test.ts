@@ -13,7 +13,10 @@ import {
   type WorldClassCategoryId,
 } from "@/lib/worldClassContract";
 import { WORLD_CLASS_KPI_TARGETS } from "@/lib/worldClassKpiMatrix";
-import { WORLD_CLASS_DIAGNOSTIC_PROOF, type WorldClassProofHarnessEvidence } from "@/lib/worldClassProofHarness";
+import {
+  WORLD_CLASS_DIAGNOSTIC_PROOF,
+  type WorldClassProofHarnessEvidence,
+} from "@/lib/worldClassProofHarness";
 import type { WorldClassUserEvidence } from "@/lib/worldClassUserEvidence";
 
 const hardGateIds: HardGateId[] = [

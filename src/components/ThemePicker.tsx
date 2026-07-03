@@ -2,11 +2,11 @@ import { cn } from "@/lib/utils";
 import type { DocTheme } from "@/lib/output-generators";
 
 export const THEMES: { id: DocTheme; label: string; dot: string }[] = [
-  { id: "modern",   label: "Modern",   dot: "bg-blue-500" },
+  { id: "modern", label: "Modern", dot: "bg-blue-500" },
   { id: "mckinsey", label: "McKinsey", dot: "bg-indigo-600" },
-  { id: "bcg",      label: "BCG",      dot: "bg-emerald-600" },
-  { id: "bain",     label: "Bain",     dot: "bg-red-600" },
-  { id: "dark",     label: "Dark",     dot: "bg-slate-700" },
+  { id: "bcg", label: "BCG", dot: "bg-emerald-600" },
+  { id: "bain", label: "Bain", dot: "bg-red-600" },
+  { id: "dark", label: "Dark", dot: "bg-slate-700" },
 ];
 
 export function ThemePicker({

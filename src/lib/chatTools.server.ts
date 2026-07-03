@@ -168,7 +168,10 @@ export const CHAT_TOOL_SCHEMAS: OpenAiToolSchema[] = [
       parameters: {
         type: "object",
         properties: {
-          service: { type: "string", description: "Service name (optional, checks all if omitted)" },
+          service: {
+            type: "string",
+            description: "Service name (optional, checks all if omitted)",
+          },
         },
       },
     },
@@ -194,7 +197,10 @@ export const CHAT_TOOL_SCHEMAS: OpenAiToolSchema[] = [
       parameters: {
         type: "object",
         properties: {
-          mission_id: { type: "string", description: "Mission identifier (optional, lists all if omitted)" },
+          mission_id: {
+            type: "string",
+            description: "Mission identifier (optional, lists all if omitted)",
+          },
         },
       },
     },
