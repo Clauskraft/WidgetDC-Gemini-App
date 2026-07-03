@@ -14,19 +14,22 @@ claim runtime proof, adoption proof, claim promotion, or full-app QA green.
 ## Fresh Command Evidence
 
 Captured on 2026-07-03 from
-`C:\Users\claus\Projetcs\WidgetDC-Gemini-App-frontend-toolbox-orbit`.
+`C:\Users\claus\Projetcs\WidgetDC-Gemini-App-frontend-toolbox-orbit`
+through WDC CLI frontend gates from
+`C:\Users\claus\Projetcs\WidgeTDC-frontend-toolbox-orbit`.
 
 | Gate | Status | Evidence | Blocker | Next action |
 | --- | --- | --- | --- | --- |
-| WDC status | PASS | Backend GREEN, deployed SHA `bcdfbb0717fb`, GOV enforce, EventSpine durable, `427/427` active capabilities | none | refresh before future claims |
-| WDC boot | PASS | `session:d301a4a65bbc`, target clean, source mutation actor verified | none | release session at closeout |
-| Initial worktree | PASS | `git status --short` empty before QA work | none | keep clean before commit |
-| Build | PASS | `npm run build`, exit `0` | existing warnings only | keep as required gate |
-| Unit tests | PASS | `npm test -- --run`, `50` files, `300` tests | none | keep as required gate |
-| Slice-owned lint | PASS | `npx eslint` on capability cockpit files, exit `0` | none | ratchet with `npm run verify:capability-cockpit` |
-| World-class proof E2E | PASS | `npx playwright test e2e/world-class-proof.spec.ts --reporter=dot`, `3/3` | none | keep as targeted proof gate |
-| Full repo lint | FAIL | `npm run lint`, `524 problems (507 errors, 17 warnings)` | repo-wide Prettier debt outside capability slice | fix in separate lint-debt slice or ratchet |
-| Full E2E | FAIL | `npm run test:e2e -- --reporter=dot`, `18 passed`, `4 failed` | graph fullscreen visual snapshots | classify or update graph baselines in separate slice |
+| WDC status | PASS | `wdc status --json`: backend GREEN, deployed SHA `6724bd4808c3`, GOV enforce, EventSpine durable, `440/440` active capabilities | none | refresh before future claims |
+| WDC boot/session | PASS_WITH_BOUNDARY | Active Agent Office session `session:47a1720b7e27`; later boot correctly blocked while target was dirty during in-progress edits | target dirty during edit loop only | release session at closeout |
+| WDC BOM/Lego | PASS | `adaptive_bom.compose`: `taskbom:adaptive:cafef4c1aef8`, `claim_maturity:L1`, `graph_promoted:false`; `lego stats`: CP `42/42`, L2 `845/1051`, target met | none | keep BOM/Lego visible in closeout |
+| Build | PASS | `wdc test frontend --gate build --json`, exit `0` | existing warnings only | keep as required gate |
+| Unit tests | PASS | `wdc test frontend --gate unit --json`, `50` files, `300` tests | none | keep as required gate |
+| Capability cockpit ratchet | PASS | `wdc test frontend --gate capability-cockpit --json`, `capability cockpit guard passed` | none | keep as slice ratchet |
+| Graph visual E2E | PASS | `wdc test frontend --gate graph-e2e --json`, `8 passed` | none | keep graph snapshots under WDC gate |
+| World-class proof E2E | PASS | `wdc test frontend --gate world-class-proof --json`, `3 passed` | none | keep as targeted proof gate |
+| Full E2E | PASS | `wdc test frontend --gate e2e --json`, `22 passed` | none | keep as broad frontend gate |
+| Full repo lint | FAIL_BOUNDARY | `wdc test frontend --gate lint --json`, `524 problems (507 errors, 17 warnings)` | repo-wide Prettier debt outside capability slice | formal lint-debt ratchet; fix in separate debt-reduction slice |
 
 ## Lint Debt Ledger
 
@@ -67,31 +70,34 @@ Command:
 npm run verify:capability-cockpit
 ```
 
-## Graph Snapshot Failure Ledger
+## Graph Snapshot Closure Ledger
 
-Full E2E failures are isolated to `e2e/graph.spec.ts` fullscreen visual
-snapshots. The capability cockpit diff does not touch `e2e`, graph components,
-or `src/routes/visual.graph.tsx`.
+The prior full E2E blocker was closed in a graph-specific follow-up slice.
+The root cause was the visual harness shrink-wrapping inside the app root flex
+shell plus a global `.aurora-figure svg` rule overriding Lucide error icons.
 
-| Case | Expected | Received | Classification |
-| --- | --- | --- | --- |
-| `linear` fullscreen | `314x539` | `324x539` | graph visual snapshot debt |
-| `branching` fullscreen | `314x539` | `323x539` | graph visual snapshot debt |
-| `knowledge` fullscreen | `322x599` | `328x599` | graph visual snapshot debt |
-| `invalid` fullscreen | `606x630` | `650x652`, diff ratio `0.20` | graph visual snapshot debt |
+Fixes:
 
-Evidence:
+- `src/routes/visual.graph.tsx` now gives the visual harness explicit width,
+  minimum width, box sizing, and viewport-height constraints.
+- `src/components/GraphErrorBlock.tsx` now pins Lucide icon sizes with inline
+  dimensions so global figure SVG rules cannot inflate the error icon.
+- Five graph snapshots were regenerated after visual review.
 
-- failing file: `e2e/graph.spec.ts`
-- failing locator: `getByTestId("visual-fullscreen")`
-- passing count: `18`
-- failing count: `4`
+Regenerated baselines:
 
-Required next action for full-app QA green:
+- `graph-linear-fullscreen-chromium-desktop-win32.png`
+- `graph-branching-fullscreen-chromium-desktop-win32.png`
+- `graph-knowledge-fullscreen-chromium-desktop-win32.png`
+- `graph-invalid-normal-chromium-desktop-win32.png`
+- `graph-invalid-fullscreen-chromium-desktop-win32.png`
 
-- Either update graph baselines after visual review, or fix the graph fullscreen
-  layout instability.
-- Do this in a graph-specific slice, not inside the capability cockpit slice.
+WDC evidence:
+
+- `wdc test frontend --gate graph-e2e --update-snapshots --json`: `8 passed`,
+  five snapshots regenerated.
+- `wdc test frontend --gate graph-e2e --json`: `8 passed`, read-only.
+- `wdc test frontend --gate e2e --json`: `22 passed`.
 
 ## Anti-Legacy Guard
 
@@ -113,19 +119,22 @@ npm run verify:capability-cockpit
 
 ## PR Readiness Verdict
 
-PR `#102` can be reviewed as a candidate/L1 capability cockpit slice.
+PR `#102` can be reviewed as a candidate/L1 capability cockpit slice with the
+graph visual E2E blocker closed.
 
-PR `#102` must remain blocked from full-app QA/world-class-ready language until:
+PR `#102` must remain blocked from runtime/adoption/world-class-ready language
+until:
 
 - full repo lint is either green or governed by a broader accepted debt ratchet
-- graph visual snapshot failures are fixed or accepted through graph-owner review
+- runtime proof and adoption proof are produced in later governed slices
 
 Allowed claim language:
 
 - Capability cockpit route is visible and targeted proof-tested.
 - Frontend slice is candidate/L1 only.
 - World-class proof harness passes for current capability flow.
-- Full app QA remains blocked by repo-wide lint debt and graph visual snapshots.
+- Full E2E passes 22/22 after graph visual snapshot closure.
+- Full repo lint remains bounded by the explicit lint-debt ratchet.
 
 Forbidden claim language:
 

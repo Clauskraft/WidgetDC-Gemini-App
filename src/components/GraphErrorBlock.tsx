@@ -25,7 +25,11 @@ export function GraphErrorBlock({
       className="aurora-figure aurora-figure--flat border border-destructive/40 bg-destructive/5 rounded-md p-3"
     >
       <div className="flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" aria-hidden />
+        <AlertTriangle
+          className="mt-0.5 shrink-0 text-destructive"
+          style={{ width: 16, height: 16 }}
+          aria-hidden
+        />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-destructive">
             Kunne ikke rendere <code className="font-mono text-xs">{label}</code>-blok
@@ -48,7 +52,11 @@ export function GraphErrorBlock({
             className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             aria-expanded={open}
           >
-            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {open ? (
+              <ChevronDown style={{ width: 12, height: 12 }} />
+            ) : (
+              <ChevronRight style={{ width: 12, height: 12 }} />
+            )}
             {open ? "Skjul rå JSON" : "Vis rå JSON"}
           </button>
           {open && (
