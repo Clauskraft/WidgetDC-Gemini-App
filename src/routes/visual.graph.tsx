@@ -133,7 +133,16 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
 
   if (fs) {
     return (
-      <div style={{ minHeight: "100vh", padding: 24, background: "var(--background)" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          padding: 24,
+          background: "var(--background)",
+        }}
+      >
         <div
           style={{ width: "100%", maxWidth: 1280, margin: "0 auto" }}
           data-testid="visual-fullscreen"
@@ -145,7 +154,16 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", padding: 24, background: "var(--background)" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
+        padding: 24,
+        background: "var(--background)",
+      }}
+    >
       <div style={{ width: 880, margin: "0 auto" }} data-testid="visual-stage" data-case={found.id}>
         <h1
           style={{

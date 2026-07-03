@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   ChevronRight,
   FileText,
+  GitBranch,
   MessageSquarePlus,
   Network,
   PanelLeft,
@@ -18,6 +19,7 @@ import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
 
 const libraryLinks = [
+  { to: "/capabilities", label: "Capabilities", icon: GitBranch },
   { to: "/graph", label: "Graph", icon: Network },
   { to: "/engagements", label: "Engagements", icon: Boxes },
   { to: "/deliverable", label: "Deliverables", icon: FileText },

@@ -22,6 +22,7 @@ import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as DeliverableRouteImport } from './routes/deliverable'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConsultingRouteImport } from './routes/consulting'
+import { Route as CapabilitiesRouteImport } from './routes/capabilities'
 import { Route as AdoptionRouteImport } from './routes/adoption'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GemsIndexRouteImport } from './routes/gems.index'
@@ -117,6 +118,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const ConsultingRoute = ConsultingRouteImport.update({
   id: '/consulting',
   path: '/consulting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CapabilitiesRoute = CapabilitiesRouteImport.update({
+  id: '/capabilities',
+  path: '/capabilities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdoptionRoute = AdoptionRouteImport.update({
@@ -281,6 +287,7 @@ const ApiEngagementsIdDeliverableRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
@@ -327,6 +334,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/adoption': typeof AdoptionRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
   '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
@@ -421,6 +430,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/adoption'
+    | '/capabilities'
     | '/consulting'
     | '/dashboard'
     | '/deliverable'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/adoption'
+    | '/capabilities'
     | '/consulting'
     | '/dashboard'
     | '/deliverable'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/adoption'
+    | '/capabilities'
     | '/consulting'
     | '/dashboard'
     | '/deliverable'
@@ -559,6 +571,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdoptionRoute: typeof AdoptionRoute
+  CapabilitiesRoute: typeof CapabilitiesRoute
   ConsultingRoute: typeof ConsultingRoute
   DashboardRoute: typeof DashboardRoute
   DeliverableRoute: typeof DeliverableRoute
@@ -688,6 +701,13 @@ declare module '@tanstack/react-router' {
       path: '/consulting'
       fullPath: '/consulting'
       preLoaderRoute: typeof ConsultingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/capabilities': {
+      id: '/capabilities'
+      path: '/capabilities'
+      fullPath: '/capabilities'
+      preLoaderRoute: typeof CapabilitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/adoption': {
@@ -952,6 +972,7 @@ const ApiNewsRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdoptionRoute: AdoptionRoute,
+  CapabilitiesRoute: CapabilitiesRoute,
   ConsultingRoute: ConsultingRoute,
   DashboardRoute: DashboardRoute,
   DeliverableRoute: DeliverableRoute,
