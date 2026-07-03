@@ -28,7 +28,8 @@ the orchestration authority, graph truth authority, or claim-promotion surface.
 Observed through WDC CLI during this slice:
 
 - `wdc health --json`: platform health returned `ok: true`.
-- Backend tool count readback: `400`.
+- Capability count is intentionally not a static frontend claim; refresh through
+  `wdc status --json` before citing.
 - Railway backend commit readback: `3b3621527c8733cbfa701bfb6d32b5fa20cf9ec8`.
 - `wdc route-validate`: route was valid, fallback LLM path for the broad
   triangulation prompt.

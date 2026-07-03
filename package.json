@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "lint": "eslint .",
+    "verify:capability-cockpit": "node scripts/verify-capability-cockpit.mjs",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
