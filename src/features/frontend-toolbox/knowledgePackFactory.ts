@@ -1,4 +1,4 @@
-import type { ProofBoundary } from './toolboxCatalog';
+import type { ProofBoundary } from "./toolboxCatalog";
 
 export interface KnowledgePackManifestInput {
   sourceCommit: string;
@@ -9,8 +9,8 @@ export interface KnowledgePackManifestInput {
 }
 
 export interface KnowledgePackManifest {
-  id: 'knowledge-pack-factory';
-  boundary: Extract<ProofBoundary, 'diagnostic'>;
+  id: "knowledge-pack-factory";
+  boundary: Extract<ProofBoundary, "diagnostic">;
   sourceCommit: string;
   sourceWindow: string[];
   contentHash: string;
@@ -20,12 +20,14 @@ export interface KnowledgePackManifest {
   runtimeProof: false;
 }
 
-export function createKnowledgePackManifest(input: KnowledgePackManifestInput): KnowledgePackManifest {
+export function createKnowledgePackManifest(
+  input: KnowledgePackManifestInput,
+): KnowledgePackManifest {
   const currentCommit = input.currentCommit ?? input.sourceCommit;
 
   return {
-    id: 'knowledge-pack-factory',
-    boundary: 'diagnostic',
+    id: "knowledge-pack-factory",
+    boundary: "diagnostic",
     sourceCommit: input.sourceCommit,
     sourceWindow: [...input.sourceWindow],
     contentHash: input.contentHash,
