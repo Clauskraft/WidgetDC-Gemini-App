@@ -99,6 +99,33 @@ WDC evidence:
 - `wdc test frontend --gate graph-e2e --json`: `8 passed`, read-only.
 - `wdc test frontend --gate e2e --json`: `22 passed`.
 
+### 2026-07-03 CI Baseline Parity Addendum
+
+Remote PR head `9ed94cbeac8d1f9ea969325f2dec6610ef55dc73` updated the
+Linux Playwright graph baselines that CI consumes. The previous failing CI run
+reported five Linux snapshot mismatches in `e2e/graph.spec.ts`; the updated
+Linux baselines now match the rendered dimensions:
+
+- `graph-linear-fullscreen-chromium-desktop-linux.png`: `1120x539`
+- `graph-branching-fullscreen-chromium-desktop-linux.png`: `1120x539`
+- `graph-knowledge-fullscreen-chromium-desktop-linux.png`: `1120x599`
+- `graph-invalid-normal-chromium-desktop-linux.png`: `880x172`
+- `graph-invalid-fullscreen-chromium-desktop-linux.png`: `1120x138`
+
+Fresh local gate readback on the clean PR worktree:
+
+- `npm run build`: passed.
+- `npm test -- --run`: `50` files, `300` tests passed.
+- `npm run verify:capability-cockpit`: passed.
+- `npm run test:e2e -- e2e/graph.spec.ts`: `8` graph tests passed.
+- `npm run test:e2e`: `22` full E2E tests passed.
+- `npm run lint -- --format json`: failed with `524` known repo-wide problems
+  (`507` errors, `17` warnings); this remains the formal lint-debt boundary,
+  not a green lint claim.
+
+This addendum is candidate/L1 evidence only. It does not claim runtime proof,
+adoption proof, graph truth promotion, Railway deployment, or claim promotion.
+
 ## Anti-Legacy Guard
 
 The capability cockpit slice must not introduce:
