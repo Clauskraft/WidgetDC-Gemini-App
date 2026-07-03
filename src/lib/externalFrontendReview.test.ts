@@ -20,18 +20,10 @@ describe("externalFrontendReview", () => {
     expect(plan.mapped_count).toBe(0);
     expect(plan.mapped_count_source).toBe("graph_readback_only");
 
-    expect(plan.apps.map((app) => app.id)).toEqual([
-      "claude_design",
-      "v0_vercel",
-      "figma_make",
-    ]);
+    expect(plan.apps.map((app) => app.id)).toEqual(["claude_design", "v0_vercel", "figma_make"]);
     expect(plan.apps.find((app) => app.id === "claude_design")?.access_status).toBe("ready");
-    expect(plan.apps.find((app) => app.id === "v0_vercel")?.access_status).toBe(
-      "login_required",
-    );
-    expect(plan.apps.find((app) => app.id === "figma_make")?.access_status).toBe(
-      "login_required",
-    );
+    expect(plan.apps.find((app) => app.id === "v0_vercel")?.access_status).toBe("login_required");
+    expect(plan.apps.find((app) => app.id === "figma_make")?.access_status).toBe("login_required");
 
     for (const app of plan.apps) {
       expect(app.review_prompt).toContain("candidate-only");

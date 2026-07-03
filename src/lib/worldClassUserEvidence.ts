@@ -107,10 +107,7 @@ export function summarizeWorldClassUserEvidence(
     evidence.external_review_results.filter(
       (result) => result.runtime_overclaim_seen || result.candidate_mapped_confusion_seen,
     ).length;
-  const externalReviewCoverageRatio = ratio(
-    externalReviewsCompleted,
-    requiredExternalApps.length,
-  );
+  const externalReviewCoverageRatio = ratio(externalReviewsCompleted, requiredExternalApps.length);
   const userEvidenceReady =
     evidence.evidence_level === "user_evidence" &&
     evidence.provider_executions === 0 &&

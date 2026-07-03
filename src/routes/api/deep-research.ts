@@ -26,7 +26,11 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-async function callGemini(prompt: string, systemPrompt: string, timeoutMs = 30_000): Promise<string | null> {
+async function callGemini(
+  prompt: string,
+  systemPrompt: string,
+  timeoutMs = 30_000,
+): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   try {
@@ -55,24 +59,25 @@ async function callGemini(prompt: string, systemPrompt: string, timeoutMs = 30_0
 
 async function callLlmChat(prompt: string, systemPrompt: string): Promise<string | null> {
   try {
-    const result = await callMcpTool<{ content?: string; text?: string; choices?: Array<{ message?: { content?: string } }> }>(
-      "llm_chat",
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt },
-        ],
-        model: "gemini-2.5-flash",
-        max_tokens: 4096,
-        temperature: 0.3,
-      },
-    );
+    const result = await callMcpTool<{
+      content?: string;
+      text?: string;
+      choices?: Array<{ message?: { content?: string } }>;
+    }>("llm_chat", {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
+      model: "gemini-2.5-flash",
+      max_tokens: 4096,
+      temperature: 0.3,
+    });
     if (!result) return null;
     const r = result as Record<string, unknown>;
     return (
       (r.content as string) ??
       (r.text as string) ??
-      ((r.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content) ??
+      (r.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content ??
       null
     );
   } catch {
@@ -89,10 +94,10 @@ async function llm(prompt: string, system: string, timeoutMs = 30_000): Promise<
 
 async function searchKnowledge(query: string): Promise<string> {
   try {
-    const result = await callMcpTool<{ results?: Array<{ content?: string; title?: string }>; text?: string }>(
-      "search_knowledge",
-      { query, limit: 5 },
-    );
+    const result = await callMcpTool<{
+      results?: Array<{ content?: string; title?: string }>;
+      text?: string;
+    }>("search_knowledge", { query, limit: 5 });
     if (!result) return "";
     const r = result as Record<string, unknown>;
     if (r.text && typeof r.text === "string") return r.text.slice(0, 2000);
@@ -174,7 +179,9 @@ Return: {"questions": ["...", "...", "...", "..."]}`;
               const planJson = planRaw?.match(/\{[\s\S]*"questions"[\s\S]*\}/)?.[0];
               let questions: string[] = [];
               try {
-                questions = planJson ? (JSON.parse(planJson) as { questions?: string[] }).questions ?? [] : [];
+                questions = planJson
+                  ? ((JSON.parse(planJson) as { questions?: string[] }).questions ?? [])
+                  : [];
               } catch {
                 // fallback
               }
@@ -218,14 +225,19 @@ ${combined ? `Relevant information:\n${combined}\n\n` : ""}Opsummér hvad vi ved
 
 ${combined ? `Relevant information:\n${combined}\n\n` : ""}Summarise what we know about this question in 2-4 sentences. Use only information from the source material. If there is little information, say so.`;
 
-                const finding = (await llm(distillPrompt, distillSystem, 20_000)) ?? (isDA ? "(Ingen information fundet)" : "(No information found)");
+                const finding =
+                  (await llm(distillPrompt, distillSystem, 20_000)) ??
+                  (isDA ? "(Ingen information fundet)" : "(No information found)");
                 findings.push({ question: q, evidence: combined, sources: evidenceSources });
                 send("step", { index: i, question: q, finding: finding.trim() });
               }
 
               // ── Phase 3: SYNTHESIZE ────────────────────────────────────
               const evidenceBlock = findings
-                .map((f, i) => `## Underspørgsmål ${i + 1}: ${f.question}\n${f.evidence || "(ingen data)"}\n`)
+                .map(
+                  (f, i) =>
+                    `## Underspørgsmål ${i + 1}: ${f.question}\n${f.evidence || "(ingen data)"}\n`,
+                )
                 .join("\n");
 
               const reportSystem = isDA
@@ -277,7 +289,8 @@ Report should be 600-1000 words.`;
               });
             } catch (err) {
               send("error", {
-                message: err instanceof Error ? err.message.slice(0, 400) : "Research pipeline failed",
+                message:
+                  err instanceof Error ? err.message.slice(0, 400) : "Research pipeline failed",
               });
             } finally {
               try {

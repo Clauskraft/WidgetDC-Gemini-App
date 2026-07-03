@@ -1,8 +1,5 @@
 import type { BrokerageRouteCard } from "@/lib/brokerageRoute";
-import {
-  CAPABILITY_KIND_LABELS,
-  type CapabilityLibraryEntry,
-} from "@/lib/capabilityLibrary";
+import { CAPABILITY_KIND_LABELS, type CapabilityLibraryEntry } from "@/lib/capabilityLibrary";
 import type { CapabilityRecipe } from "@/lib/capabilityRecipe";
 
 export type WorldClassUxEvidence = {

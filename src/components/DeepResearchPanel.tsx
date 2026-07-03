@@ -47,7 +47,13 @@ export function DeepResearchPanel({ sources, onClose, onInsertReport }: Props) {
   const okSources = sources.filter((s) => s.status === "ok").map((s) => s.filename);
 
   const start = async () => {
-    if (!topic.trim() || phase === "planning" || phase === "researching" || phase === "synthesizing") return;
+    if (
+      !topic.trim() ||
+      phase === "planning" ||
+      phase === "researching" ||
+      phase === "synthesizing"
+    )
+      return;
 
     abortRef.current?.abort();
     const ctrl = new AbortController();
@@ -210,7 +216,8 @@ export function DeepResearchPanel({ sources, onClose, onInsertReport }: Props) {
             )}
             <span className="text-[12px] font-medium text-foreground">
               {phase === "planning" && "Analyserer emnet og planlægger forskning…"}
-              {phase === "researching" && `Forsker i ${steps.filter((s) => s.done).length}/${steps.length} underspørgsmål…`}
+              {phase === "researching" &&
+                `Forsker i ${steps.filter((s) => s.done).length}/${steps.length} underspørgsmål…`}
               {phase === "synthesizing" && "Syntetiserer rapport…"}
               {phase === "done" && "Forskning afsluttet"}
             </span>
@@ -231,7 +238,11 @@ export function DeepResearchPanel({ sources, onClose, onInsertReport }: Props) {
               onClick={() => setStepsOpen((v) => !v)}
               className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition self-start"
             >
-              {stepsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {stepsOpen ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
               Forskningsspørgsmål ({steps.filter((s) => s.done).length}/{steps.length})
             </button>
             {stepsOpen && (
@@ -243,7 +254,9 @@ export function DeepResearchPanel({ sources, onClose, onInsertReport }: Props) {
                       "rounded-lg border px-3 py-2 text-[12px] transition-colors",
                       step.done
                         ? "border-green-500/20 bg-green-500/5"
-                        : questions.length > 0 && !step.done && steps.slice(0, i).every((s) => s.done)
+                        : questions.length > 0 &&
+                            !step.done &&
+                            steps.slice(0, i).every((s) => s.done)
                           ? "border-primary/30 bg-primary/5"
                           : "border-border/50 bg-muted/20",
                     )}
@@ -252,14 +265,18 @@ export function DeepResearchPanel({ sources, onClose, onInsertReport }: Props) {
                       <span className="mt-0.5 flex-none">
                         {step.done ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        ) : questions.length > 0 && steps.slice(0, i).every((s) => s.done) && isRunning ? (
+                        ) : questions.length > 0 &&
+                          steps.slice(0, i).every((s) => s.done) &&
+                          isRunning ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                         ) : (
                           <div className="h-3.5 w-3.5 rounded-full border border-border/60" />
                         )}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground leading-snug">{step.question}</div>
+                        <div className="font-medium text-foreground leading-snug">
+                          {step.question}
+                        </div>
                         {step.finding && (
                           <div className="mt-1 text-muted-foreground leading-relaxed line-clamp-3">
                             {step.finding}
@@ -331,13 +348,28 @@ function ReportMarkdown({ markdown }: { markdown: string }) {
   lines.forEach((line, i) => {
     if (line.startsWith("### ")) {
       flushList();
-      elements.push(<h3 key={i} className="mt-3 mb-1 font-semibold text-foreground text-[13px]">{line.slice(4)}</h3>);
+      elements.push(
+        <h3 key={i} className="mt-3 mb-1 font-semibold text-foreground text-[13px]">
+          {line.slice(4)}
+        </h3>,
+      );
     } else if (line.startsWith("## ")) {
       flushList();
-      elements.push(<h2 key={i} className="mt-3 mb-1 font-bold text-foreground text-[13px] border-b border-border/40 pb-0.5">{line.slice(3)}</h2>);
+      elements.push(
+        <h2
+          key={i}
+          className="mt-3 mb-1 font-bold text-foreground text-[13px] border-b border-border/40 pb-0.5"
+        >
+          {line.slice(3)}
+        </h2>,
+      );
     } else if (line.startsWith("# ")) {
       flushList();
-      elements.push(<h1 key={i} className="mt-2 mb-1 font-bold text-foreground text-[14px]">{line.slice(2)}</h1>);
+      elements.push(
+        <h1 key={i} className="mt-2 mb-1 font-bold text-foreground text-[14px]">
+          {line.slice(2)}
+        </h1>,
+      );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       listItems.push(line.slice(2));
     } else if (/^\d+\. /.test(line)) {
@@ -348,7 +380,11 @@ function ReportMarkdown({ markdown }: { markdown: string }) {
     } else {
       flushList();
       elements.push(
-        <p key={i} className="leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />,
+        <p
+          key={i}
+          className="leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
+        />,
       );
     }
   });
@@ -364,6 +400,9 @@ function inlineFormat(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, '<code class="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">$1</code>')
+    .replace(
+      /`(.+?)`/g,
+      '<code class="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">$1</code>',
+    )
     .replace(/\[(\d+)\]/g, '<sup class="text-primary font-medium">[$1]</sup>');
 }

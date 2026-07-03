@@ -119,13 +119,25 @@ export const Route = createFileRoute("/api/engagements/$id/patterns")({
         `;
 
         const [linkedResult, suggestResult] = await Promise.all([
-          callMcpTool<unknown>("data_graph_read", { query: linkedCypher }, { timeoutMs: 12000 }).catch(() => null),
-          callMcpTool<unknown>("data_graph_read", { query: suggestCypher }, { timeoutMs: 12000 }).catch(() => null),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: linkedCypher },
+            { timeoutMs: 12000 },
+          ).catch(() => null),
+          callMcpTool<unknown>(
+            "data_graph_read",
+            { query: suggestCypher },
+            { timeoutMs: 12000 },
+          ).catch(() => null),
         ]);
 
         if (linkedResult == null && suggestResult == null) {
           return jsonRes(
-            { linked: [], suggestions: [], error: "Platform utilgængeligt" } satisfies EngagementPatternsResponse,
+            {
+              linked: [],
+              suggestions: [],
+              error: "Platform utilgængeligt",
+            } satisfies EngagementPatternsResponse,
             503,
           );
         }
@@ -146,7 +158,10 @@ export const Route = createFileRoute("/api/engagements/$id/patterns")({
 
         const patternId = body.pattern_id?.trim();
         if (!patternId) {
-          return jsonRes({ ok: false, error: "pattern_id er påkrævet" } satisfies LinkPatternResponse, 400);
+          return jsonRes(
+            { ok: false, error: "pattern_id er påkrævet" } satisfies LinkPatternResponse,
+            400,
+          );
         }
 
         const engId = escCypher(params.id);
@@ -168,7 +183,10 @@ export const Route = createFileRoute("/api/engagements/$id/patterns")({
         ).catch(() => null);
 
         if (result == null) {
-          return jsonRes({ ok: false, error: "Platform utilgængeligt" } satisfies LinkPatternResponse, 503);
+          return jsonRes(
+            { ok: false, error: "Platform utilgængeligt" } satisfies LinkPatternResponse,
+            503,
+          );
         }
 
         return jsonRes({ ok: true } satisfies LinkPatternResponse, 200);

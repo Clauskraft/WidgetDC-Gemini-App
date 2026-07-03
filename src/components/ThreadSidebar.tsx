@@ -13,7 +13,7 @@ export function ThreadSidebar({ threads }: { threads: Thread[] }) {
   const filtered = useMemo(() => {
     if (!search) return threads;
     const q = search.toLowerCase();
-    return threads.filter(t => t.title.toLowerCase().includes(q));
+    return threads.filter((t) => t.title.toLowerCase().includes(q));
   }, [threads, search]);
 
   return (
@@ -48,7 +48,7 @@ export function ThreadSidebar({ threads }: { threads: Thread[] }) {
           </p>
         ) : (
           <ul className="space-y-0.5">
-            {filtered.map(thread => (
+            {filtered.map((thread) => (
               <li key={thread.id}>
                 <a
                   href={`/c/${thread.id}`}

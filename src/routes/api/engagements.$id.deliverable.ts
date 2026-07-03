@@ -92,7 +92,10 @@ export const Route = createFileRoute("/api/engagements/$id/deliverable")({
 
         if (result == null) {
           return jsonRes(
-            { artifacts: [], error: "Platform utilgængeligt" } satisfies EngagementDeliverablesResponse,
+            {
+              artifacts: [],
+              error: "Platform utilgængeligt",
+            } satisfies EngagementDeliverablesResponse,
             503,
           );
         }
@@ -179,7 +182,9 @@ export const Route = createFileRoute("/api/engagements/$id/deliverable")({
 
         // Persist WorkArtifact + PRODUCED edge
         const artifactId = `wa-${correlationId.slice(0, 8)}`;
-        const title = escCypher(`${kind.charAt(0).toUpperCase() + kind.slice(1)}: ${engName}`.slice(0, 120));
+        const title = escCypher(
+          `${kind.charAt(0).toUpperCase() + kind.slice(1)}: ${engName}`.slice(0, 120),
+        );
         const mdEsc = escCypher(deliverable.markdown.slice(0, 8000));
         const now = new Date().toISOString();
 

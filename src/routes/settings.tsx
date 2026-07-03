@@ -1,6 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Trash2, Download, Database, Sparkles, Bug, Key, Palette, Bell, Plus, Copy, Check, Moon, Sun, Monitor } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  Trash2,
+  Download,
+  Database,
+  Sparkles,
+  Bug,
+  Key,
+  Palette,
+  Bell,
+  Plus,
+  Copy,
+  Check,
+  Moon,
+  Sun,
+  Monitor,
+} from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
 
 export const Route = createFileRoute("/settings")({

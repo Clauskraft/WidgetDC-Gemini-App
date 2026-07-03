@@ -1,6 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, Search, RefreshCw, Loader2, Code2, ChevronRight, Link2, CheckCircle2, X, MessageSquare } from "lucide-react";
+import {
+  BookOpen,
+  Search,
+  RefreshCw,
+  Loader2,
+  Code2,
+  ChevronRight,
+  Link2,
+  CheckCircle2,
+  X,
+  MessageSquare,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
@@ -85,7 +96,12 @@ function PatternsRoute() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Left panel: search + grid */}
-      <div className={cn("flex flex-col overflow-hidden transition-all", selected ? "w-1/2" : "flex-1")}>
+      <div
+        className={cn(
+          "flex flex-col overflow-hidden transition-all",
+          selected ? "w-1/2" : "flex-1",
+        )}
+      >
         {/* Header */}
         <PageHeader
           icon={<BookOpen className="h-4 w-4 text-white" />}
@@ -235,16 +251,17 @@ function PatternsRoute() {
               <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm">
                 <p className="font-medium">Kode-resonans</p>
                 <p className="mt-1 text-muted-foreground">
-                  Dette pattern resonerer semantisk med{" "}
-                  <strong>{selected.resonates_count}</strong> kode-implementeringer i graph'en
-                  (via <span className="font-mono text-xs">RESONATES_WITH</span>-kanten).
+                  Dette pattern resonerer semantisk med <strong>{selected.resonates_count}</strong>{" "}
+                  kode-implementeringer i graph'en (via{" "}
+                  <span className="font-mono text-xs">RESONATES_WITH</span>-kanten).
                 </p>
               </div>
             )}
 
             {!selected.canonical_ref && (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-                GAP-1: Ingen <span className="font-mono">canonical_ref</span> — backfill planlagt post-EP-2 drain.
+                GAP-1: Ingen <span className="font-mono">canonical_ref</span> — backfill planlagt
+                post-EP-2 drain.
               </div>
             )}
 
@@ -265,7 +282,11 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
 
   const search = useCallback((value: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!value.trim()) { setHits([]); setLinkState("idle"); return; }
+    if (!value.trim()) {
+      setHits([]);
+      setLinkState("idle");
+      return;
+    }
     debounceRef.current = setTimeout(async () => {
       setLinkState("searching");
       try {
@@ -293,7 +314,10 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
       if (res.ok) {
         setLinkedName(eng.name);
         setLinkState("success");
-        setTimeout(() => { setLinkState("idle"); setLinkedName(null); }, 3500);
+        setTimeout(() => {
+          setLinkState("idle");
+          setLinkedName(null);
+        }, 3500);
       } else {
         setLinkState("error");
         setTimeout(() => setLinkState("idle"), 2500);
@@ -314,7 +338,9 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
       {linkState === "success" && linkedName && (
         <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="h-4 w-4 flex-none" />
-          <span>Koblet til <strong>{linkedName}</strong></span>
+          <span>
+            Koblet til <strong>{linkedName}</strong>
+          </span>
         </div>
       )}
 
@@ -331,7 +357,10 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
             <input
               type="text"
               value={q}
-              onChange={(e) => { setQ(e.target.value); search(e.target.value); }}
+              onChange={(e) => {
+                setQ(e.target.value);
+                search(e.target.value);
+              }}
               placeholder="Søg engagement…"
               disabled={linkState === "linking"}
               className="w-full rounded-lg border border-input bg-card py-2 pl-8 pr-8 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
@@ -341,7 +370,10 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
             )}
             {q && linkState !== "searching" && linkState !== "linking" && (
               <button
-                onClick={() => { setQ(""); setHits([]); }}
+                onClick={() => {
+                  setQ("");
+                  setHits([]);
+                }}
                 className="absolute right-2.5 text-muted-foreground hover:text-foreground transition"
               >
                 <X className="h-3.5 w-3.5" />
@@ -366,7 +398,9 @@ function LinkToEngagement({ pattern }: { pattern: PatternRow }) {
                     <div className="min-w-0">
                       <div className="truncate font-medium text-foreground">{eng.name}</div>
                       {eng.client && (
-                        <div className="truncate text-[11px] text-muted-foreground">{eng.client}</div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {eng.client}
+                        </div>
                       )}
                     </div>
                   </button>

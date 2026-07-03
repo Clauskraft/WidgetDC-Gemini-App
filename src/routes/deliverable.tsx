@@ -123,9 +123,10 @@ function DeliverableRoute() {
   }, []);
 
   const filteredEngagements = engSearchQ.trim()
-    ? engagements.filter((e) =>
-        e.name.toLowerCase().includes(engSearchQ.toLowerCase()) ||
-        (e.client ?? "").toLowerCase().includes(engSearchQ.toLowerCase()),
+    ? engagements.filter(
+        (e) =>
+          e.name.toLowerCase().includes(engSearchQ.toLowerCase()) ||
+          (e.client ?? "").toLowerCase().includes(engSearchQ.toLowerCase()),
       )
     : engagements;
 
@@ -286,7 +287,10 @@ function DeliverableRoute() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setSelectedEngagement(null); setEngSearchQ(""); }}
+                  onClick={() => {
+                    setSelectedEngagement(null);
+                    setEngSearchQ("");
+                  }}
                   className="rounded-lg border border-input p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
@@ -300,7 +304,10 @@ function DeliverableRoute() {
                     type="text"
                     value={engSearchQ}
                     onFocus={() => setEngDropOpen(true)}
-                    onChange={(e) => { setEngSearchQ(e.target.value); setEngDropOpen(true); }}
+                    onChange={(e) => {
+                      setEngSearchQ(e.target.value);
+                      setEngDropOpen(true);
+                    }}
                     placeholder="Vælg eller søg engagement…"
                     className="w-full rounded-xl border border-input bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
@@ -324,7 +331,9 @@ function DeliverableRoute() {
                           <div className="min-w-0">
                             <div className="truncate font-medium text-foreground">{eng.name}</div>
                             {eng.client && (
-                              <div className="truncate text-[11px] text-muted-foreground">{eng.client}</div>
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                {eng.client}
+                              </div>
                             )}
                           </div>
                         </button>

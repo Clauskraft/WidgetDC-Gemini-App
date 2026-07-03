@@ -39,7 +39,9 @@ if (owner.toLowerCase() === reviewer.toLowerCase()) {
 }
 
 if (/^BLOCKED_WITH_FINDINGS$/i.test(verdict)) {
-  fail("Peer blocked this work. Open a new slice/PR for fixes; do not continue a feedback loop in this PR.");
+  fail(
+    "Peer blocked this work. Open a new slice/PR for fixes; do not continue a feedback loop in this PR.",
+  );
 }
 
 if (!/^SIGNOFF$/i.test(verdict)) {

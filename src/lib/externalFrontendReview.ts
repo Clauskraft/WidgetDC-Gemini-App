@@ -191,7 +191,8 @@ export const EXTERNAL_FRONTEND_REVIEW_LOOP: ExternalFrontendReviewLoop = {
       weight: 0.1,
       world_class_kpi_refs: ["foundry_slot_reuse", "lego_bom_visibility"],
       evidence_level_ceiling: "diagnostic_only",
-      acceptance_signal: "Reviewer identifies reusable slots without turning Foundry into the shell.",
+      acceptance_signal:
+        "Reviewer identifies reusable slots without turning Foundry into the shell.",
     },
   ],
   stop_conditions: [

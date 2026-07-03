@@ -1,19 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertTriangle, Activity, Shield, MessageSquare, TrendingUp, Clock } from 'lucide-react'
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, Activity, Shield, MessageSquare, TrendingUp, Clock } from "lucide-react";
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute("/dashboard")({
   component: RouteComponent,
-})
+});
 
 interface DashboardMetrics {
-  activeAgents: number
-  alertsToday: number
-  threatsBlocked: number
-  chatSessions: number
-  avgResponseTime: number
-  uptime: number
+  activeAgents: number;
+  alertsToday: number;
+  threatsBlocked: number;
+  chatSessions: number;
+  avgResponseTime: number;
+  uptime: number;
 }
 
 function RouteComponent() {
@@ -24,25 +24,25 @@ function RouteComponent() {
     chatSessions: 23,
     avgResponseTime: 1.4,
     uptime: 99.9,
-  })
-  const [lastUpdate, setLastUpdate] = useState(new Date())
+  });
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   // P0: Real-time updates via polling (WebSocket ready)
   useEffect(() => {
     const interval = setInterval(() => {
       // Simulate real-time data fetch
-      setMetrics(prev => ({
+      setMetrics((prev) => ({
         ...prev,
         alertsToday: prev.alertsToday + Math.floor(Math.random() * 2),
         threatsBlocked: prev.threatsBlocked + Math.floor(Math.random() * 3),
         chatSessions: prev.chatSessions + Math.floor(Math.random() * 2),
         avgResponseTime: 1.2 + Math.random() * 0.5,
-      }))
-      setLastUpdate(new Date())
-    }, 5000) // Update every 5 seconds
+      }));
+      setLastUpdate(new Date());
+    }, 5000); // Update every 5 seconds
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -118,7 +118,9 @@ function RouteComponent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{metrics.avgResponseTime.toFixed(1)}s</div>
+            <div className="text-3xl font-bold text-white">
+              {metrics.avgResponseTime.toFixed(1)}s
+            </div>
             <p className="text-xs text-green-400 mt-1">Target: &lt;2s</p>
           </CardContent>
         </Card>
@@ -144,16 +146,37 @@ function RouteComponent() {
         <CardContent>
           <div className="space-y-3">
             {[
-              { time: '2 min ago', event: 'Threat blocked: SQL injection attempt', severity: 'critical' },
-              { time: '15 min ago', event: 'Agent qwen completed analysis on LIN-2051', severity: 'info' },
-              { time: '1 hour ago', event: 'Knowledge graph updated: 42 new entities', severity: 'info' },
-              { time: '3 hours ago', event: 'Alert acknowledged: Suspicious login pattern', severity: 'warning' },
+              {
+                time: "2 min ago",
+                event: "Threat blocked: SQL injection attempt",
+                severity: "critical",
+              },
+              {
+                time: "15 min ago",
+                event: "Agent qwen completed analysis on LIN-2051",
+                severity: "info",
+              },
+              {
+                time: "1 hour ago",
+                event: "Knowledge graph updated: 42 new entities",
+                severity: "info",
+              },
+              {
+                time: "3 hours ago",
+                event: "Alert acknowledged: Suspicious login pattern",
+                severity: "warning",
+              },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  item.severity === 'critical' ? 'bg-red-500' :
-                  item.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
-                }`} />
+                <div
+                  className={`w-2 h-2 rounded-full mt-2 ${
+                    item.severity === "critical"
+                      ? "bg-red-500"
+                      : item.severity === "warning"
+                        ? "bg-amber-500"
+                        : "bg-blue-500"
+                  }`}
+                />
                 <div className="flex-1">
                   <p className="text-sm text-white">{item.event}</p>
                   <p className="text-xs text-zinc-500">{item.time}</p>
@@ -164,5 +187,5 @@ function RouteComponent() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

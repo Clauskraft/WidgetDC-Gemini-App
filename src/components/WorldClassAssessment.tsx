@@ -52,7 +52,11 @@ export function WorldClassAssessment({ assessment }: { assessment: WorldClassAss
           <small>diagnostic, user and runtime proof remain separate gates</small>
         </div>
         {assessment.evidenceGates.map((gate) => (
-          <div key={gate.id} className="agent-office-ref-row" data-state={gate.passed ? "pass" : "stop"}>
+          <div
+            key={gate.id}
+            className="agent-office-ref-row"
+            data-state={gate.passed ? "pass" : "stop"}
+          >
             <code>{gate.passed ? "pass" : "blocked"}</code>
             <span title={gate.evidence}>{gate.label}</span>
             <small>{`requires ${gate.required_level}; observed ${gate.observed_level}`}</small>

@@ -79,8 +79,7 @@ export const Route = createFileRoute("/api/patterns")({
           const safe = escCypher(domain.toLowerCase());
           whereClauses.push(`toLower(coalesce(p.domain,'')) CONTAINS '${safe}'`);
         }
-        const whereClause =
-          whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+        const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
         const cypher = `
           MATCH (p:Pattern)
@@ -106,7 +105,12 @@ export const Route = createFileRoute("/api/patterns")({
 
         if (result == null) {
           return jsonRes(
-            { patterns: [], total: 0, hasMore: false, error: "Platform utilgængeligt" } satisfies PatternsResponse,
+            {
+              patterns: [],
+              total: 0,
+              hasMore: false,
+              error: "Platform utilgængeligt",
+            } satisfies PatternsResponse,
             503,
           );
         }
@@ -128,7 +132,10 @@ export const Route = createFileRoute("/api/patterns")({
           resonates_count: neo4jNum(row.resonates_count),
         }));
 
-        return jsonRes({ patterns, total: patterns.length, hasMore } satisfies PatternsResponse, 200);
+        return jsonRes(
+          { patterns, total: patterns.length, hasMore } satisfies PatternsResponse,
+          200,
+        );
       },
     },
   },

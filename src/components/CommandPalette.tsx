@@ -1,14 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Briefcase,
-  BookOpen,
-  Boxes,
-  Search,
-  Loader2,
-  ChevronRight,
-  Command,
-} from "lucide-react";
+import { Briefcase, BookOpen, Boxes, Search, Loader2, ChevronRight, Command } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EngagementRow } from "../routes/api/engagements";
 import type { PatternRow } from "../routes/api/patterns";
@@ -58,18 +50,18 @@ function Spinner() {
 }
 
 function EmptyGroup({ label }: { label: string }) {
-  return (
-    <div className="px-3 py-2 text-[12px] text-muted-foreground/70">
-      Ingen {label}
-    </div>
-  );
+  return <div className="px-3 py-2 text-[12px] text-muted-foreground/70">Ingen {label}</div>;
 }
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focusedIdx, setFocusedIdx] = useState(0);
-  const [loading, setLoading] = useState<GroupLoading>({ engagements: false, patterns: false, blocks: false });
+  const [loading, setLoading] = useState<GroupLoading>({
+    engagements: false,
+    patterns: false,
+    blocks: false,
+  });
   const [engagements, setEngagements] = useState<EngagementRow[]>([]);
   const [patterns, setPatterns] = useState<PatternRow[]>([]);
   const [blocks, setBlocks] = useState<AssemblyBlockRow[]>([]);
@@ -154,11 +146,14 @@ export function CommandPalette() {
     return () => ac.abort();
   }, [debouncedQuery, open]);
 
-  const flatItems: ResultItem[] = [
-    ...engagements.map((e): ResultItem => ({ kind: "engagement", data: e })),
-    ...patterns.map((p): ResultItem => ({ kind: "pattern", data: p })),
-    ...blocks.map((b): ResultItem => ({ kind: "block", data: b })),
-  ];
+  const flatItems: ResultItem[] = useMemo(
+    () => [
+      ...engagements.map((e): ResultItem => ({ kind: "engagement", data: e })),
+      ...patterns.map((p): ResultItem => ({ kind: "pattern", data: p })),
+      ...blocks.map((b): ResultItem => ({ kind: "block", data: b })),
+    ],
+    [blocks, engagements, patterns],
+  );
 
   const handleSelect = useCallback(
     (item: ResultItem) => {
@@ -205,7 +200,12 @@ export function CommandPalette() {
 
   const hasQuery = debouncedQuery.length >= 2;
   const anyLoading = loading.engagements || loading.patterns || loading.blocks;
-  const noResults = hasQuery && !anyLoading && engagements.length === 0 && patterns.length === 0 && blocks.length === 0;
+  const noResults =
+    hasQuery &&
+    !anyLoading &&
+    engagements.length === 0 &&
+    patterns.length === 0 &&
+    blocks.length === 0;
 
   let globalIdx = 0;
 
@@ -220,10 +220,7 @@ export function CommandPalette() {
       className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4"
       onClick={close}
     >
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
 
       <div
         className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
@@ -252,10 +249,7 @@ export function CommandPalette() {
           </div>
         </div>
 
-        <div
-          ref={listRef}
-          className="max-h-[420px] overflow-y-auto overscroll-contain pb-2"
-        >
+        <div ref={listRef} className="max-h-[420px] overflow-y-auto overscroll-contain pb-2">
           {!hasQuery && (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground/60">
               <Search className="h-8 w-8 opacity-30" />
@@ -301,9 +295,7 @@ export function CommandPalette() {
                         )}
                       />
                       <span className="flex-1 min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {eng.name}
-                        </span>
+                        <span className="block truncate text-sm font-medium">{eng.name}</span>
                         {eng.client && (
                           <span className="block truncate text-[11px] text-muted-foreground">
                             {eng.client}
@@ -350,9 +342,7 @@ export function CommandPalette() {
                         )}
                       />
                       <span className="flex-1 min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {pat.name}
-                        </span>
+                        <span className="block truncate text-sm font-medium">{pat.name}</span>
                         {pat.description && (
                           <span className="block truncate text-[11px] text-muted-foreground">
                             {pat.description}
@@ -435,7 +425,9 @@ export function CommandPalette() {
               åbn
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[9px]">esc</kbd>
+              <kbd className="rounded border border-border bg-muted px-1 py-0.5 text-[9px]">
+                esc
+              </kbd>
               luk
             </span>
           </div>
