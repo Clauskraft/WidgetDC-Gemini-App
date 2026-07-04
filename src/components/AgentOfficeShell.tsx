@@ -305,6 +305,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     () =>
       Children.map(children, (child) => {
         if (!isValidElement(child)) return child;
+        if (typeof child.type === "string") return child;
         return cloneElement(child as ReactElement<{ workMode?: typeof chatMode }>, {
           workMode: chatMode,
         });
@@ -331,7 +332,9 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
       className="agent-office-shell agent-office-chat-first-shell"
       style={{
         display: "grid",
-        gridTemplateColumns: canvasVisible ? "minmax(0, 1fr) minmax(360px, 42vw)" : "minmax(0, 1fr)",
+        gridTemplateColumns: canvasVisible
+          ? "minmax(0, 1fr) minmax(360px, 42vw)"
+          : "minmax(0, 1fr)",
       }}
     >
       <section className="agent-office-chat" aria-label="WDC CLI Chat home">
@@ -384,7 +387,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         <aside
           id="agent-office-canvas"
           className="agent-office-canvas"
-          aria-label="Resizable WDC Agent Office canvas"
+          aria-label="WDC Agent Office canvas"
           style={{
             minWidth: 360,
             maxWidth: 760,
@@ -405,7 +408,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
           <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
-          <details className="agent-office-loop">
+          <details className="agent-office-loop" open>
             <summary>Capability Library and recipe composer</summary>
             <CapabilityLibraryWorkspace
               entries={capabilityLibrary}
@@ -416,7 +419,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <ObjectInspector item={inspectedObject} />
           </details>
 
-          <details className="agent-office-loop">
+          <details className="agent-office-loop" open>
             <summary>Approval, route and proof boundary</summary>
             <div className="agent-office-debt-panel">
               <div className="agent-office-inspector-icon">
@@ -455,7 +458,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <p>
               EvidenceContractLedger:{" "}
               {evidenceContractLedger.length - evidenceContractIncompleteCount}/
-              {evidenceContractLedger.length} complete; incomplete {evidenceContractIncompleteCount}.
+              {evidenceContractLedger.length} complete; incomplete {evidenceContractIncompleteCount}
+              .
             </p>
             <p>
               MappingCandidateLedger: candidates {mappingCandidateLedger.length} / mapped{" "}
@@ -507,6 +511,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
           <details className="wdc-object-card-section">
             <summary>WDC object cards</summary>
+            <div className="agent-office-workstrip-label">Readable process cards</div>
+            <p className="agent-office-boundary-copy">no raw JSON default</p>
             <div className="wdc-object-card-grid">
               {wdcObjectCards.map((card) => (
                 <WDCObjectCard key={card.id} card={card} />
