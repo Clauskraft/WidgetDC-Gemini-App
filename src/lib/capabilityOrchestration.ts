@@ -29,9 +29,16 @@ export type ProviderId =
   | "provider:wdc-cli-chat"
   | "provider:gemini-app"
   | "provider:orbit"
+  | "provider:v0"
   | "provider:lovable"
+  | "provider:claude-design"
+  | "provider:figma-stitch"
   | "provider:claude-review"
   | "provider:vercel"
+  | "provider:github"
+  | "provider:linear"
+  | "provider:graph-rag"
+  | "provider:browser-playwright"
   | "provider:desksmith"
   | "provider:patternfactory"
   | "provider:harvestline"
@@ -96,6 +103,30 @@ export type CandidateProvider = {
   admissionState: "admitted" | "blocked" | "requires_preservation" | "not_applicable";
 };
 
+export type PrototypeBuilderLane =
+  | "prototype_builder"
+  | "design_review"
+  | "preview_deploy"
+  | "source_control"
+  | "governance_readback";
+
+export type PrototypeBuilderProvider = {
+  providerId: ProviderId;
+  label: string;
+  lane: PrototypeBuilderLane;
+  role: string;
+  capabilityFocus: CapabilityId[];
+  toolboxUse: string;
+  authState: "ready" | "login_required" | "token_required" | "wdc_session_required";
+  allowedActions: string[];
+  blockedActions: string[];
+  evidenceRequirements: string[];
+  handoffToWdc: string;
+  preferredWhen: string;
+  fallbackTo: ProviderId[];
+  boundary: EvidenceClass;
+};
+
 export type ProviderScoreInput = {
   capabilityFit: number;
   proofHistory: number;
@@ -158,6 +189,15 @@ export const demandIngressMatrix: DemandIngressEntry[] = [
     surface: "gemini_app",
     label: "Gemini App",
     role: "UX surface for demand entry, capability visibility, and proof readback.",
+    privileged: false,
+    firstGate: "CapabilityResolver",
+    evidenceClass: "candidate",
+    writeAllowed: false,
+  },
+  {
+    surface: "slash_alias",
+    label: "Prototype builder toolbox",
+    role: "User-visible access point for v0, Lovable, Vercel, Claude Design, Figma/Stitch, and source-control handoff.",
     privileged: false,
     firstGate: "CapabilityResolver",
     evidenceClass: "candidate",
@@ -462,6 +502,22 @@ export const candidateProviders: CandidateProvider[] = [
     admissionState: "admitted",
   },
   {
+    id: "provider:v0",
+    label: "v0 by Vercel",
+    providedCapabilities: [
+      "capability:prototype-generation",
+      "capability:ui-porting",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+    ],
+    costClass: "medium",
+    latencyClass: "interactive",
+    riskClass: "draft",
+    proofHistory: ["candidate_preview", "github_branch_or_export_required", "wdc_import_required"],
+    runtimeStatus: "candidate",
+    admissionState: "not_applicable",
+  },
+  {
     id: "provider:claude-review",
     label: "Claude review",
     providedCapabilities: ["capability:user-review", "capability:ui-porting"],
@@ -469,6 +525,38 @@ export const candidateProviders: CandidateProvider[] = [
     latencyClass: "async",
     riskClass: "draft",
     proofHistory: ["review_evidence_only"],
+    runtimeStatus: "candidate",
+    admissionState: "not_applicable",
+  },
+  {
+    id: "provider:claude-design",
+    label: "Claude Design",
+    providedCapabilities: [
+      "capability:prototype-generation",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+      "capability:user-review",
+    ],
+    costClass: "medium",
+    latencyClass: "async",
+    riskClass: "draft",
+    proofHistory: ["design_review_evidence_only", "wdc_import_required"],
+    runtimeStatus: "candidate",
+    admissionState: "not_applicable",
+  },
+  {
+    id: "provider:figma-stitch",
+    label: "Figma / Stitch",
+    providedCapabilities: [
+      "capability:prototype-generation",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+      "capability:user-review",
+    ],
+    costClass: "medium",
+    latencyClass: "async",
+    riskClass: "draft",
+    proofHistory: ["design_artifact_required", "code_connect_or_export_required"],
     runtimeStatus: "candidate",
     admissionState: "not_applicable",
   },
@@ -485,6 +573,68 @@ export const candidateProviders: CandidateProvider[] = [
     proofHistory: ["deployment_pattern_source"],
     runtimeStatus: "candidate",
     admissionState: "not_applicable",
+  },
+  {
+    id: "provider:github",
+    label: "GitHub",
+    providedCapabilities: [
+      "capability:repo-read",
+      "capability:repo-admission",
+      "capability:session-claim-coordination",
+      "capability:ui-porting",
+    ],
+    costClass: "low",
+    latencyClass: "interactive",
+    riskClass: "staged_write",
+    proofHistory: ["branch", "pull_request", "checks"],
+    runtimeStatus: "runtime_read_only",
+    admissionState: "admitted",
+  },
+  {
+    id: "provider:linear",
+    label: "Linear",
+    providedCapabilities: [
+      "capability:user-review",
+      "capability:project-tree",
+      "capability:session-claim-coordination",
+    ],
+    costClass: "low",
+    latencyClass: "interactive",
+    riskClass: "draft",
+    proofHistory: ["issue_scope", "status_readback"],
+    runtimeStatus: "runtime_read_only",
+    admissionState: "admitted",
+  },
+  {
+    id: "provider:graph-rag",
+    label: "Graph/RAG",
+    providedCapabilities: [
+      "capability:repo-read",
+      "capability:source-classification",
+      "capability:pattern-extraction",
+      "capability:evidence-boundary-rendering",
+    ],
+    costClass: "low",
+    latencyClass: "interactive",
+    riskClass: "read_only",
+    proofHistory: ["srag.query", "kg_rag.query", "reason_deeply"],
+    runtimeStatus: "runtime_read_only",
+    admissionState: "admitted",
+  },
+  {
+    id: "provider:browser-playwright",
+    label: "Browser / Playwright",
+    providedCapabilities: [
+      "capability:preview",
+      "capability:candidate-validation",
+      "capability:evidence-boundary-rendering",
+    ],
+    costClass: "low",
+    latencyClass: "interactive",
+    riskClass: "read_only",
+    proofHistory: ["visual_diagnostic", "dom_snapshot", "screenshot_evidence"],
+    runtimeStatus: "candidate",
+    admissionState: "admitted",
   },
   {
     id: "provider:desksmith",
@@ -648,6 +798,39 @@ export const exampleDemands: ExampleDemand[] = [
     requiredProof: ["preview", "exact_approval", "EventSpine_replay", "graph_readback"],
     blockedUnless: "Exact approval and materializer gates pass.",
   },
+  {
+    demand: "Build a world-class frontend prototype with multiple builder providers",
+    requiredCapabilities: [
+      "capability:prototype-generation",
+      "capability:ui-porting",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+      "capability:repo-admission",
+      "capability:project-tree",
+      "capability:preview",
+    ],
+    candidateProviders: [
+      "provider:wdc-cli",
+      "provider:v0",
+      "provider:lovable",
+      "provider:vercel",
+      "provider:claude-design",
+      "provider:figma-stitch",
+      "provider:github",
+      "provider:graph-rag",
+      "provider:browser-playwright",
+    ],
+    requiredProof: [
+      "WDC boot session",
+      "route_validate",
+      "adaptive_bom.compose",
+      "provider export or PR",
+      "frontend review",
+      "deployed SHA + 3 passes before runtime language",
+    ],
+    blockedUnless:
+      "WDC CLI resolves capability route and imports builder output through a governed branch/PR lane.",
+  },
 ];
 
 export const geminiUxContract = {
@@ -704,6 +887,14 @@ export const providerScoreProfiles: Record<ProviderId, ProviderScoreInput> = {
     risk: 0.7,
     compliance: 0.74,
   },
+  "provider:v0": {
+    capabilityFit: 0.9,
+    proofHistory: 0.56,
+    cost: 0.62,
+    latency: 0.9,
+    risk: 0.6,
+    compliance: 0.62,
+  },
   "provider:orbit": {
     capabilityFit: 0.88,
     proofHistory: 0.86,
@@ -720,6 +911,14 @@ export const providerScoreProfiles: Record<ProviderId, ProviderScoreInput> = {
     risk: 0.58,
     compliance: 0.58,
   },
+  "provider:claude-design": {
+    capabilityFit: 0.84,
+    proofHistory: 0.5,
+    cost: 0.6,
+    latency: 0.68,
+    risk: 0.64,
+    compliance: 0.66,
+  },
   "provider:claude-review": {
     capabilityFit: 0.72,
     proofHistory: 0.58,
@@ -728,6 +927,14 @@ export const providerScoreProfiles: Record<ProviderId, ProviderScoreInput> = {
     risk: 0.68,
     compliance: 0.7,
   },
+  "provider:figma-stitch": {
+    capabilityFit: 0.86,
+    proofHistory: 0.52,
+    cost: 0.58,
+    latency: 0.62,
+    risk: 0.66,
+    compliance: 0.68,
+  },
   "provider:vercel": {
     capabilityFit: 0.76,
     proofHistory: 0.62,
@@ -735,6 +942,38 @@ export const providerScoreProfiles: Record<ProviderId, ProviderScoreInput> = {
     latency: 0.82,
     risk: 0.64,
     compliance: 0.66,
+  },
+  "provider:github": {
+    capabilityFit: 0.82,
+    proofHistory: 0.88,
+    cost: 0.82,
+    latency: 0.74,
+    risk: 0.78,
+    compliance: 0.9,
+  },
+  "provider:linear": {
+    capabilityFit: 0.68,
+    proofHistory: 0.72,
+    cost: 0.84,
+    latency: 0.8,
+    risk: 0.78,
+    compliance: 0.82,
+  },
+  "provider:graph-rag": {
+    capabilityFit: 0.88,
+    proofHistory: 0.86,
+    cost: 0.84,
+    latency: 0.78,
+    risk: 0.9,
+    compliance: 0.92,
+  },
+  "provider:browser-playwright": {
+    capabilityFit: 0.78,
+    proofHistory: 0.62,
+    cost: 0.82,
+    latency: 0.76,
+    risk: 0.72,
+    compliance: 0.7,
   },
   "provider:desksmith": {
     capabilityFit: 0.7,
@@ -777,6 +1016,203 @@ export const providerScoreProfiles: Record<ProviderId, ProviderScoreInput> = {
     compliance: 0.9,
   },
 };
+
+export const prototypeBuilderRoutingSteps = [
+  "DemandIngress",
+  "CapabilityResolver",
+  "RequiredCapabilities",
+  "CandidateProviders",
+  "ProviderScoring",
+  "PrototypeBuilderToolbox",
+  "BOM / Route",
+  "ExecutionSurface",
+  "ProofBoundary",
+] as const;
+
+export const prototypeBuilderProviders: PrototypeBuilderProvider[] = [
+  {
+    providerId: "provider:wdc-cli",
+    label: "WDC CLI",
+    lane: "governance_readback",
+    role: "Authoritative route, boot, WorkBOM, claim, readback, A2A, and evidence lane.",
+    capabilityFocus: [
+      "capability:repo-admission",
+      "capability:session-claim-coordination",
+      "capability:project-tree",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Selects the provider route and records the proof boundary before any builder output is trusted.",
+    authState: "wdc_session_required",
+    allowedActions: ["boot", "route-validate", "adaptive BOM", "readback", "claim/release"],
+    blockedActions: ["raw provider promotion", "frontend-only runtime claim"],
+    evidenceRequirements: ["session id", "task_bom_id", "route validation", "clean target repo"],
+    handoffToWdc: "Already authoritative; other providers must hand evidence back here.",
+    preferredWhen: "Any task may mutate code, create PRs, deploy, or claim proof.",
+    fallbackTo: ["provider:github", "provider:graph-rag"],
+    boundary: "diagnostic",
+  },
+  {
+    providerId: "provider:v0",
+    label: "v0",
+    lane: "prototype_builder",
+    role: "Fast React/Tailwind prototype builder and code-generation surface.",
+    capabilityFocus: [
+      "capability:prototype-generation",
+      "capability:ui-porting",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Generate candidate UI, inspect preview, then export through PR/add-to-codebase before WDC import.",
+    authState: "ready",
+    allowedActions: ["generate candidate", "preview", "export branch", "open PR after WDC route"],
+    blockedActions: ["claim runtime proof", "direct graph truth", "provider-first selection"],
+    evidenceRequirements: ["chat URL", "version or PR", "screenshot", "source diff", "preview status"],
+    handoffToWdc: "WDC CLI imports the PR/export into an isolated branch and applies proof gates.",
+    preferredWhen: "Need high-speed interface exploration or component variants.",
+    fallbackTo: ["provider:lovable", "provider:claude-design"],
+    boundary: "candidate",
+  },
+  {
+    providerId: "provider:lovable",
+    label: "Lovable",
+    lane: "prototype_builder",
+    role: "Full-app prototype builder for UX exploration and interaction patterns.",
+    capabilityFocus: [
+      "capability:prototype-generation",
+      "capability:ui-porting",
+      "capability:brand-rendering",
+    ],
+    toolboxUse: "Generate full-page variants, capture structure and routes, then treat output as candidate evidence.",
+    authState: "login_required",
+    allowedActions: ["create project", "iterate design", "capture screenshot", "export candidate"],
+    blockedActions: ["source-of-truth claims", "runtime proof", "unreviewed direct merge"],
+    evidenceRequirements: ["project id", "public or authenticated URL", "export/PR", "candidate boundary"],
+    handoffToWdc: "WDC CLI classifies output, maps capability coverage, and ports only selected patterns.",
+    preferredWhen: "Need end-to-end app feel, layout alternatives, or product-story variants.",
+    fallbackTo: ["provider:v0", "provider:figma-stitch"],
+    boundary: "candidate",
+  },
+  {
+    providerId: "provider:claude-design",
+    label: "Claude Design",
+    lane: "design_review",
+    role: "Design critique, alternate information architecture, and concept synthesis lane.",
+    capabilityFocus: [
+      "capability:prototype-generation",
+      "capability:brand-rendering",
+      "capability:user-review",
+    ],
+    toolboxUse: "Review prototype quality and propose stronger interaction/visual patterns without becoming a gate.",
+    authState: "login_required",
+    allowedActions: ["design critique", "variant brief", "copy and hierarchy review"],
+    blockedActions: ["blocking peer signoff unless restored", "fake approval", "claim promotion"],
+    evidenceRequirements: ["review artifact", "explicit non-blocking boundary", "actionable findings"],
+    handoffToWdc: "Findings become candidate backlog or WDC work items, not automatic proof.",
+    preferredWhen: "Need taste, narrative, layout critique, and anti-generic-SaaS pressure.",
+    fallbackTo: ["provider:figma-stitch", "provider:browser-playwright"],
+    boundary: "candidate",
+  },
+  {
+    providerId: "provider:figma-stitch",
+    label: "Figma / Stitch",
+    lane: "design_review",
+    role: "Design-system, visual asset, and editable mockup toolbox.",
+    capabilityFocus: [
+      "capability:prototype-generation",
+      "capability:brand-rendering",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Convert sketches/screens to design-system candidates and align logo, tokens, spacing, and motion.",
+    authState: "login_required",
+    allowedActions: ["design file", "component inventory", "design-system review", "asset handoff"],
+    blockedActions: ["code proof", "runtime proof", "claim-ready language"],
+    evidenceRequirements: ["design file URL", "component list", "asset hashes", "porting notes"],
+    handoffToWdc: "WDC CLI maps assets/components to BOM/Lego slots before code porting.",
+    preferredWhen: "Need polished visual system, editable assets, or logo/design governance.",
+    fallbackTo: ["provider:claude-design", "provider:v0"],
+    boundary: "candidate",
+  },
+  {
+    providerId: "provider:vercel",
+    label: "Vercel",
+    lane: "preview_deploy",
+    role: "Preview/deployment package lane for Vercel projects and protected preview readback.",
+    capabilityFocus: [
+      "capability:preview",
+      "capability:prototype-generation",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Create preview deployments and fetch protected URLs, but only WDC readback can lift proof language.",
+    authState: "token_required",
+    allowedActions: ["preview deploy", "deployment logs", "protected URL fetch"],
+    blockedActions: ["runtime-proof claim without WDC SHA/readback", "secret leakage", "direct production mutation by default"],
+    evidenceRequirements: ["project id", "deployment id", "commit SHA", "deployment URL", "log status"],
+    handoffToWdc: "Deployment refs feed WDC runtime/readback gates and EventSpine evidence bundles.",
+    preferredWhen: "Need preview package, deploy diagnostics, or production deployment after explicit slice.",
+    fallbackTo: ["provider:github", "provider:browser-playwright"],
+    boundary: "diagnostic",
+  },
+  {
+    providerId: "provider:github",
+    label: "GitHub",
+    lane: "source_control",
+    role: "Branch, PR, checks, and L1 code-proof package lane.",
+    capabilityFocus: [
+      "capability:repo-admission",
+      "capability:ui-porting",
+      "capability:session-claim-coordination",
+    ],
+    toolboxUse: "Receives builder output as source diffs; PR and CI are code proof only.",
+    authState: "ready",
+    allowedActions: ["branch", "PR", "CI readback", "merge after gates"],
+    blockedActions: ["runtime proof from merge only", "unreviewed source import"],
+    evidenceRequirements: ["branch", "PR URL", "checks", "merge SHA"],
+    handoffToWdc: "WDC CLI validates git state, PR status, deployed SHA, and runtime verification.",
+    preferredWhen: "Any builder output is ready for code review and durable integration.",
+    fallbackTo: ["provider:wdc-cli"],
+    boundary: "diagnostic",
+  },
+  {
+    providerId: "provider:graph-rag",
+    label: "Graph/RAG",
+    lane: "governance_readback",
+    role: "Knowledge retrieval and historical pattern evidence lane.",
+    capabilityFocus: [
+      "capability:source-classification",
+      "capability:pattern-extraction",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Anchors provider decisions in WDC memory/graph/RAG before build actions.",
+    authState: "wdc_session_required",
+    allowedActions: ["srag.query", "kg_rag.query", "reason_deeply"],
+    blockedActions: ["graph write", "claim mutation", "source-free provider selection"],
+    evidenceRequirements: ["source ids", "reason quality", "route envelope"],
+    handoffToWdc: "RAG evidence shapes WorkBOM and provider scoring; it does not prove runtime behavior.",
+    preferredWhen: "Need platform strategy, patterns, or prior evidence before selecting a builder.",
+    fallbackTo: ["provider:wdc-cli"],
+    boundary: "diagnostic",
+  },
+  {
+    providerId: "provider:browser-playwright",
+    label: "Browser / Playwright",
+    lane: "governance_readback",
+    role: "Visual/DOM diagnostic lane for prototype and preview inspection.",
+    capabilityFocus: [
+      "capability:preview",
+      "capability:candidate-validation",
+      "capability:evidence-boundary-rendering",
+    ],
+    toolboxUse: "Reads visible prototype state and screenshots; never converts visuals into runtime proof.",
+    authState: "ready",
+    allowedActions: ["DOM readback", "screenshot", "visual diagnostic", "accessibility probe"],
+    blockedActions: ["external side effect without approval", "proof promotion", "secret entry without explicit scope"],
+    evidenceRequirements: ["URL", "visible state", "screenshot", "blocked/actionable finding"],
+    handoffToWdc: "Visual diagnostics become candidate evidence for WDC review and PR acceptance gates.",
+    preferredWhen: "Need to inspect v0/Lovable/Vercel previews or UI regressions.",
+    fallbackTo: ["provider:wdc-cli"],
+    boundary: "diagnostic",
+  },
+];
 
 export function scoreProvider(input: ProviderScoreInput) {
   const weighted =
