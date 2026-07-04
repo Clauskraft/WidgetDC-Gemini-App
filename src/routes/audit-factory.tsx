@@ -8,7 +8,7 @@ export const Route = createFileRoute("/audit-factory")({
       {
         name: "description",
         content:
-          "Candidate/L1 cockpit for WDC audit-factory readback, graph gaps, A2A handoffs, proof boundaries, and next safe actions.",
+          "Candidate/L1 capability-first WDC audit factory cockpit with readback, proof boundaries and next safe actions.",
       },
     ],
   }),

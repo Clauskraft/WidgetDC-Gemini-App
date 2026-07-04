@@ -10,6 +10,7 @@ import {
 import { createGuidedActionCandidate } from "@/features/frontend-toolbox/cockpitDomAgent";
 import { createKnowledgePackManifest } from "@/features/frontend-toolbox/knowledgePackFactory";
 import { TOOLBOX_PATTERNS } from "@/features/frontend-toolbox/toolboxCatalog";
+import { auditFactoryCockpitModel } from "@/lib/auditFactoryCockpit";
 
 type ProofBoundary = "candidate" | "diagnostic" | "runtime" | "claim";
 
@@ -89,6 +90,13 @@ const guidedActionCandidate = createGuidedActionCandidate({
 
 const openWikiPatterns = TOOLBOX_PATTERNS.filter((pattern) => pattern.source === "openwiki");
 const pageAgentPatterns = TOOLBOX_PATTERNS.filter((pattern) => pattern.source === "page-agent");
+const latestRuntimeReadback = auditFactoryCockpitModel.latestRuntimeReadback;
+const proofLedgerPanel =
+  auditFactoryCockpitModel.panels.find((panel) => panel.id === "proof-ledger") ??
+  auditFactoryCockpitModel.panels[0];
+const a2aContextPanel =
+  auditFactoryCockpitModel.panels.find((panel) => panel.id === "a2a-context-fold-timeline") ??
+  auditFactoryCockpitModel.panels[0];
 
 const auditLoopCockpitViewModel: AuditLoopCockpitViewModel = {
   taskBOM: "taskbom:adaptive:5ab30cbca68c",
@@ -188,21 +196,22 @@ const routeFlow = [
 const readbackPanels: CockpitPanel[] = [
   {
     title: "Current WDC status",
-    status: "mismatch",
+    status: "verified",
     evidenceSource: "Canonical WDC CLI status from C:/Users/claus/Projetcs/WidgeTDC",
     proofBoundary: "runtime",
-    lastReadback: "2026-07-03 canonical readback",
+    lastReadback: "2026-07-04 WDC CLI status readback",
     blockedReason:
-      "Batch anchor lists backend 6724bd4808c3 and 440 capabilities, while canonical readback shows backend a6c39c56a636 and 418 active capabilities.",
+      "Older batch anchors listed 440 active / 0 unstable / 0 offline; current readback is 431 active / 1 unstable / 0 offline.",
     nextSafeAction:
-      "Show both values and require fresh WDC readback before repeating batch numbers.",
+      "Use the current deployed SHA for #6837, but keep L3/runtime-proof blocked until three consecutive verification passes exist.",
     owner: "WDC CLI / Agent Office",
     items: [
       "Backend: GREEN",
-      "Canonical backend SHA: a6c39c56a636",
+      "Deployed backend SHA: 3353db0e901c40dd90b1fb67a3394ea68c714063",
       "GOV mode: enforce",
       "EventSpine: durable",
-      "Capabilities: 418 active / 0 unstable / 0 offline",
+      "Capabilities: 431 active / 1 unstable / 0 offline",
+      "Unstable: graph.overflow_retention_readback timeout",
     ],
   },
   {
@@ -465,6 +474,113 @@ export function AuditFactoryCockpit() {
             </aside>
           </div>
         </header>
+
+        <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm shadow-emerald-100/80">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
+                Audit Factory Cockpit proof boundary
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-emerald-950">
+                #6837 is deployed-SHA matched, not L3/runtime-proven.
+              </h2>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-emerald-950">
+                {auditFactoryCockpitModel.claimBoundary} Deployment policy: no deploy during
+                validation; deploy only in an explicit remediation slice; deployed SHA match plus
+                three consecutive verification passes are required before runtime-proof/L3 language.
+              </p>
+            </div>
+            <BoundaryBadge boundary="runtime" />
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-white/80 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Deployed SHA
+              </div>
+              <div className="mt-2 text-sm font-semibold text-emerald-950">
+                {latestRuntimeReadback.backendSha}
+              </div>
+              <div className="mt-1 text-xs leading-5 text-emerald-800">
+                Matches PR #6837 merge SHA readback.
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/80 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Capability health
+              </div>
+              <div className="mt-2 text-sm font-semibold text-emerald-950">
+                {latestRuntimeReadback.capabilitiesActive} active /{" "}
+                {latestRuntimeReadback.capabilitiesUnstable} unstable /{" "}
+                {latestRuntimeReadback.capabilitiesOffline} offline
+              </div>
+              <div className="mt-1 text-xs leading-5 text-emerald-800">
+                {latestRuntimeReadback.capabilityReadbackNote}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/80 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Runtime passes
+              </div>
+              <div className="mt-2 text-sm font-semibold text-emerald-950">0/3</div>
+              <div className="mt-1 text-xs leading-5 text-emerald-800">
+                {proofLedgerPanel.blockedReason}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/80 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                A2A anchors
+              </div>
+              <div className="mt-2 text-xs font-semibold leading-5 text-emerald-950">
+                {`AuditForeman handoff ${auditFactoryCockpitModel.batchAnchors.auditForemanHandoff}`}
+              </div>
+              <div className="mt-1 text-xs font-semibold leading-5 text-emerald-950">
+                {`SentinelQA request ${auditFactoryCockpitModel.batchAnchors.sentinelQaReviewRequest}`}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-2xl border border-emerald-200 bg-white/70 p-4">
+              <div className="text-sm font-semibold text-emerald-950">FrontendGapBlock list</div>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900">
+                {auditFactoryCockpitModel.frontendGapBlocks.map((gap) => (
+                  <li key={gap.id}>
+                    {gap.label}: {gap.status}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-white/70 p-4">
+              <div className="text-sm font-semibold text-emerald-950">
+                CockpitReadbackCandidate list
+              </div>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900">
+                {auditFactoryCockpitModel.cockpitReadbackCandidates.map((candidate) => (
+                  <li key={candidate.id}>
+                    {candidate.label}: {candidate.observed}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-white/70 p-4">
+              <div className="text-sm font-semibold text-emerald-950">UXProofBlock list</div>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-900">
+                {auditFactoryCockpitModel.uxProofBlocks.map((block) => (
+                  <li key={block.id}>
+                    {block.boundary} {block.id === "candidate-vs-runtime" ? "" : block.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-sm leading-6 text-emerald-900">
+                Lifecycle caveat: {a2aContextPanel.blockedReason}
+              </p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-emerald-950">
+                Next safe action: {proofLedgerPanel.nextSafeAction}
+              </p>
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-200/70">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
