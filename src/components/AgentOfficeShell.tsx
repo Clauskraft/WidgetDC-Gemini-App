@@ -13,9 +13,13 @@ import {
   BookOpen,
   Brain,
   CheckCircle2,
+  ExternalLink,
   FileSearch,
+  GitBranch,
   Radar,
+  ShieldCheck,
   Sparkles,
+  Terminal,
 } from "lucide-react";
 import { AgentOfficeCommandPalette } from "@/components/AgentOfficeCommandPalette";
 import { BrokerageRouteCard } from "@/components/BrokerageRouteCard";
@@ -74,6 +78,119 @@ const workModes: WorkModeView[] = WORK_MODES.map((mode) => ({
   ...mode,
   ...modeVisuals[mode.id],
 }));
+
+const FIGMA_SURFACE = {
+  name: "Figma Product Surface v1",
+  url: "https://www.figma.com/design/mlnm4xnjrO0aEgVJ7erb6d",
+  desktopNode: "2:2",
+  mobileNode: "2:139",
+  branch: "codex/lin-953-figma-surface-sync",
+  boundary: [
+    "candidate/L1 only",
+    "no graph writes",
+    "no Railway mutation",
+    "no claim promotion",
+    "Vercel paused",
+  ],
+};
+
+const wdcCliToolbox = [
+  {
+    command: "wdc boot session",
+    state: "ready",
+    description: "Hydrates Agent Office session, WorkBOM and A2A context.",
+  },
+  {
+    command: "wdc route-validate",
+    state: "ready",
+    description: "Keeps demand routing explicit before implementation.",
+  },
+  {
+    command: "adaptive_bom.compose",
+    state: "candidate",
+    description: "Composes Lego/BOM candidates without graph promotion.",
+  },
+  {
+    command: "wdc a2a send",
+    state: "gated",
+    description: "Broadcasts handoff or review requests through typed A2A.",
+  },
+  {
+    command: "proof boundary readback",
+    state: "blocked",
+    description: "Runtime proof waits for deployed SHA plus three route checks.",
+  },
+];
+
+function WDCLogoMark() {
+  return (
+    <span className="wdc-logo-mark" aria-label="WDC logo">
+      <span className="wdc-logo-mark-antenna" />
+      <span className="wdc-logo-mark-face">
+        <span />
+        <span />
+      </span>
+    </span>
+  );
+}
+
+function FigmaSurfaceSyncPanel() {
+  return (
+    <section className="agent-office-figma-panel" aria-label="Figma product surface sync">
+      <div className="agent-office-panel-head">
+        <div className="agent-office-figma-title">
+          <WDCLogoMark />
+          <div>
+            <strong>{FIGMA_SURFACE.name}</strong>
+            <span>{`Desktop node ${FIGMA_SURFACE.desktopNode} · Mobile node ${FIGMA_SURFACE.mobileNode}`}</span>
+          </div>
+        </div>
+        <a href={FIGMA_SURFACE.url} target="_blank" rel="noreferrer">
+          Design source
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </div>
+      <p>
+        Gemini App mirrors the Figma direction as a chat-first product surface: assistant first,
+        resizable canvas second, WDC CLI tools and proof gates always visible as typed boundaries.
+      </p>
+      <div className="agent-office-proof-strip">
+        {FIGMA_SURFACE.boundary.map((item) => (
+          <span key={item}>{item}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WdcCliToolboxPanel() {
+  return (
+    <section className="agent-office-figma-panel" aria-label="WDC CLI toolbox">
+      <div className="agent-office-panel-head">
+        <div className="agent-office-figma-title">
+          <Terminal className="h-4 w-4" />
+          <div>
+            <strong>WDC CLI toolbox</strong>
+            <span>Boot · route · BOM · A2A · proof boundary</span>
+          </div>
+        </div>
+        <span className="agent-office-branch-chip">
+          <GitBranch className="h-3.5 w-3.5" />
+          {FIGMA_SURFACE.branch}
+        </span>
+      </div>
+      <div className="agent-office-toolbox-grid">
+        {wdcCliToolbox.map((tool) => (
+          <div className="agent-office-command-chip" data-state={tool.state} key={tool.command}>
+            <code>{tool.command}</code>
+            <span>{tool.state}</span>
+            <p>{tool.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export function WorkModeSwitcher({
   activeModeId,
@@ -341,13 +458,13 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         <div className="agent-office-workstrip">
           <div>
             <div className="agent-office-kicker">
-              <Sparkles className="h-3.5 w-3.5" />
-              Chat-first WDC Agent Office
+              <WDCLogoMark />
+              Figma Product Surface v1 synced
             </div>
             <h1>WDC CLI Chat workspace</h1>
             <p>
-              Start with the assistant. Canvas, library, proof gates and debug details are secondary
-              workspace surfaces, not the landing-page product.
+              Start with the assistant. Canvas, library, WDC CLI tools, proof gates and debug
+              details are secondary workspace surfaces, not competing landing-page walls.
             </p>
           </div>
           <div className="agent-office-header-actions">
@@ -380,6 +497,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           ))}
         </div>
 
+        <FigmaSurfaceSyncPanel />
+
         {workspaceChildren}
       </section>
 
@@ -409,6 +528,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
           <details className="agent-office-loop" open>
+            <summary>WDC CLI toolbox and Figma sync</summary>
+            <WdcCliToolboxPanel />
+          </details>
+
+          <details className="agent-office-loop" open>
             <summary>Capability Library and recipe composer</summary>
             <CapabilityLibraryWorkspace
               entries={capabilityLibrary}
@@ -423,7 +547,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <summary>Approval, route and proof boundary</summary>
             <div className="agent-office-debt-panel">
               <div className="agent-office-inspector-icon">
-                <AlertTriangle className="h-4 w-4" />
+                <ShieldCheck className="h-4 w-4" />
               </div>
               <div>
                 <div className="agent-office-workstrip-label">ApprovalGatePanel</div>
