@@ -14,10 +14,12 @@ export default defineConfig({
   },
   // Self-hosted (Railway) deploy target. Outside a Lovable sandbox this pins the
   // nitro preset to a standalone Node server (.output/server/index.mjs) instead
-  // of the Cloudflare default. Inside a Lovable sandbox these overrides are
-  // ignored and the Cloudflare layout is forced (see config docs).
+  // of the Cloudflare default. Vercel sets VERCEL=1 during build, so use Nitro's
+  // Vercel output there instead of making Vercel look for a non-existent dist/.
+  // Inside a Lovable sandbox these overrides are ignored and the Cloudflare
+  // layout is forced (see config docs).
   nitro: {
-    preset: "node-server",
+    preset: process.env.VERCEL ? "vercel" : "node-server",
   },
   vite: {
     // Keep the graph/figure rendering stack pre-optimized in dev. If Vite discovers
