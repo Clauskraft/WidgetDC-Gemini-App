@@ -24,12 +24,12 @@ export function CapabilityResolverPanel() {
             </span>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight">
-            Universal Capability Orchestration
+            Capability Cockpit
           </h2>
           <p className="max-w-3xl text-sm leading-6 text-stone-300">
-            Demand is resolved into capabilities before routing. Providers are scored by fit, proof
-            history, cost, latency, risk, and compliance. Gemini App remains a UX surface for
-            visibility and review, not a privileged orchestrator.
+            Universal Capability Orchestration resolves demand into capabilities before routing.
+            Providers are scored by fit, proof history, cost, latency, risk, and compliance. Gemini
+            App remains a UX surface for visibility and review, not a privileged orchestrator.
           </p>
         </div>
         <div className="rounded-2xl border border-stone-700 bg-stone-900/80 p-4 text-sm">
