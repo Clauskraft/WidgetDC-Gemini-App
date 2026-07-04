@@ -141,11 +141,11 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
     backendSha: "3353db0e901c",
     govMode: "enforce",
     eventSpine: "durable",
-    capabilitiesActive: 432,
-    capabilitiesUnstable: 0,
+    capabilitiesActive: 431,
+    capabilitiesUnstable: 1,
     capabilitiesOffline: 0,
     capabilityReadbackNote:
-      "Latest WDC readback supersedes the older 431 active / 1 unstable / 0 offline and batch-anchor 440 active / 0 unstable / 0 offline states.",
+      "Static cockpit sample from WDC status. Recent samples include 432 active / 0 unstable / 0 offline and the older batch-anchor 440 active / 0 unstable / 0 offline; run WDC CLI for current truth.",
   },
   routeTree: {
     nodes: [
@@ -311,8 +311,8 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
       nextSafeAction: "Render RequiredCapabilities, then candidate providers, then scoring.",
       owner: "WDC CLI",
       metrics: [
-        { label: "active", value: "432", tone: "pass" },
-        { label: "unstable", value: "0", tone: "pass" },
+        { label: "active sample", value: "431", tone: "pass" },
+        { label: "unstable sample", value: "1", tone: "watch" },
         { label: "offline", value: "0", tone: "pass" },
       ],
     },
@@ -523,10 +523,11 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
     {
       id: "capability-count",
       label: "Capabilities",
-      observed: "432 active / 0 unstable / 0 offline",
+      observed: "431 active / 1 unstable / 0 offline",
       evidenceLevel: "runtime",
       source: "wdc status --json",
-      caveat: "Differs from older 431/1/0 and batch-anchor 440/0/0 states.",
+      caveat:
+        "Capability health is a volatile static sample; recent samples also include 432/0/0 and batch-anchor 440/0/0.",
     },
     {
       id: "repo-admission",
@@ -673,7 +674,7 @@ export function validateAuditFactoryCockpit(model: AuditFactoryCockpitModel) {
   if (!model.claimBoundary.includes("WDC CLI and Agent Office remain the authority")) {
     failures.push("claim boundary must name WDC CLI and Agent Office as authority");
   }
-  if (!model.latestRuntimeReadback.capabilityReadbackNote.includes("supersedes the older")) {
+  if (!model.latestRuntimeReadback.capabilityReadbackNote.includes("Static cockpit sample")) {
     failures.push("stale capability anchor mismatch must stay visible");
   }
   return { ok: failures.length === 0, failures };
