@@ -201,7 +201,7 @@ const readbackPanels: CockpitPanel[] = [
     proofBoundary: "runtime",
     lastReadback: "2026-07-04 WDC CLI status readback",
     blockedReason:
-      "Older batch anchors listed 440 active / 0 unstable / 0 offline; current readback is 431 active / 1 unstable / 0 offline.",
+      "Older readbacks listed 431 active / 1 unstable / 0 offline and batch anchors listed 440 active / 0 unstable / 0 offline; current readback is 432 active / 0 unstable / 0 offline.",
     nextSafeAction:
       "Use the current deployed SHA for #6837, but keep L3/runtime-proof blocked until three consecutive verification passes exist.",
     owner: "WDC CLI / Agent Office",
@@ -210,8 +210,7 @@ const readbackPanels: CockpitPanel[] = [
       "Deployed backend SHA: 3353db0e901c40dd90b1fb67a3394ea68c714063",
       "GOV mode: enforce",
       "EventSpine: durable",
-      "Capabilities: 431 active / 1 unstable / 0 offline",
-      "Unstable: graph.overflow_retention_readback timeout",
+      "Capabilities: 432 active / 0 unstable / 0 offline",
     ],
   },
   {

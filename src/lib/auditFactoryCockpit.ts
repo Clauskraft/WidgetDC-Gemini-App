@@ -141,11 +141,11 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
     backendSha: "3353db0e901c",
     govMode: "enforce",
     eventSpine: "durable",
-    capabilitiesActive: 431,
-    capabilitiesUnstable: 1,
+    capabilitiesActive: 432,
+    capabilitiesUnstable: 0,
     capabilitiesOffline: 0,
     capabilityReadbackNote:
-      "Latest WDC readback supersedes the older batch anchor of 440 active / 0 unstable / 0 offline; graph.overflow_retention_readback is currently unstable.",
+      "Latest WDC readback supersedes the older 431 active / 1 unstable / 0 offline and batch-anchor 440 active / 0 unstable / 0 offline states.",
   },
   routeTree: {
     nodes: [
@@ -311,8 +311,8 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
       nextSafeAction: "Render RequiredCapabilities, then candidate providers, then scoring.",
       owner: "WDC CLI",
       metrics: [
-        { label: "active", value: "431", tone: "pass" },
-        { label: "unstable", value: "1", tone: "watch" },
+        { label: "active", value: "432", tone: "pass" },
+        { label: "unstable", value: "0", tone: "pass" },
         { label: "offline", value: "0", tone: "pass" },
       ],
     },
@@ -523,10 +523,10 @@ export const auditFactoryCockpitModel: AuditFactoryCockpitModel = {
     {
       id: "capability-count",
       label: "Capabilities",
-      observed: "431 active / 1 unstable / 0 offline",
+      observed: "432 active / 0 unstable / 0 offline",
       evidenceLevel: "runtime",
       source: "wdc status --json",
-      caveat: "Differs from older batch anchor 440/0/0.",
+      caveat: "Differs from older 431/1/0 and batch-anchor 440/0/0 states.",
     },
     {
       id: "repo-admission",
@@ -673,14 +673,7 @@ export function validateAuditFactoryCockpit(model: AuditFactoryCockpitModel) {
   if (!model.claimBoundary.includes("WDC CLI and Agent Office remain the authority")) {
     failures.push("claim boundary must name WDC CLI and Agent Office as authority");
   }
-  if (model.latestRuntimeReadback.capabilitiesUnstable === 0) {
-    failures.push("latest readback must not hide current unstable capability");
-  }
-  if (
-    !model.latestRuntimeReadback.capabilityReadbackNote.includes(
-      "supersedes the older batch anchor",
-    )
-  ) {
+  if (!model.latestRuntimeReadback.capabilityReadbackNote.includes("supersedes the older")) {
     failures.push("stale capability anchor mismatch must stay visible");
   }
   return { ok: failures.length === 0, failures };

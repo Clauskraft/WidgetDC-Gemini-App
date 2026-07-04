@@ -34,16 +34,14 @@ describe("auditFactoryCockpit", () => {
   it("keeps stale readback mismatches visible instead of hiding them", () => {
     const model = getAuditFactoryCockpitModel();
 
-    expect(model.latestRuntimeReadback.capabilitiesActive).toBe(431);
-    expect(model.latestRuntimeReadback.capabilitiesUnstable).toBe(1);
-    expect(model.latestRuntimeReadback.capabilityReadbackNote).toContain(
-      "supersedes the older batch anchor",
-    );
+    expect(model.latestRuntimeReadback.capabilitiesActive).toBe(432);
+    expect(model.latestRuntimeReadback.capabilitiesUnstable).toBe(0);
+    expect(model.latestRuntimeReadback.capabilityReadbackNote).toContain("supersedes the older");
     expect(model.cockpitReadbackCandidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "capability-count",
-          observed: "431 active / 1 unstable / 0 offline",
+          observed: "432 active / 0 unstable / 0 offline",
           caveat: expect.stringContaining("440/0/0"),
         }),
       ]),
