@@ -205,8 +205,10 @@ export type WorkspaceRailItem = {
 
 export const workspaceRail: WorkspaceRailItem[] = [
   { id: "demand", label: "Demand composer", hint: "Capture + resolve demand" },
+  { id: "pipeline", label: "Routing pipeline", hint: "Demand → Proof order" },
   { id: "capabilities", label: "Capability library", hint: "Searchable inventory" },
   { id: "providers", label: "Candidate providers", hint: "Scored fit / proof / risk" },
+  { id: "registry", label: "Provider registry", hint: "Toolbox matrix", count: 13 },
   { id: "bom", label: "BOM / LegoFactory", hint: "WorkBOM → CloseoutTree", count: bomChain.length },
   { id: "proof", label: "Proof boundaries", hint: "Candidate → claim" },
   { id: "toolbox", label: "Provider toolbox", hint: "v0 · Lovable · Vercel · Figma" },

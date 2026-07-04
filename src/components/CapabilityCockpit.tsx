@@ -5,9 +5,13 @@ import {
   CircuitBoard,
   Crosshair,
   Cpu,
+  GitFork,
   Layers,
+  LayoutGrid,
+  Lock,
   PanelLeftClose,
   PanelLeftOpen,
+  Route,
   Search,
   ShieldCheck,
   Sparkles,
@@ -42,6 +46,15 @@ import {
   type ToolboxProvider,
 } from "@/lib/cockpitModel";
 import type { CandidateProvider } from "@/lib/capabilityOrchestration";
+import {
+  candidateProvidersForCapabilities,
+  LANE_LABELS,
+  providerRegistry,
+  REGISTRY_LANES,
+  routingPipeline,
+  type ProviderLane,
+  type RegistryProvider,
+} from "@/lib/providerRegistry";
 
 type InspectorTarget = {
   kind: string;
@@ -141,6 +154,47 @@ function toolboxToInspector(tool: ToolboxProvider): InspectorTarget {
   };
 }
 
+const REG_READINESS_STYLE: Record<RegistryProvider["readiness"], string> = {
+  ready: "bg-emerald-400/15 text-emerald-300",
+  dry_run_only: "bg-sky-400/15 text-sky-300",
+  approval_required: "bg-amber-300/15 text-amber-200",
+  blocked: "bg-red-400/15 text-red-300",
+};
+
+const SCORE_STYLE: Record<RegistryProvider["cost"], string> = {
+  low: "text-emerald-300",
+  medium: "text-amber-200",
+  high: "text-red-300",
+};
+
+function registryToInspector(provider: RegistryProvider): InspectorTarget {
+  return {
+    kind: "registry-provider",
+    title: provider.label,
+    summary: `${LANE_LABELS[provider.lane]} · ${provider.vendor}. Adapter ${provider.adapter.protocol} — write authority none. Max proof reachable: ${provider.maxProof}.`,
+    boundary: `auth: ${provider.auth.replace(/_/g, " ")} · readiness: ${provider.readiness.replace(/_/g, " ")} · write authority: none`,
+    tags: provider.providesCapabilities.map((cap) => cap.replace("capability:", "")),
+    rows: [
+      { label: "lane", value: LANE_LABELS[provider.lane] },
+      { label: "fit score", value: `${provider.fitScore}/100` },
+      { label: "cost · latency · risk", value: `${provider.cost} · ${provider.latency} · ${provider.risk}` },
+      { label: "allowed actions", value: provider.allowedActions.join(", ") },
+      { label: "blocked actions", value: provider.blockedActions.join(", ") },
+      { label: "evidence requirements", value: provider.evidenceRequirements.join(", ") },
+      { label: "quorum / review", value: `${provider.quorum.replace(/_/g, " ")} — ${provider.reviewMode}` },
+      {
+        label: "fallback routes",
+        value: provider.fallbacks.length ? provider.fallbacks.join(" → ") : "none (terminal)",
+      },
+      {
+        label: "adapter contract",
+        value: `${provider.adapter.protocol}: ${provider.adapter.inputEnvelope} → ${provider.adapter.outputEnvelope}`,
+      },
+      { label: "max proof", value: provider.maxProof },
+    ],
+  };
+}
+
 export function CapabilityCockpit() {
   const library = useMemo(() => buildCapabilityLibrary(), []);
 
@@ -163,6 +217,8 @@ export function CapabilityCockpit() {
   const [resolveError, setResolveError] = useState<string | null>(null);
   const resolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [lane, setLane] = useState<ProviderLane | "all">("all");
+
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -177,6 +233,19 @@ export function CapabilityCockpit() {
   );
 
   const providers = useMemo(() => scoredProviders(), []);
+
+  // Routing invariant: eligible registry providers only exist AFTER capability
+  // resolution. Before resolution this set is empty — selection cannot precede it.
+  const eligibleRegistryIds = useMemo(() => {
+    if (!resolved) return new Set<string>();
+    const capIds = resolved.capabilities.map((cap) => cap.id);
+    return new Set(candidateProvidersForCapabilities(capIds).map((p) => p.id));
+  }, [resolved]);
+
+  const registryRows = useMemo(
+    () => providerRegistry.filter((provider) => lane === "all" || provider.lane === lane),
+    [lane],
+  );
 
   const candidateTotal = useMemo(
     () => library.filter((entry) => entry.kind === kind).length,
@@ -406,6 +475,67 @@ export function CapabilityCockpit() {
               </div>
             </section>
 
+            {/* Routing pipeline */}
+            <section id="section-pipeline" className="scroll-mt-4">
+              <SectionHeading
+                icon={<Route className="h-4 w-4" />}
+                title="Routing pipeline"
+                subtitle="Demand → CapabilityResolver → RequiredCapabilities → CandidateProviders → ProviderScoring → BOM/Route → ExecutionSurface → Proof. Provider selection cannot precede capability resolution."
+              />
+              <div className="rounded-2xl border border-stone-700/60 bg-stone-900/60 p-4 sm:p-5">
+                <ol className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-stretch">
+                  {routingPipeline.map((stage, index) => {
+                    const gated = stage.id === "candidates" || stage.id === "scoring";
+                    const unlocked = gated ? Boolean(resolved) : true;
+                    const isExecution = stage.id === "execution" || stage.id === "proof";
+                    return (
+                      <li
+                        key={stage.id}
+                        className="flex items-stretch gap-2 lg:flex-1 lg:min-w-[7.5rem]"
+                      >
+                        <div
+                          className={`flex w-full flex-col gap-1 rounded-xl border p-2.5 transition ${
+                            isExecution
+                              ? "border-stone-800 bg-stone-950/40"
+                              : unlocked
+                                ? "border-amber-300/40 bg-amber-300/5"
+                                : "border-stone-800 bg-stone-950/40 opacity-70"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-mono text-[10px] text-stone-500">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            {gated && !unlocked ? (
+                              <Lock className="h-3 w-3 text-stone-500" aria-label="Locked until resolved" />
+                            ) : null}
+                            {isExecution ? (
+                              <span className="rounded-full bg-stone-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-stone-500">
+                                off-cockpit
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="text-xs font-semibold leading-tight text-stone-100">
+                            {stage.label}
+                          </span>
+                          <span className="text-[10px] leading-4 text-stone-400">{stage.role}</span>
+                          <span className="mt-auto text-[9px] leading-3 text-stone-600">
+                            {stage.gate}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500">
+                  <Lock className="h-3 w-3" />
+                  {resolved
+                    ? "Demand resolved — CandidateProviders and ProviderScoring unlocked below."
+                    : "CandidateProviders + ProviderScoring stay locked until a demand is resolved."}
+                </p>
+              </div>
+            </section>
+
             {/* Capability library */}
             <section id="section-capabilities" className="scroll-mt-4">
               <SectionHeading
@@ -567,6 +697,198 @@ export function CapabilityCockpit() {
                     </button>
                   );
                 })}
+              </div>
+            </section>
+
+            {/* Provider registry + toolbox matrix */}
+            <section id="section-registry" className="scroll-mt-4">
+              <SectionHeading
+                icon={<LayoutGrid className="h-4 w-4" />}
+                title="Provider registry · toolbox matrix"
+                subtitle="Auth, readiness, allowed/blocked actions, evidence, cost/latency/risk, fallbacks, quorum and adapter contracts. Every adapter has write authority: none."
+              />
+              <div className="rounded-2xl border border-stone-700/60 bg-stone-900/60 p-4 sm:p-5">
+                <div className="mb-3 flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Provider lane">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={lane === "all"}
+                    onClick={() => setLane("all")}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                      lane === "all"
+                        ? "bg-amber-300 text-stone-950"
+                        : "border border-stone-700 text-stone-300 hover:border-amber-300/40 hover:text-amber-100"
+                    }`}
+                  >
+                    All lanes
+                  </button>
+                  {REGISTRY_LANES.map((laneId) => (
+                    <button
+                      key={laneId}
+                      type="button"
+                      role="tab"
+                      aria-selected={lane === laneId}
+                      onClick={() => setLane(laneId)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                        lane === laneId
+                          ? "bg-amber-300 text-stone-950"
+                          : "border border-stone-700 text-stone-300 hover:border-amber-300/40 hover:text-amber-100"
+                      }`}
+                    >
+                      {LANE_LABELS[laneId]}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mb-3 flex items-center justify-between text-[11px] text-stone-500">
+                  <span>
+                    <span className="font-semibold text-amber-200">{registryRows.length}</span> of{" "}
+                    {providerRegistry.length} registry providers
+                  </span>
+                  <span className="uppercase tracking-wider">
+                    {resolved
+                      ? `${eligibleRegistryIds.size} eligible for resolved demand`
+                      : "resolve a demand to mark eligibility"}
+                  </span>
+                </div>
+
+                {/* Matrix: scrollable table on desktop, cards on mobile */}
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-500">
+                        <th className="px-2 py-2 font-medium">Provider</th>
+                        <th className="px-2 py-2 font-medium">Auth</th>
+                        <th className="px-2 py-2 font-medium">Readiness</th>
+                        <th className="px-2 py-2 font-medium">Fit</th>
+                        <th className="px-2 py-2 font-medium">Cost/Lat/Risk</th>
+                        <th className="px-2 py-2 font-medium">Max proof</th>
+                        <th className="px-2 py-2 font-medium">Quorum</th>
+                        <th className="px-2 py-2 font-medium">Fallbacks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registryRows.map((provider) => {
+                        const active = selectedId === provider.id;
+                        const eligible = eligibleRegistryIds.has(provider.id);
+                        return (
+                          <tr
+                            key={provider.id}
+                            tabIndex={0}
+                            role="button"
+                            aria-pressed={active}
+                            onClick={() => select(provider.id, registryToInspector(provider))}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                select(provider.id, registryToInspector(provider));
+                              }
+                            }}
+                            className={`cursor-pointer border-b border-stone-800/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                              active ? "bg-amber-300/10" : "hover:bg-stone-800/40"
+                            }`}
+                          >
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-stone-100">{provider.label}</span>
+                                {eligible ? (
+                                  <span className="rounded-full bg-emerald-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-300">
+                                    eligible
+                                  </span>
+                                ) : null}
+                              </div>
+                              <span className="text-[10px] text-stone-500">
+                                {LANE_LABELS[provider.lane]}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-stone-400">
+                              {provider.auth.replace(/_/g, " ")}
+                            </td>
+                            <td className="px-2 py-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${REG_READINESS_STYLE[provider.readiness]}`}
+                              >
+                                {provider.readiness.replace(/_/g, " ")}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 font-semibold text-amber-200">
+                              {provider.fitScore}
+                            </td>
+                            <td className="px-2 py-2 text-[11px]">
+                              <span className={SCORE_STYLE[provider.cost]}>{provider.cost}</span>
+                              <span className="text-stone-600"> · </span>
+                              <span className={SCORE_STYLE[provider.latency]}>{provider.latency}</span>
+                              <span className="text-stone-600"> · </span>
+                              <span className={SCORE_STYLE[provider.risk]}>{provider.risk}</span>
+                            </td>
+                            <td className="px-2 py-2">
+                              <span className="rounded-full border border-stone-700 px-2 py-0.5 text-[10px] text-stone-400">
+                                {provider.maxProof}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-[10px] text-stone-400">
+                              {provider.quorum.replace(/_/g, " ")}
+                            </td>
+                            <td className="px-2 py-2 text-[10px] text-stone-500">
+                              {provider.fallbacks.length ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <GitFork className="h-3 w-3" />
+                                  {provider.fallbacks.join(" → ")}
+                                </span>
+                              ) : (
+                                "terminal"
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <ul className="grid gap-2 md:hidden">
+                  {registryRows.map((provider) => {
+                    const active = selectedId === provider.id;
+                    const eligible = eligibleRegistryIds.has(provider.id);
+                    return (
+                      <li key={provider.id}>
+                        <button
+                          type="button"
+                          onClick={() => select(provider.id, registryToInspector(provider))}
+                          className={`flex w-full flex-col gap-1.5 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 ${
+                            active
+                              ? "border-amber-300/70 bg-amber-300/10"
+                              : "border-stone-800 bg-stone-950/50 hover:border-stone-600"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-stone-100">
+                              {provider.label}
+                            </span>
+                            <span className="text-base font-bold text-amber-200">
+                              {provider.fitScore}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${REG_READINESS_STYLE[provider.readiness]}`}
+                            >
+                              {provider.readiness.replace(/_/g, " ")}
+                            </span>
+                            <MiniTag>{LANE_LABELS[provider.lane]}</MiniTag>
+                            <MiniTag>proof: {provider.maxProof}</MiniTag>
+                            {eligible ? (
+                              <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                                eligible
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </section>
 
