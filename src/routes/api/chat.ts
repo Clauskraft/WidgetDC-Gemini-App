@@ -43,6 +43,7 @@ const routeSchema = z
     model: z.string().optional(),
     deep: z.boolean().optional(),
     council: z.boolean().optional(),
+    wdc_no_provider_probe: z.boolean().optional(),
   })
   .passthrough();
 
@@ -86,11 +87,63 @@ function chatPreferences(body: z.infer<typeof routeSchema>) {
   };
 }
 
+function wantsNoProviderProbe(request: Request, body: z.infer<typeof routeSchema>): boolean {
+  const header = request.headers.get("x-wdc-no-provider-probe")?.trim().toLowerCase();
+  return body.wdc_no_provider_probe === true && (header === "1" || header === "true");
+}
+
+function noProviderProbeResponse(correlationId: string): Response {
+  const encoder = new TextEncoder();
+  const base = {
+    mode: "no_provider_probe",
+    correlation_id: correlationId,
+    provider_calls: 0,
+    graph_writes: 0,
+    railway_mutations: 0,
+    claim_promotions: 0,
+    proof_boundary: "diagnostic_transport_probe",
+  };
+  const events = [
+    ["wdc.probe.pending", { ...base, state: "pending", sequence: 1 }],
+    ["wdc.probe.streaming", { ...base, state: "streaming", sequence: 2 }],
+    [
+      "wdc.probe.error_state_evidence",
+      {
+        ...base,
+        state: "error",
+        sequence: 3,
+        simulated: true,
+        http_status_unchanged: 200,
+      },
+    ],
+    ["wdc.probe.complete", { ...base, state: "complete", sequence: 4 }],
+  ] satisfies Array<[string, Record<string, unknown>]>;
+
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const [event, data] of events) {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "x-correlation-id": correlationId,
+      "x-wdc-no-provider-probe": "true",
+    },
+  });
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
-        const correlationId = crypto.randomUUID();
+        const correlationId = request.headers.get("x-correlation-id") || crypto.randomUUID();
         let json: unknown;
         try {
           json = await request.json();
@@ -102,6 +155,10 @@ export const Route = createFileRoute("/api/chat")({
           return new Response(parsed.error.message, { status: 400 });
         }
         const body = parsed.data;
+        if (wantsNoProviderProbe(request, body)) {
+          return noProviderProbeResponse(correlationId);
+        }
+
         const lastUser = [...body.messages].reverse().find((m) => m.role === "user");
         const intent = messageText(lastUser);
 

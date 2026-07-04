@@ -47,7 +47,11 @@ vi.mock("@/lib/chatTools.server", () => ({
   MAX_TOOL_ROUNDS: 0,
 }));
 
-async function invokeChat(body: unknown, correlationId = "intent-test"): Promise<Response> {
+async function invokeChat(
+  body: unknown,
+  correlationId = "intent-test",
+  headers: Record<string, string> = {},
+): Promise<Response> {
   const POST = (
     Route as unknown as {
       options: { server: { handlers: { POST: (ctx: { request: Request }) => Promise<Response> } } };
@@ -55,7 +59,7 @@ async function invokeChat(body: unknown, correlationId = "intent-test"): Promise
   ).options.server.handlers.POST;
   const request = new Request("https://example.test/api/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-correlation-id": correlationId },
+    headers: { "Content-Type": "application/json", "x-correlation-id": correlationId, ...headers },
     body: JSON.stringify(body),
   });
   return POST({ request });
@@ -141,5 +145,39 @@ describe("/api/chat WDC CLI chat stream routing", () => {
     const text = await response.text();
     expect(text).toContain('"text":"WDC_"');
     expect(text).toContain('"text":"CHAT_OK"');
+  });
+
+  it("returns an explicit no-provider POST SSE probe without backend/provider calls", async () => {
+    const response = await invokeChat(
+      {
+        id: "thread-no-provider-probe",
+        messages: [{ role: "user", parts: [{ type: "text", text: "transport probe" }] }],
+        wdc_no_provider_probe: true,
+      },
+      "corr-no-provider-probe",
+      { Accept: "text/event-stream", "x-wdc-no-provider-probe": "1" },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(response.headers.get("x-correlation-id")).toBe("corr-no-provider-probe");
+    expect(response.headers.get("x-wdc-no-provider-probe")).toBe("true");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    const text = await response.text();
+    expect(text).toContain("wdc.probe.pending");
+    expect(text).toContain("wdc.probe.streaming");
+    expect(text).toContain("wdc.probe.error_state_evidence");
+    expect(text).toContain("wdc.probe.complete");
+    expect(text).toContain('"mode":"no_provider_probe"');
+    expect(text).toContain('"state":"pending"');
+    expect(text).toContain('"state":"streaming"');
+    expect(text).toContain('"state":"error"');
+    expect(text).toContain('"state":"complete"');
+    expect(text).toContain('"provider_calls":0');
+    expect(text).toContain('"graph_writes":0');
+    expect(text).toContain('"railway_mutations":0');
+    expect(text).toContain('"claim_promotions":0');
+    expect(text).toContain('"proof_boundary":"diagnostic_transport_probe"');
   });
 });
