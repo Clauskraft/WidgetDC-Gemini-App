@@ -9,8 +9,9 @@ describe("AuditFactoryCockpit", () => {
     expect(html).toContain("Audit Factory Cockpit");
     expect(html).toContain("Current WDC status");
     expect(html).toContain("3353db0e901c");
-    expect(html).toContain("432 active");
-    expect(html).toContain("0 unstable");
+    expect(html).toContain("431 active");
+    expect(html).toContain("1 unstable");
+    expect(html).toContain("Recent sample also observed: 432 active");
     expect(html).toContain("AuditForeman handoff a2a:fbf97570bfb5");
     expect(html).toContain("SentinelQA request a2a:5df2194e3801");
     expect(html).toContain("DemandIngress");

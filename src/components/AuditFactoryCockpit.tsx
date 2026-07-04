@@ -196,21 +196,22 @@ const routeFlow = [
 const readbackPanels: CockpitPanel[] = [
   {
     title: "Current WDC status",
-    status: "verified",
+    status: "mismatch",
     evidenceSource: "Canonical WDC CLI status from C:/Users/claus/Projetcs/WidgeTDC",
     proofBoundary: "runtime",
-    lastReadback: "2026-07-04 WDC CLI status readback",
+    lastReadback: "2026-07-04 WDC CLI status sample",
     blockedReason:
-      "Older readbacks listed 431 active / 1 unstable / 0 offline and batch anchors listed 440 active / 0 unstable / 0 offline; current readback is 432 active / 0 unstable / 0 offline.",
+      "Capability health is volatile across status samples; static frontend text must not be treated as live graph truth.",
     nextSafeAction:
-      "Use the current deployed SHA for #6837, but keep L3/runtime-proof blocked until three consecutive verification passes exist.",
+      "Refresh through WDC CLI before operational decisions; keep this route as cockpit/readback guidance.",
     owner: "WDC CLI / Agent Office",
     items: [
       "Backend: GREEN",
       "Deployed backend SHA: 3353db0e901c40dd90b1fb67a3394ea68c714063",
       "GOV mode: enforce",
       "EventSpine: durable",
-      "Capabilities: 432 active / 0 unstable / 0 offline",
+      "Capabilities sample: 431 active / 1 unstable / 0 offline",
+      "Recent sample also observed: 432 active / 0 unstable / 0 offline",
     ],
   },
   {
