@@ -752,7 +752,11 @@ export function ChatWindow({
             </button>
             <ChatRunIndicator state={chatRunState} presentation={chatRunPresentation} compact />
             <button
-              onClick={toggleDeep}
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                toggleDeep();
+              }}
               aria-pressed={deepMode}
               title="Reason deeply — RLM reflektion + reasoning chain"
               className={cn(
@@ -764,7 +768,11 @@ export function ChatWindow({
               Deep
             </button>
             <button
-              onClick={toggleCouncil}
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                toggleCouncil();
+              }}
               aria-pressed={councilMode}
               title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
               className={cn(

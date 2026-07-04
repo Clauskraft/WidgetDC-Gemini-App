@@ -10,7 +10,8 @@ export const Route = createFileRoute("/")({
       { title: "WDC Agent Office — Ny samtale" },
       {
         name: "description",
-        content: "Start en WDC Agent Office samtale med chat, scopes og interaktiv canvas.",
+        content:
+          "Start i WDC CLI Chat med en valgfri resizable canvas og secondary proof surfaces.",
       },
     ],
   }),

@@ -142,6 +142,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
+  const [canvasVisible, setCanvasVisible] = useState(true);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
@@ -304,6 +305,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     () =>
       Children.map(children, (child) => {
         if (!isValidElement(child)) return child;
+        if (typeof child.type === "string") return child;
         return cloneElement(child as ReactElement<{ workMode?: typeof chatMode }>, {
           workMode: chatMode,
         });
@@ -326,23 +328,37 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="agent-office-shell">
-      <section className="agent-office-chat">{workspaceChildren}</section>
-      <aside
-        id="agent-office-canvas"
-        className="agent-office-canvas"
-        aria-label="WDC Agent Office canvas"
-      >
-        <div className="agent-office-canvas-head">
+    <div
+      className="agent-office-shell agent-office-chat-first-shell"
+      style={{
+        display: "grid",
+        gridTemplateColumns: canvasVisible
+          ? "minmax(0, 1fr) minmax(360px, 42vw)"
+          : "minmax(0, 1fr)",
+      }}
+    >
+      <section className="agent-office-chat" aria-label="WDC CLI Chat home">
+        <div className="agent-office-workstrip">
           <div>
             <div className="agent-office-kicker">
               <Sparkles className="h-3.5 w-3.5" />
-              WDC Agent Office
+              Chat-first WDC Agent Office
             </div>
-            <h1>{activeScope.title}</h1>
+            <h1>WDC CLI Chat workspace</h1>
+            <p>
+              Start with the assistant. Canvas, library, proof gates and debug details are secondary
+              workspace surfaces, not the landing-page product.
+            </p>
           </div>
           <div className="agent-office-header-actions">
             <SystemStatusPill status={systemStatus} />
+            <button
+              type="button"
+              className="agent-office-status-pill"
+              onClick={() => setCanvasVisible((visible) => !visible)}
+            >
+              {canvasVisible ? "Hide canvas" : "Show canvas"}
+            </button>
             <AgentOfficeCommandPalette
               modes={WORK_MODES}
               activeModeId={activeScope.id}
@@ -355,428 +371,158 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
 
-        <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_start" />
-
-        <div className="agent-office-workstrip">
-          <div>
-            <div className="agent-office-workstrip-label">Scope</div>
-            <p>{activeScope.description}</p>
-          </div>
-          <div className="agent-office-status-pill">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Claimed
-          </div>
+        <div className="agent-office-workstrip" aria-label="Chat state contract">
+          {["pending", "streaming", "complete", "error"].map((state) => (
+            <div className="agent-office-status-pill" key={state}>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {state}
+            </div>
+          ))}
         </div>
 
-        <CapabilityLibraryWorkspace
-          entries={capabilityLibrary}
-          selectedIds={selectedCapabilityIds}
-          onToggle={toggleCapability}
-        />
+        {workspaceChildren}
+      </section>
 
-        <ComposeRecipePanel recipe={recipe} />
-
-        <ObjectInspector item={inspectedObject} />
-
-        <WorldClassAssessment assessment={worldClassAssessment} />
-
-        <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
-
-        <BrokerageRouteCard card={brokerageRouteCard} />
-
-        <section className="wdc-object-card-section" aria-label="WDC visual object cards">
-          <div className="agent-office-panel-head">
+      {canvasVisible && (
+        <aside
+          id="agent-office-canvas"
+          className="agent-office-canvas"
+          aria-label="WDC Agent Office canvas"
+          style={{
+            minWidth: 360,
+            maxWidth: 760,
+            resize: "horizontal",
+            overflow: "auto",
+          }}
+        >
+          <div className="agent-office-canvas-head">
             <div>
-              <div className="agent-office-workstrip-label">WDC objects</div>
-              <strong>Readable process cards</strong>
+              <div className="agent-office-kicker">
+                <Sparkles className="h-3.5 w-3.5" />
+                Resizable workspace
+              </div>
+              <h2>{activeScope.title}</h2>
+              <p>{activeScope.description}</p>
             </div>
-            <span>no raw JSON default</span>
           </div>
-          <div className="wdc-object-card-grid">
-            {wdcObjectCards.map((card) => (
-              <WDCObjectCard key={card.id} card={card} />
-            ))}
-          </div>
-        </section>
 
-        <div className="agent-office-loop" aria-label="Demand to proof production loop">
-          <div className="agent-office-panel-head">
-            <div>
-              <div className="agent-office-workstrip-label">Production loop</div>
-              <strong>Demand -&gt; LearningExtractor</strong>
-            </div>
-            <span>
-              candidates {productionLoopSummary.candidateCount} / mapped{" "}
-              {productionLoopSummary.mappedCount}
-            </span>
-          </div>
-          <div className="agent-office-loop-track">
-            {productionLoop.stages.map((stage, index) => (
-              <button
-                key={stage.id}
-                type="button"
-                className={cn(
-                  "agent-office-loop-stage",
-                  selectedStage.id === stage.id && "agent-office-loop-stage-active",
-                )}
-                onClick={() => setSelectedStageId(stage.id)}
-                title={stage.proofBoundary}
-              >
-                <small>{String(index + 1).padStart(2, "0")}</small>
-                <span>{stage.label}</span>
-              </button>
-            ))}
-          </div>
-          <p>
-            {selectedStage.label}: {selectedStage.proofBoundary}. Candidate, projection, dry-run and
-            read-only output is never runtime proof.
-          </p>
-          <p>
-            {productionLoop.label}: {productionLoop.demand} WorkBOM {productionLoop.workBom.length},
-            RouteCatalog {productionLoop.routeCatalog.length}, EnvironmentBOM{" "}
-            {operationalSummary.environmentBomCount} with debt{" "}
-            {operationalSummary.environmentDebtCount}.
-          </p>
-          <p>
-            BuildabilityLedger: {buildabilityLedger.length - buildabilityBlockedCount}/
-            {buildabilityLedger.length} ready; blocked {buildabilityBlockedCount}. WorkBOM and
-            RouteCatalog stay separate from runtime proof.
-          </p>
-          <p>
-            EvidenceContractLedger:{" "}
-            {evidenceContractLedger.length - evidenceContractIncompleteCount}/
-            {evidenceContractLedger.length} complete; incomplete {evidenceContractIncompleteCount}.
-            source_fit_score and extraction_contract stay visible.
-          </p>
-          <p>
-            MappingCandidateLedger: candidates {mappingCandidateLedger.length} / mapped{" "}
-            {mappingMappedCount}; every production-loop edge keeps source_fit_score and
-            extraction_contract candidate-only.
-          </p>
-          <p>
-            AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
-            {operationalSummary.executionLedgerCount} with{" "}
-            {operationalSummary.claimGatedExecutionCount} claim-gated steps; VerificationLedger{" "}
-            {operationalSummary.verificationLedgerCount} / runtime proof claims{" "}
-            {operationalSummary.runtimeProofClaims}; CloseoutTree{" "}
-            {operationalSummary.closeoutTreeCount}.
-          </p>
-          <p>
-            CoverageMatrix: {coverageMatrix.length - coverageDebtCount}/{coverageMatrix.length}{" "}
-            covered; debt {coverageDebtCount}. Required/provided matching remains primary.
-          </p>
-          <p>
-            LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
-            {learningEnvelope.artifactId}; adoption state {learningEnvelope.adoptionState}.
-          </p>
-          <p>
-            ProofGate: {proofGateSummary.claim}; evidence {proofGateSummary.presentCount}/
-            {proofGateSummary.presentCount + proofGateSummary.missingCount}; verification passes{" "}
-            {proofGateSummary.passedVerifications}/{proofGateSummary.requiredPasses}.{" "}
-            {productionLoop.proofGate.boundary}
-          </p>
-          <p>
-            ProofAdoptionLadder: {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
-            {proofAdoptionLadder.length} satisfied; blocked {proofAdoptionBlockedCount}.
-          </p>
-          <p>
-            StopConditionLedger: {stopConditionBlockedCount} promotion blockers. Candidate counts,
-            readback and missing corpus evidence remain proof-ineligible.
-          </p>
-        </div>
+          <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
-        <div className="agent-office-governance-grid">
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
+          <details className="agent-office-loop" open>
+            <summary>Capability Library and recipe composer</summary>
+            <CapabilityLibraryWorkspace
+              entries={capabilityLibrary}
+              selectedIds={selectedCapabilityIds}
+              onToggle={toggleCapability}
+            />
+            <ComposeRecipePanel recipe={recipe} />
+            <ObjectInspector item={inspectedObject} />
+          </details>
+
+          <details className="agent-office-loop" open>
+            <summary>Approval, route and proof boundary</summary>
+            <div className="agent-office-debt-panel">
+              <div className="agent-office-inspector-icon">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
               <div>
-                <div className="agent-office-workstrip-label">EvidenceContractLedger</div>
-                <strong>Fit score + extraction</strong>
+                <div className="agent-office-workstrip-label">ApprovalGatePanel</div>
+                <p>
+                  Missing approval.gated.execution blocks provider execution. Preview, compose,
+                  explain, dry-run and approval requests are allowed; execution, graph writes,
+                  deploys and claim promotion remain blocked.
+                </p>
               </div>
             </div>
-            <div className="agent-office-ref-list">
-              {evidenceContractLedger.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.status}</code>
-                  <span title={item.contractArtifact}>{item.label}</span>
-                  <small title={item.proofBoundary}>
-                    {item.source_fit_score === null
-                      ? item.source
-                      : `${item.source} ${item.source_fit_score.toFixed(2)}`}
-                  </small>
-                </div>
-              ))}
-            </div>
-          </section>
+            <BrokerageRouteCard card={brokerageRouteCard} />
+            <WorldClassAssessment assessment={worldClassAssessment} />
+            <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_start" />
+          </details>
 
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">MappingCandidateLedger</div>
-                <strong>Loop edges</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {mappingCandidateLedger.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.state}</code>
-                  <span title={item.proofBoundary}>
-                    {item.source_ref} -&gt; {item.target_ref}
-                  </span>
-                  <small title={item.extraction_contract.contract_version}>
-                    {item.source_fit_score.toFixed(2)}
-                  </small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">BuildabilityLedger</div>
-                <strong>WorkBOM + RouteCatalog</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {buildabilityLedger.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.status}</code>
-                  <span title={item.proofBoundary}>{item.label}</span>
-                  <small>{item.source}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">ProjectTree</div>
-                <strong>Start + closeout</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {productionLoop.projectTreeRefs.map((item) => (
-                <div key={item.ref} className="agent-office-ref-row">
-                  <code>{item.ref}</code>
-                  <span>{item.label}</span>
-                  <small>{item.phase}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">EnvironmentBOM</div>
-                <strong>Repo + evidence</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {productionLoop.environmentBom.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.category}</code>
-                  <span title={item.proofBoundary}>{item.label}</span>
-                  <small>{item.status}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">Competence</div>
-                <strong>Required / provided</strong>
-              </div>
-            </div>
-            <div className="agent-office-competence-list">
-              {productionLoop.competenceRows.map((row) => (
-                <div key={row.required} className="agent-office-competence-row">
-                  <span>{row.required}</span>
-                  <span>{row.provided}</span>
-                  <small
-                    data-state={row.state}
-                    title={`source_fit_score ${row.source_fit_score.toFixed(2)} · ${
-                      row.extraction_contract.artifact
-                    }`}
-                  >
-                    {row.state}
-                  </small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">AgentTeamBOM</div>
-                <strong>Required / provided lanes</strong>
-              </div>
-            </div>
-            <div className="agent-office-competence-list">
-              {productionLoop.agentTeamBom.map((member) => (
-                <div key={member.id} className="agent-office-competence-row">
-                  <span>{member.required}</span>
-                  <span>{member.provided}</span>
-                  <small
-                    data-state={member.status}
-                    title={`source_fit_score ${member.source_fit_score.toFixed(2)} · ${
-                      member.extraction_contract.artifact
-                    }`}
-                  >
-                    {member.status}
-                  </small>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="agent-office-governance-grid">
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">ExecutionLedger</div>
-                <strong>Claim-gated work</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {productionLoop.executionLedger.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.claimRequired ? "claim" : item.stage}</code>
-                  <span title={item.proofBoundary}>{item.label}</span>
-                  <small>{item.status}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">VerificationLedger</div>
-                <strong>Non-runtime checks</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {productionLoop.verificationLedger.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.kind}</code>
-                  <span title={item.proofBoundary}>{item.label}</span>
-                  <small>{item.runtimeProof ? "runtime" : item.status}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="agent-office-mini-panel">
-            <div className="agent-office-panel-head">
-              <div>
-                <div className="agent-office-workstrip-label">CloseoutTree</div>
-                <strong>Release + learning handoff</strong>
-              </div>
-            </div>
-            <div className="agent-office-ref-list">
-              {productionLoop.closeoutTree.map((item) => (
-                <div key={item.id} className="agent-office-ref-row">
-                  <code>{item.handoff}</code>
-                  <span title={item.proofBoundary}>{item.label}</span>
-                  <small>{item.status}</small>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="agent-office-loop" aria-label="Production loop requirement coverage">
-          <div className="agent-office-panel-head">
-            <div>
-              <div className="agent-office-workstrip-label">CoverageMatrix</div>
-              <strong>Objective requirements</strong>
-            </div>
-            <span>
-              covered {coverageMatrix.length - coverageDebtCount}/{coverageMatrix.length}
-            </span>
-          </div>
-          <div className="agent-office-ref-list">
-            {coverageMatrix.map((item) => (
-              <div key={item.id} className="agent-office-ref-row">
-                <code>{item.status}</code>
-                <span title={item.proofBoundary}>{item.label}</span>
-                <small>{item.evidence.length}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="agent-office-loop" aria-label="Proof adoption ladder">
-          <div className="agent-office-panel-head">
-            <div>
-              <div className="agent-office-workstrip-label">ProofAdoptionLadder</div>
-              <strong>From evidence to runtime proof</strong>
-            </div>
-            <span>
-              satisfied {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
-              {proofAdoptionLadder.length}
-            </span>
-          </div>
-          <div className="agent-office-ref-list">
-            {proofAdoptionLadder.map((item) => (
-              <div key={item.id} className="agent-office-ref-row">
-                <code>{item.status}</code>
-                <span title={item.proofBoundary}>{item.label}</span>
-                <small>
-                  {item.availableEvidence.length}/{item.requiredEvidence.length}
-                </small>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="agent-office-loop" aria-label="Stop condition ledger">
-          <div className="agent-office-panel-head">
-            <div>
-              <div className="agent-office-workstrip-label">StopConditionLedger</div>
-              <strong>Promotion blockers</strong>
-            </div>
-            <span>blocked {stopConditionBlockedCount}</span>
-          </div>
-          <div className="agent-office-ref-list">
-            {productionLoop.stopConditions.map((item) => (
-              <div key={item.id} className="agent-office-ref-row">
-                <code>{item.severity}</code>
-                <span title={item.proofBoundary}>{item.label}</span>
-                <small title={item.nextAction}>{item.source}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_closeout" />
-
-        <div className="agent-office-debt-panel">
-          <div className="agent-office-inspector-icon">
-            <AlertTriangle className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="agent-office-workstrip-label">CapabilityDebtLedger</div>
+          <details className="agent-office-loop">
+            <summary>Debug and proof ledgers</summary>
             <p>
-              Candidate count must stay separate from mapped count. Missing pieces become explicit
-              debt before promotion.
+              {selectedStage.label}: {selectedStage.proofBoundary}. Candidate, projection, dry-run
+              and read-only output is never runtime proof.
             </p>
-            <div className="agent-office-debt-list">
-              {productionLoop.capabilityDebt.map((item) => (
-                <span key={item.id} title={item.reason}>
-                  {item.label}
-                </span>
+            <p>
+              {productionLoop.label}: {productionLoop.demand} WorkBOM{" "}
+              {productionLoop.workBom.length}, RouteCatalog {productionLoop.routeCatalog.length},
+              EnvironmentBOM {operationalSummary.environmentBomCount} with debt{" "}
+              {operationalSummary.environmentDebtCount}.
+            </p>
+            <p>
+              BuildabilityLedger: {buildabilityLedger.length - buildabilityBlockedCount}/
+              {buildabilityLedger.length} ready; blocked {buildabilityBlockedCount}.
+            </p>
+            <p>
+              EvidenceContractLedger:{" "}
+              {evidenceContractLedger.length - evidenceContractIncompleteCount}/
+              {evidenceContractLedger.length} complete; incomplete {evidenceContractIncompleteCount}
+              .
+            </p>
+            <p>
+              MappingCandidateLedger: candidates {mappingCandidateLedger.length} / mapped{" "}
+              {mappingMappedCount}; candidates {productionLoopSummary.candidateCount} / mapped{" "}
+              {productionLoopSummary.mappedCount}.
+            </p>
+            <p>
+              AgentTeamBOM {operationalSummary.agentTeamBomCount}; ExecutionLedger{" "}
+              {operationalSummary.executionLedgerCount}; VerificationLedger{" "}
+              {operationalSummary.verificationLedgerCount}; runtime proof claims{" "}
+              {operationalSummary.runtimeProofClaims}.
+            </p>
+            <p>
+              CoverageMatrix: {coverageMatrix.length - coverageDebtCount}/{coverageMatrix.length}{" "}
+              covered; debt {coverageDebtCount}.
+            </p>
+            <p>
+              LearningExtractor: {learningEnvelope.transport} {learningEnvelope.messageType} for{" "}
+              {learningEnvelope.artifactId}; adoption state {learningEnvelope.adoptionState}.
+            </p>
+            <p>
+              ProofGate: {proofGateSummary.claim}; evidence {proofGateSummary.presentCount}/
+              {proofGateSummary.presentCount + proofGateSummary.missingCount}; verification passes{" "}
+              {proofGateSummary.passedVerifications}/{proofGateSummary.requiredPasses}.
+            </p>
+            <p>
+              ProofAdoptionLadder: {proofAdoptionLadder.length - proofAdoptionBlockedCount}/
+              {proofAdoptionLadder.length} satisfied; StopConditionLedger blockers{" "}
+              {stopConditionBlockedCount}.
+            </p>
+            <div className="agent-office-loop-track">
+              {productionLoop.stages.map((stage, index) => (
+                <button
+                  key={stage.id}
+                  type="button"
+                  className={cn(
+                    "agent-office-loop-stage",
+                    selectedStage.id === stage.id && "agent-office-loop-stage-active",
+                  )}
+                  onClick={() => setSelectedStageId(stage.id)}
+                  title={stage.proofBoundary}
+                >
+                  <small>{String(index + 1).padStart(2, "0")}</small>
+                  <span>{stage.label}</span>
+                </button>
               ))}
             </div>
-          </div>
-        </div>
-      </aside>
+          </details>
+
+          <details className="wdc-object-card-section">
+            <summary>WDC object cards</summary>
+            <div className="agent-office-workstrip-label">Readable process cards</div>
+            <p className="agent-office-boundary-copy">no raw JSON default</p>
+            <div className="wdc-object-card-grid">
+              {wdcObjectCards.map((card) => (
+                <WDCObjectCard key={card.id} card={card} />
+              ))}
+            </div>
+          </details>
+
+          <ProjectTreePanel refs={productionLoop.projectTreeRefs} phase="activity_closeout" />
+        </aside>
+      )}
     </div>
   );
 }

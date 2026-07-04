@@ -7,6 +7,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { createGuidedActionCandidate } from "@/features/frontend-toolbox/cockpitDomAgent";
+import { createKnowledgePackManifest } from "@/features/frontend-toolbox/knowledgePackFactory";
+import { TOOLBOX_PATTERNS } from "@/features/frontend-toolbox/toolboxCatalog";
+
 type ProofBoundary = "candidate" | "diagnostic" | "runtime" | "claim";
 
 type PanelStatus = "verified" | "candidate" | "blocked" | "mismatch" | "pending";
@@ -67,6 +71,24 @@ const proofClasses: Array<{ label: ProofBoundary; description: string }> = [
     description: "Promotion-grade proof. This cockpit does not create it.",
   },
 ];
+
+const knowledgePackManifest = createKnowledgePackManifest({
+  sourceCommit: "1c4a9615b40e",
+  sourceWindow: ["docs/frontend/openwiki-pageagent-toolbox.md"],
+  contentHash: "sha256:candidate-openwiki-pageagent-toolbox",
+  generatedAt: "2026-07-04T00:00:00.000Z",
+});
+
+const guidedActionCandidate = createGuidedActionCandidate({
+  elementIndex: 3,
+  elementLabel: "Open Audit Factory",
+  action: "focus",
+  plan: "Move keyboard focus to the Audit Factory navigation item.",
+  critique: "This is safe because it is a local focus proposal with no graph or network mutation.",
+});
+
+const openWikiPatterns = TOOLBOX_PATTERNS.filter((pattern) => pattern.source === "openwiki");
+const pageAgentPatterns = TOOLBOX_PATTERNS.filter((pattern) => pattern.source === "page-agent");
 
 const auditLoopCockpitViewModel: AuditLoopCockpitViewModel = {
   taskBOM: "taskbom:adaptive:5ab30cbca68c",
@@ -470,6 +492,88 @@ export function AuditFactoryCockpit() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-3">
+          <article className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-200/70">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+              OpenWiki pattern
+            </p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight">KnowledgePackFactory</h2>
+            <p className="mt-3 text-sm leading-6 text-stone-600">
+              Diagnostic knowledge-pack maintenance for agents. It records source commit, evidence
+              window, content hash, and stale status without claiming graph truth.
+            </p>
+            <div className="mt-4 rounded-2xl bg-stone-50 p-4 text-sm leading-6 text-stone-700">
+              <div>
+                <span className="font-semibold text-stone-950">Boundary:</span>{" "}
+                {knowledgePackManifest.boundary}
+              </div>
+              <div>
+                <span className="font-semibold text-stone-950">Graph truth:</span>{" "}
+                {String(knowledgePackManifest.graphTruth)}
+              </div>
+              <div>
+                <span className="font-semibold text-stone-950">Runtime proof:</span>{" "}
+                {String(knowledgePackManifest.runtimeProof)}
+              </div>
+            </div>
+            <ul className="mt-4 space-y-2 text-sm text-stone-700">
+              {openWikiPatterns.map((pattern) => (
+                <li className="flex gap-2" key={pattern.id}>
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
+                  <span>{pattern.title}</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-200/70">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Page Agent pattern
+            </p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight">CockpitDOMAgent</h2>
+            <p className="mt-3 text-sm leading-6 text-stone-600">
+              Candidate-only in-page guidance. Actions are indexed, disabled by default, and require
+              plan plus critique before they can be presented.
+            </p>
+            <div className="mt-4 rounded-2xl bg-sky-50 p-4 text-sm leading-6 text-sky-950">
+              <div>
+                <span className="font-semibold">Action:</span> {guidedActionCandidate.action}
+              </div>
+              <div>
+                <span className="font-semibold">Element:</span> {guidedActionCandidate.elementIndex}{" "}
+                - {guidedActionCandidate.elementLabel}
+              </div>
+              <div>
+                <span className="font-semibold">Disabled by default:</span>{" "}
+                {String(guidedActionCandidate.disabledByDefault)}
+              </div>
+            </div>
+            <ul className="mt-4 space-y-2 text-sm text-stone-700">
+              {pageAgentPatterns.map((pattern) => (
+                <li className="flex gap-2" key={pattern.id}>
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
+                  <span>{pattern.title}</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-amber-950 shadow-sm shadow-amber-100">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-800">
+              WDC boundary
+            </p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight">Evidence Boundary</h2>
+            <p className="mt-3 text-sm leading-6">
+              This slice is candidate/L1 only. Vercel paused. No graph writes, Railway mutations,
+              claim promotion, runtime proof, or adoption proof are included.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <BoundaryBadge boundary="candidate" />
+              <BoundaryBadge boundary="diagnostic" />
+            </div>
+          </article>
         </section>
 
         <section className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-200/70">

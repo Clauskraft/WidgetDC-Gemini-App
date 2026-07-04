@@ -6,6 +6,9 @@ const sliceLintFiles = [
   "src/components/WdcLogo.tsx",
   "src/components/CapabilityResolverPanel.tsx",
   "src/components/AuditFactoryCockpit.tsx",
+  "src/features/frontend-toolbox/cockpitDomAgent.ts",
+  "src/features/frontend-toolbox/knowledgePackFactory.ts",
+  "src/features/frontend-toolbox/toolboxCatalog.ts",
   "src/lib/wdcBrand.ts",
   "src/lib/capabilityOrchestration.ts",
   "src/routes/audit-factory.tsx",
@@ -21,6 +24,9 @@ const proofBoundaryFiles = [
   "docs/frontend/wdc-brand-contract.md",
   "src/components/CapabilityResolverPanel.tsx",
   "src/components/AuditFactoryCockpit.tsx",
+  "src/features/frontend-toolbox/cockpitDomAgent.ts",
+  "src/features/frontend-toolbox/knowledgePackFactory.ts",
+  "src/features/frontend-toolbox/toolboxCatalog.ts",
   "src/lib/capabilityOrchestration.ts",
   "src/routes/audit-factory.tsx",
   "src/routes/capabilities.tsx",
@@ -119,6 +125,11 @@ for (const required of [
   "CanaryState",
   "ClaimMaturity",
   "CriticalQuestioner",
+  "KnowledgePackFactory",
+  "CockpitDOMAgent",
+  "Evidence Boundary",
+  "candidate/L1 only",
+  "Vercel paused",
 ]) {
   if (!auditFactoryContent.includes(required)) {
     failures.push(
