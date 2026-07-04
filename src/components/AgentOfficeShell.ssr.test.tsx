@@ -13,7 +13,17 @@ describe("AgentOfficeShell", () => {
     for (const label of ["General", "Build App", "Write Book", "Investigate", "Operate WDC"]) {
       expect(html).toContain(label);
     }
-    expect(html).toContain("Chat-first WDC Agent Office");
+    expect(html).toContain("Figma Product Surface v1 synced");
+    expect(html).toContain("Figma Product Surface v1");
+    expect(html).toContain("https://www.figma.com/design/mlnm4xnjrO0aEgVJ7erb6d");
+    expect(html).toContain("Desktop node 2:2");
+    expect(html).toContain("Mobile node 2:139");
+    expect(html).toContain("WDC CLI toolbox");
+    expect(html).toContain("wdc boot session");
+    expect(html).toContain("adaptive_bom.compose");
+    expect(html).toContain("proof boundary readback");
+    expect(html).toContain("no Railway mutation");
+    expect(html).toContain("Vercel paused");
     expect(html).toContain("WDC CLI Chat workspace");
     expect(html).toContain("Resizable workspace");
     expect(html).toContain("Chat state contract");
