@@ -2,10 +2,15 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   AlertTriangle,
@@ -93,6 +98,15 @@ const FIGMA_SURFACE = {
     "Vercel paused",
   ],
 };
+
+const CANVAS_WIDTH_STORAGE_KEY = "wdc-agent-office-canvas-width";
+const CANVAS_MIN_WIDTH = 420;
+const CANVAS_MAX_WIDTH = 920;
+const CANVAS_DEFAULT_WIDTH = 620;
+
+function clampCanvasWidth(value: number) {
+  return Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, Math.round(value)));
+}
 
 const wdcCliToolbox = [
   {
@@ -225,6 +239,216 @@ export function WorkModeSwitcher({
   );
 }
 
+type ProviderPackage = {
+  provider: string;
+  bestUse: string;
+  allowedActions: string[];
+  blockedActions: string[];
+  requiredEvidence: string[];
+  importPath: string;
+  proofCeiling: string;
+  fallbackProvider: string;
+};
+
+const providerPackages: ProviderPackage[] = [
+  {
+    provider: "v0 by Vercel",
+    bestUse: "High-fidelity React variants, route skeletons and UI state exploration.",
+    allowedActions: ["prototype variant", "component diff", "screenshot handoff"],
+    blockedActions: ["runtime claim", "provider-first execution", "claim promotion"],
+    requiredEvidence: ["URL", "screenshot", "diff summary", "WDC import note"],
+    importPath: "package -> WDC review -> source diff -> governed browser readback",
+    proofCeiling: "candidate/L1 until deployed SHA readback and 3 passes",
+    fallbackProvider: "Lovable",
+  },
+  {
+    provider: "Lovable",
+    bestUse: "Full-page app prototypes with fast visual alternatives and user-flow coverage.",
+    allowedActions: ["prototype app", "UX route package", "interaction sketch"],
+    blockedActions: ["graph write", "Railway mutation", "adoption proof"],
+    requiredEvidence: ["preview URL", "screenshots", "component inventory", "known gaps"],
+    importPath: "prototype -> artifact package -> WDC composer -> implementation slice",
+    proofCeiling: "candidate/L1 only before WDC runtime proof",
+    fallbackProvider: "v0 by Vercel",
+  },
+  {
+    provider: "Figma / Stitch",
+    bestUse: "Design-system direction, layout hierarchy, responsive frames and visual contracts.",
+    allowedActions: ["design review", "frame extraction", "visual hierarchy contract"],
+    blockedActions: ["source mutation without WDC claim", "runtime proof language"],
+    requiredEvidence: ["file URL", "node refs", "redlined screenshot", "component contract"],
+    importPath: "design node -> WDC package drawer -> React implementation",
+    proofCeiling: "design candidate until coded, deployed and verified",
+    fallbackProvider: "Claude Design",
+  },
+  {
+    provider: "Claude Design",
+    bestUse:
+      "Critique, hierarchy alternatives, copy boundaries and product-story pressure testing.",
+    allowedActions: ["design critique", "copy rewrite", "layout alternative"],
+    blockedActions: ["fake signoff", "review gate unless explicitly restored"],
+    requiredEvidence: ["review note", "risk list", "recommended changes", "boundary language"],
+    importPath: "critique -> WDC issue/BOM -> implementation or reject",
+    proofCeiling: "review evidence, never runtime proof",
+    fallbackProvider: "Omega Sentinel",
+  },
+  {
+    provider: "Vercel",
+    bestUse: "Deployment readback, preview URLs, production SHA inspection and browser checks.",
+    allowedActions: ["deployment inspect", "preview readback", "frontend smoke package"],
+    blockedActions: ["deploy without explicit deploy slice", "claim promotion"],
+    requiredEvidence: ["deployment id", "commit SHA", "browser pass", "artifact ref"],
+    importPath: "deployment -> WDC frontend runtime/readback -> proof ledger",
+    proofCeiling: "runtime candidate only after SHA match plus 3 passes",
+    fallbackProvider: "WDC governed browser tool",
+  },
+];
+
+function MissionControlComposer({
+  mode,
+  selectedCapabilities,
+  recipe,
+}: {
+  mode: WorkMode;
+  selectedCapabilities: ReturnType<typeof buildCapabilityLibrary>;
+  recipe: ReturnType<typeof buildCapabilityRecipe>;
+}) {
+  const requiredCapabilities = selectedCapabilities.length
+    ? Array.from(
+        new Set(selectedCapabilities.flatMap((entry) => entry.required_competences)),
+      ).slice(0, 6)
+    : [
+        "demand.ingress",
+        "capability.resolution",
+        "provider.scoring",
+        "bom.route",
+        "proof.boundary",
+      ];
+  const providerCandidates = selectedCapabilities.length
+    ? selectedCapabilities.map((entry) => entry.label).slice(0, 6)
+    : providerPackages.map((provider) => provider.provider);
+  const averageScore = selectedCapabilities.length
+    ? Math.round(
+        (selectedCapabilities.reduce((sum, entry) => sum + entry.source_fit_score, 0) /
+          selectedCapabilities.length) *
+          100,
+      )
+    : 0;
+  const steps = [
+    {
+      label: "Demand",
+      value: mode.title,
+      detail: mode.description,
+    },
+    {
+      label: "Required capabilities",
+      value: `${requiredCapabilities.length} resolved`,
+      detail: requiredCapabilities.join(" -> "),
+    },
+    {
+      label: "Provider candidates",
+      value: `${providerCandidates.length} candidates`,
+      detail: providerCandidates.join(" -> "),
+    },
+    {
+      label: "Scores",
+      value: selectedCapabilities.length ? `${averageScore}% avg fit` : "awaiting selection",
+      detail: "Scores are advisory candidate evidence, not provider execution authority.",
+    },
+    {
+      label: "WorkBOM",
+      value: `${recipe.candidate_count} candidate items`,
+      detail: `mapped_count=${recipe.mapped_count} from ${recipe.mapped_count_source}`,
+    },
+    {
+      label: "Route",
+      value: recipe.activation.status,
+      detail: recipe.activation.next_action,
+    },
+    {
+      label: "Proof boundary",
+      value: recipe.proof_eligible ? "proof review required" : "candidate/read-only",
+      detail: "No provider-first execution, no graph write, no claim promotion.",
+    },
+  ];
+
+  return (
+    <section
+      className="mission-control-composer"
+      aria-label="Mission Control v2 demand-to-route composer"
+    >
+      <div className="mission-control-head">
+        <div>
+          <div className="agent-office-workstrip-label">Mission Control v2</div>
+          <h3>Demand-to-Route Composer</h3>
+          <p>
+            Demand &gt; capabilities &gt; providers &gt; scores &gt; WorkBOM &gt; route &gt; proof
+            boundary.
+          </p>
+        </div>
+        <div className="agent-office-status-pill">read-only</div>
+      </div>
+      <div className="mission-control-flow">
+        {steps.map((step, index) => (
+          <article key={step.label} className="mission-control-step">
+            <small>{String(index + 1).padStart(2, "0")}</small>
+            <strong>{step.label}</strong>
+            <span>{step.value}</span>
+            <p>{step.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProviderPackageDrawer() {
+  return (
+    <section className="provider-package-drawer" aria-label="Provider Package Drawer">
+      <div className="mission-control-head">
+        <div>
+          <div className="agent-office-workstrip-label">Provider Package Drawer</div>
+          <h3>Multi-provider prototype builder contracts</h3>
+          <p>Every provider package must bring usable artifacts, evidence and a WDC import path.</p>
+        </div>
+        <div className="agent-office-status-pill">gated</div>
+      </div>
+      <div className="provider-package-grid">
+        {providerPackages.map((provider) => (
+          <article key={provider.provider} className="provider-package-card">
+            <header>
+              <strong>{provider.provider}</strong>
+              <span>{provider.proofCeiling}</span>
+            </header>
+            <p>{provider.bestUse}</p>
+            <dl>
+              <div>
+                <dt>Allowed</dt>
+                <dd>{provider.allowedActions.join("; ")}</dd>
+              </div>
+              <div>
+                <dt>Blocked</dt>
+                <dd>{provider.blockedActions.join("; ")}</dd>
+              </div>
+              <div>
+                <dt>Evidence</dt>
+                <dd>{provider.requiredEvidence.join("; ")}</dd>
+              </div>
+              <div>
+                <dt>Import path</dt>
+                <dd>{provider.importPath}</dd>
+              </div>
+              <div>
+                <dt>Fallback</dt>
+                <dd>{provider.fallbackProvider}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 function CapabilityLibraryWorkspace({
   entries,
   selectedIds,
@@ -260,6 +484,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
   const [canvasVisible, setCanvasVisible] = useState(true);
+  const [canvasWidth, setCanvasWidth] = useState(CANVAS_DEFAULT_WIDTH);
+  const canvasResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const activeScope = workModes.find((scope) => scope.id === activeScopeId) ?? workModes[0];
   const productionLoop = resolveAgentOfficeProductionLoop(activeScope.id);
@@ -444,16 +670,54 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
     void navigator.clipboard?.writeText(activeScope.prompt);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = Number(window.localStorage.getItem(CANVAS_WIDTH_STORAGE_KEY));
+    if (Number.isFinite(stored)) setCanvasWidth(clampCanvasWidth(stored));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CANVAS_WIDTH_STORAGE_KEY, String(canvasWidth));
+  }, [canvasWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const showCanvas = () => {
+      setCanvasVisible(true);
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("agent-office-canvas")
+          ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    };
+    window.addEventListener("agent-office:show-canvas", showCanvas);
+    return () => window.removeEventListener("agent-office:show-canvas", showCanvas);
+  }, []);
+
+  const workspaceStyle = useMemo(
+    () =>
+      ({
+        "--agent-office-canvas-width": `${canvasWidth}px`,
+      }) as CSSProperties,
+    [canvasWidth],
+  );
+
+  const onCanvasResizeMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = canvasResizeRef.current;
+    if (!drag) return;
+    setCanvasWidth(clampCanvasWidth(drag.startWidth + drag.startX - event.clientX));
+  }, []);
+
+  const stopCanvasResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    canvasResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
   return (
-    <div
-      className="agent-office-shell agent-office-chat-first-shell"
-      style={{
-        display: "grid",
-        gridTemplateColumns: canvasVisible
-          ? "minmax(0, 1fr) minmax(360px, 42vw)"
-          : "minmax(0, 1fr)",
-      }}
-    >
+    <div className="agent-office-shell agent-office-chat-first-shell" style={workspaceStyle}>
       <section className="agent-office-chat" aria-label="WDC CLI Chat home">
         <div className="agent-office-workstrip">
           <div>
@@ -472,6 +736,8 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="agent-office-status-pill"
+              aria-controls="agent-office-canvas"
+              aria-pressed={canvasVisible}
               onClick={() => setCanvasVisible((visible) => !visible)}
             >
               {canvasVisible ? "Hide canvas" : "Show canvas"}
@@ -503,16 +769,46 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
       </section>
 
       {canvasVisible && (
+        <div
+          className="agent-office-panel-resizer"
+          role="separator"
+          aria-label="Resize right workspace panel"
+          aria-orientation="vertical"
+          aria-valuemin={CANVAS_MIN_WIDTH}
+          aria-valuemax={CANVAS_MAX_WIDTH}
+          aria-valuenow={canvasWidth}
+          tabIndex={0}
+          onPointerDown={(event) => {
+            canvasResizeRef.current = { startX: event.clientX, startWidth: canvasWidth };
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={onCanvasResizeMove}
+          onPointerUp={stopCanvasResize}
+          onPointerCancel={stopCanvasResize}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+              event.preventDefault();
+              setCanvasWidth((value) =>
+                clampCanvasWidth(value + (event.key === "ArrowLeft" ? 24 : -24)),
+              );
+            }
+            if (event.key === "Home") {
+              event.preventDefault();
+              setCanvasWidth(CANVAS_MIN_WIDTH);
+            }
+            if (event.key === "End") {
+              event.preventDefault();
+              setCanvasWidth(CANVAS_MAX_WIDTH);
+            }
+          }}
+        />
+      )}
+
+      {canvasVisible && (
         <aside
           id="agent-office-canvas"
           className="agent-office-canvas"
           aria-label="WDC Agent Office canvas"
-          style={{
-            minWidth: 360,
-            maxWidth: 760,
-            resize: "horizontal",
-            overflow: "auto",
-          }}
         >
           <div className="agent-office-canvas-head">
             <div>
@@ -526,6 +822,20 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           </div>
 
           <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
+
+          <details className="agent-office-loop mission-control-loop" open>
+            <summary>Mission Control v2: Demand-to-Route Composer</summary>
+            <MissionControlComposer
+              mode={activeScope}
+              selectedCapabilities={selectedCapabilities}
+              recipe={recipe}
+            />
+          </details>
+
+          <details className="agent-office-loop mission-control-loop" open>
+            <summary>Provider Package Drawer</summary>
+            <ProviderPackageDrawer />
+          </details>
 
           <details className="agent-office-loop" open>
             <summary>WDC CLI toolbox and Figma sync</summary>

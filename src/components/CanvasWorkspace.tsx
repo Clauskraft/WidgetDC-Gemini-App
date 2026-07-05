@@ -163,6 +163,15 @@ export function CanvasWorkspace({
         <div className="agent-office-status-pill">{document.canvasMode}</div>
       </div>
 
+      <div className="agent-office-graph-status" aria-live="polite">
+        <div>
+          <div className="agent-office-workstrip-label">Selected graph object</div>
+          <strong>{selected.title}</strong>
+          <p>Click a node to inspect it. Drag a node to move it. Drag empty grid space to pan.</p>
+        </div>
+        <div className="agent-office-status-pill">graph view</div>
+      </div>
+
       <div
         className="agent-office-board"
         onPointerDown={(event) => {
@@ -206,6 +215,9 @@ export function CanvasWorkspace({
                 height: object.height,
                 transform: `translate(${object.x}px, ${object.y}px)`,
               }}
+              aria-pressed={selected.id === object.id}
+              title={`${object.title}: ${object.summary}`}
+              onClick={() => setSelectedObjectId(object.id)}
               onPointerDown={(event) => {
                 event.stopPropagation();
                 setSelectedObjectId(object.id);

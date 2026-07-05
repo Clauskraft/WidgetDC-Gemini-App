@@ -1,3 +1,10 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   AppWindow,
@@ -18,20 +25,78 @@ import {
 import { useThreads, newId } from "@/hooks/useThreads";
 import { cn } from "@/lib/utils";
 
+const SIDEBAR_STORAGE_KEY = "wdc-agent-office-sidebar-width";
+const SIDEBAR_MIN_WIDTH = 228;
+const SIDEBAR_MAX_WIDTH = 420;
+const SIDEBAR_DEFAULT_WIDTH = 296;
+
 const libraryLinks = [
-  { to: "/audit-factory", label: "Audit Factory", icon: AppWindow },
-  { to: "/capabilities", label: "Capabilities", icon: GitBranch },
-  { to: "/graph", label: "Graph", icon: Network },
-  { to: "/engagements", label: "Engagements", icon: Boxes },
-  { to: "/deliverable", label: "Deliverables", icon: FileText },
-  { to: "/patterns", label: "Patterns", icon: BookOpen },
+  {
+    to: "/audit-factory",
+    label: "Audit Factory",
+    description: "Evidence review queues",
+    state: "audit",
+    icon: AppWindow,
+  },
+  {
+    to: "/capabilities",
+    label: "Capabilities",
+    description: "Provider toolbox and scoring",
+    state: "toolbox",
+    icon: GitBranch,
+  },
+  {
+    to: "/graph",
+    label: "Graph",
+    description: "Readback map, not write authority",
+    state: "readback",
+    icon: Network,
+  },
+  {
+    to: "/engagements",
+    label: "Engagements",
+    description: "Client mission control",
+    state: "work",
+    icon: Boxes,
+  },
+  {
+    to: "/deliverable",
+    label: "Deliverables",
+    description: "Artifacts, proofs and handoff",
+    state: "output",
+    icon: FileText,
+  },
+  {
+    to: "/patterns",
+    label: "Patterns",
+    description: "Reusable operating playbooks",
+    state: "reuse",
+    icon: BookOpen,
+  },
 ] as const;
+
+function clampSidebarWidth(value: number) {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
+}
 
 export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   const { threads, hydrated, deleteThread } = useThreads();
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { threadId?: string };
   const active = params.threadId;
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = Number(window.localStorage.getItem(SIDEBAR_STORAGE_KEY));
+    if (Number.isFinite(stored)) setSidebarWidth(clampSidebarWidth(stored));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || collapsed) return;
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth));
+  }, [collapsed, sidebarWidth]);
 
   const startNew = () => {
     const id = newId();
@@ -43,15 +108,37 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   };
 
   const navLinkBase =
-    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-foreground";
+    "flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-foreground";
   const navLinkActive = "bg-sidebar-accent text-foreground";
+  const sidebarStyle = {
+    "--app-sidebar-width": `${collapsed ? 64 : sidebarWidth}px`,
+  } as CSSProperties;
+
+  const onSidebarResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = resizeRef.current;
+    if (!drag) return;
+    setSidebarWidth(clampSidebarWidth(drag.startWidth + event.clientX - drag.startX));
+  };
+
+  const stopSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    resizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const showCanvas = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("agent-office:show-canvas"));
+  };
 
   return (
     <aside
       className={cn(
         "app-sidebar flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
-        collapsed ? "w-16" : "w-[272px]",
+        collapsed ? "app-sidebar-collapsed" : "app-sidebar-expanded",
       )}
+      style={sidebarStyle}
     >
       <div className="flex items-center gap-2.5 px-4 py-4">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
@@ -83,7 +170,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           <BrainCircuit className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Chat</span>}
         </Link>
-        <a href="#agent-office-canvas" className={navLinkBase}>
+        <a href="#agent-office-canvas" className={navLinkBase} onClick={showCanvas}>
           <AppWindow className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Canvas</span>}
         </a>
@@ -111,9 +198,14 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
                   to={item.to}
                   className={navLinkBase}
                   activeProps={{ className: navLinkActive }}
+                  title={`${item.label}: ${item.description}`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="app-sidebar-link-copy">
+                    <span>{item.label}</span>
+                    <small>{item.description}</small>
+                  </span>
+                  <span className="app-sidebar-link-state">{item.state}</span>
                   <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40" />
                 </Link>
               );
@@ -177,6 +269,42 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           </div>
         )}
       </div>
+
+      {!collapsed && (
+        <div
+          className="app-sidebar-resize-handle"
+          role="separator"
+          aria-label="Resize left navigation sidebar"
+          aria-orientation="vertical"
+          aria-valuemin={SIDEBAR_MIN_WIDTH}
+          aria-valuemax={SIDEBAR_MAX_WIDTH}
+          aria-valuenow={sidebarWidth}
+          tabIndex={0}
+          onPointerDown={(event) => {
+            resizeRef.current = { startX: event.clientX, startWidth: sidebarWidth };
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={onSidebarResizeMove}
+          onPointerUp={stopSidebarResize}
+          onPointerCancel={stopSidebarResize}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+              event.preventDefault();
+              setSidebarWidth((value) =>
+                clampSidebarWidth(value + (event.key === "ArrowRight" ? 16 : -16)),
+              );
+            }
+            if (event.key === "Home") {
+              event.preventDefault();
+              setSidebarWidth(SIDEBAR_MIN_WIDTH);
+            }
+            if (event.key === "End") {
+              event.preventDefault();
+              setSidebarWidth(SIDEBAR_MAX_WIDTH);
+            }
+          }}
+        />
+      )}
     </aside>
   );
 }
