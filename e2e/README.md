@@ -31,7 +31,7 @@ deterministiske fixtures (ingen tilfældighed, ingen netværk).
 | `knowledge` | KnowledgeGraph med blandede `type`-farver                 |
 | `invalid`   | Ugyldigt spec → `GraphErrorBlock` (fejl-UX regression)    |
 
-Hver case snapshottes både `normal` (880px stage) og `fullscreen` (1280px).
+Hver case snapshottes både `normal` (880px stage) og `fullscreen` (1120px deterministic stage).
 
 ## Determinisme
 
