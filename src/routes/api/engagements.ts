@@ -23,6 +23,7 @@ export type EngagementsResponse = {
   engagements: EngagementRow[];
   total: number;
   hasMore: boolean;
+  degraded?: boolean;
   error?: string;
 };
 
@@ -129,9 +130,10 @@ export const Route = createFileRoute("/api/engagements")({
               engagements: [],
               total: 0,
               hasMore: false,
-              error: "Platform utilgængeligt",
+              degraded: true,
+              error: "Engagement graph readback er midlertidigt utilgængelig",
             } satisfies EngagementsResponse,
-            503,
+            200,
           );
         }
 

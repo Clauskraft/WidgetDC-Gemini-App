@@ -164,7 +164,7 @@ function EngagementsRoute() {
         });
         const res = await fetch(`/api/engagements?${params}`);
         const body = (await res.json()) as EngagementsResponse;
-        if (!res.ok) {
+        if (!res.ok || body.error) {
           setError(body.error ?? `Fejl (${res.status})`);
         } else {
           setEngagements((prev) => (replace ? body.engagements : [...prev, ...body.engagements]));
