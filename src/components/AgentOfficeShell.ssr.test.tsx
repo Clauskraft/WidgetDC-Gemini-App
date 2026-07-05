@@ -26,6 +26,12 @@ describe("AgentOfficeShell", () => {
     expect(html).toContain("Vercel paused");
     expect(html).toContain("WDC CLI Chat workspace");
     expect(html).toContain("Resizable workspace");
+    expect(html).toContain("Resize right workspace panel");
+    expect(html).toContain("Mission Control v2: Demand-to-Route Composer");
+    expect(html).toContain("Demand-to-Route Composer");
+    expect(html).toContain("Provider Package Drawer");
+    expect(html).toContain("Multi-provider prototype builder contracts");
+    expect(html).toContain("Selected graph object");
     expect(html).toContain("Chat state contract");
     expect(html).toContain("pending");
     expect(html).toContain("streaming");

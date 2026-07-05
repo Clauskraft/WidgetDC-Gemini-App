@@ -144,7 +144,7 @@ function Harness({ caseId, fs }: { caseId: string; fs: boolean }) {
         }}
       >
         <div
-          style={{ width: "100%", maxWidth: 1280, margin: "0 auto" }}
+          style={{ width: 1120, maxWidth: "100%", margin: "0 auto" }}
           data-testid="visual-fullscreen"
         >
           {found.render()}
