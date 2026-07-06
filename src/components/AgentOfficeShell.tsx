@@ -891,7 +891,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <WdcCliToolboxPanel />
           </details>
 
-          <details className="agent-office-loop">
+          <details className="agent-office-loop" open>
             <summary>Capability Library and recipe composer</summary>
             <CapabilityLibraryWorkspace
               entries={capabilityLibrary}
@@ -902,7 +902,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <ObjectInspector item={inspectedObject} />
           </details>
 
-          <details className="agent-office-loop">
+          <details className="agent-office-loop" open>
             <summary>Approval, route and proof boundary</summary>
             <div className="agent-office-debt-panel">
               <div className="agent-office-inspector-icon">
