@@ -98,6 +98,7 @@ describe("/api/chat WDC CLI chat stream routing", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-correlation-id")).toBe("intent-test");
     const text = await response.text();
 
     expect(text).toContain("Intent-routed answer");
@@ -109,6 +110,7 @@ describe("/api/chat WDC CLI chat stream routing", () => {
     expect(init.headers).toMatchObject({
       "Content-Type": "application/json",
       Accept: "text/event-stream",
+      "x-correlation-id": "intent-test",
     });
     const payload = JSON.parse(String(init.body)) as {
       message: string;

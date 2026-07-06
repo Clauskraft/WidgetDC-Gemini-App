@@ -224,7 +224,13 @@ export const Route = createFileRoute("/api/chat")({
           onError: (e) => console.error("[WDC Chat] Stream error:", e),
         });
 
-        return createUIMessageStreamResponse({ stream });
+        return createUIMessageStreamResponse({
+          stream,
+          headers: {
+            "x-correlation-id": correlationId,
+            "Cache-Control": "no-cache, no-transform",
+          },
+        });
       },
     },
   },
