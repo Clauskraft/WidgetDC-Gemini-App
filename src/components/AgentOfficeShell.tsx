@@ -492,6 +492,40 @@ function ChatFirstControlBrief({
     </section>
   );
 }
+
+function ChatFirstProofBoundary({ recipe }: { recipe: ReturnType<typeof buildCapabilityRecipe> }) {
+  return (
+    <section className="chat-first-proof-boundary" aria-label="Proof boundary and next safe action">
+      <article>
+        <span>state_type</span>
+        <strong>candidate</strong>
+        <p>Chat output is planning evidence until runtime and adoption readbacks exist.</p>
+      </article>
+      <article>
+        <span>claim_ceiling</span>
+        <strong>{CHAT_FIRST_CLAIM_CEILING}</strong>
+        <p>No graph write, Railway mutation, provider execution, or claim promotion from UI.</p>
+      </article>
+      <article>
+        <span>next_safe_action</span>
+        <strong>{recipe.activation.status}</strong>
+        <p>{recipe.activation.next_action}</p>
+      </article>
+      <article>
+        <span>recommended_wdc_command</span>
+        <strong>wdc route-validate</strong>
+        <p>Then compose WorkBOM and request governed approval before execution.</p>
+      </article>
+      <article>
+        <span>evidence_refs</span>
+        <strong>diagnostic UI + candidate BOM</strong>
+        <p>
+          no raw JSON default · deployed_sha pending · correlation_id pending · eventspine_count 0.
+        </p>
+      </article>
+    </section>
+  );
+}
 function CapabilityLibraryWorkspace({
   entries,
   selectedIds,
@@ -526,7 +560,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
   const [activeScopeId, setActiveScopeId] = useState<WorkModeId>(DEFAULT_WORK_MODE_ID);
   const [selectedStageId, setSelectedStageId] = useState<ProductionLoopStageId>("demand");
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>([]);
-  const [canvasVisible, setCanvasVisible] = useState(true);
+  const [canvasVisible, setCanvasVisible] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(CANVAS_DEFAULT_WIDTH);
   const canvasResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -783,7 +817,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
               aria-pressed={canvasVisible}
               onClick={() => setCanvasVisible((visible) => !visible)}
             >
-              {canvasVisible ? "Hide canvas" : "Show canvas"}
+              {canvasVisible ? "Close canvas" : "Open canvas"}
             </button>
             <AgentOfficeCommandPalette
               modes={WORK_MODES}
@@ -798,6 +832,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
 
         <ChatFirstControlBrief mode={activeScope} recipe={recipe} />
+        <ChatFirstProofBoundary recipe={recipe} />
 
         <div className="agent-office-state-strip" aria-label="Chat state contract">
           {["pending", "streaming", "complete", "error"].map((state) => (
@@ -863,7 +898,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <div>
               <div className="agent-office-kicker">
                 <Sparkles className="h-3.5 w-3.5" />
-                Resizable workspace
+                Optional resizable canvas
               </div>
               <h2>{activeScope.title}</h2>
               <p>{activeScope.description}</p>
@@ -891,7 +926,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <WdcCliToolboxPanel />
           </details>
 
-          <details className="agent-office-loop" open>
+          <details className="agent-office-loop">
             <summary>Capability Library and recipe composer</summary>
             <CapabilityLibraryWorkspace
               entries={capabilityLibrary}
@@ -902,7 +937,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             <ObjectInspector item={inspectedObject} />
           </details>
 
-          <details className="agent-office-loop" open>
+          <details className="agent-office-loop">
             <summary>Approval, route and proof boundary</summary>
             <div className="agent-office-debt-panel">
               <div className="agent-office-inspector-icon">

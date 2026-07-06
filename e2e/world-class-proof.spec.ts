@@ -13,6 +13,15 @@ async function stubChat(page: Page) {
 async function waitForHydration(page: Page) {
   await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
   await expect(page.getByRole("button", { name: /WDC Chat/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Open canvas/i })).toBeVisible();
+  await expect(page.locator('[aria-label="WDC Agent Office canvas"]')).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: /Proof boundary and next safe action/i }),
+  ).toBeVisible();
+}
+
+async function openCanvas(page: Page) {
+  await page.getByRole("button", { name: /Open canvas/i }).click();
   await expect(page.locator('[aria-label="WDC Agent Office canvas"]')).toBeVisible();
 }
 
@@ -49,9 +58,13 @@ test.describe("World-class capability cockpit proof harness", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
     await waitForHydration(page);
+    await openCanvas(page);
+    await page.getByText("Capability Library and recipe composer", { exact: true }).click();
 
     await expectUsablePanel(page.locator('[aria-label="WDC Agent Office canvas"]'));
-    await expectUsablePanel(page.getByRole("region", { name: /World-class contract/i }));
+    await expectUsablePanel(
+      page.getByRole("region", { name: /Proof boundary and next safe action/i }),
+    );
     await expectUsablePanel(page.getByRole("region", { name: /Capability Library/i }));
     await expectUsablePanel(page.getByRole("region", { name: /Compose candidate recipe/i }));
 
@@ -67,11 +80,14 @@ test.describe("World-class capability cockpit proof harness", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await waitForHydration(page);
+    await openCanvas(page);
 
-    const contractPanel = page.getByRole("region", { name: /World-class contract/i });
+    const contractPanel = page.getByRole("region", {
+      name: /Proof boundary and next safe action/i,
+    });
     await expectUsablePanel(contractPanel);
-    await expect(contractPanel.getByText("diagnostic_only", { exact: true })).toBeVisible();
-    await expect(contractPanel.getByText("runtime missing_evidence")).toBeVisible();
+    await expect(contractPanel.getByText("L1/candidate-only", { exact: true })).toBeVisible();
+    await expect(contractPanel.getByText("eventspine_count 0")).toBeVisible();
   });
 
   test("supports keyboard-safe composition and keeps interaction latency under diagnostic targets", async ({
@@ -80,6 +96,8 @@ test.describe("World-class capability cockpit proof harness", () => {
     await stubChat(page);
     await page.goto("/");
     await waitForHydration(page);
+    await openCanvas(page);
+    await page.getByText("Capability Library and recipe composer", { exact: true }).click();
 
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
