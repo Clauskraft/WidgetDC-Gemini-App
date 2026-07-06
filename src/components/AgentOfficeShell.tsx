@@ -99,10 +99,12 @@ const FIGMA_SURFACE = {
   ],
 };
 
+const CHAT_FIRST_CAPABILITY_KEY = "capability:frontend.chat_first_control_surface.v1";
+const CHAT_FIRST_CLAIM_CEILING = "L1/candidate-only";
 const CANVAS_WIDTH_STORAGE_KEY = "wdc-agent-office-canvas-width";
-const CANVAS_MIN_WIDTH = 420;
-const CANVAS_MAX_WIDTH = 920;
-const CANVAS_DEFAULT_WIDTH = 620;
+const CANVAS_MIN_WIDTH = 320;
+const CANVAS_MAX_WIDTH = 760;
+const CANVAS_DEFAULT_WIDTH = 380;
 
 function clampCanvasWidth(value: number) {
   return Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, Math.round(value)));
@@ -449,6 +451,47 @@ function ProviderPackageDrawer() {
     </section>
   );
 }
+
+function ChatFirstControlBrief({
+  mode,
+  recipe,
+}: {
+  mode: WorkMode;
+  recipe: ReturnType<typeof buildCapabilityRecipe>;
+}) {
+  return (
+    <section className="chat-first-control-brief" aria-label="Chat-first WDC control contract">
+      <div className="chat-first-brief-copy">
+        <div className="agent-office-kicker">
+          <WDCLogoMark />
+          Chat-first operating cockpit
+        </div>
+        <h2>Type the demand. WDC resolves the route behind the chat.</h2>
+        <p>
+          The primary surface stays calm: streaming answer first, canvas when useful, proof boundary
+          and next safe action always visible.
+        </p>
+      </div>
+      <div className="chat-first-brief-grid">
+        <article>
+          <span>Capability key</span>
+          <strong>{CHAT_FIRST_CAPABILITY_KEY}</strong>
+          <p>{mode.title}</p>
+        </article>
+        <article>
+          <span>Claim ceiling</span>
+          <strong>{CHAT_FIRST_CLAIM_CEILING}</strong>
+          <p>No graph write, no Railway mutation, no claim promotion.</p>
+        </article>
+        <article>
+          <span>Next safe action</span>
+          <strong>{recipe.activation.status}</strong>
+          <p>{recipe.activation.next_action}</p>
+        </article>
+      </div>
+    </section>
+  );
+}
 function CapabilityLibraryWorkspace({
   entries,
   selectedIds,
@@ -754,7 +797,9 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
         <WorkModeSwitcher activeModeId={activeScope.id} modes={workModes} onSelect={setScope} />
 
-        <div className="agent-office-workstrip" aria-label="Chat state contract">
+        <ChatFirstControlBrief mode={activeScope} recipe={recipe} />
+
+        <div className="agent-office-state-strip" aria-label="Chat state contract">
           {["pending", "streaming", "complete", "error"].map((state) => (
             <div className="agent-office-status-pill" key={state}>
               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -763,7 +808,11 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
           ))}
         </div>
 
-        <FigmaSurfaceSyncPanel />
+        <details className="agent-office-progressive-panel">
+          <summary>Design source, WDC toolbox and boundary signals</summary>
+          <FigmaSurfaceSyncPanel />
+          <WdcCliToolboxPanel />
+        </details>
 
         {workspaceChildren}
       </section>
@@ -823,7 +872,7 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
 
           <CanvasWorkspace mode={activeScope} onCopyPrompt={insertPrompt} />
 
-          <details className="agent-office-loop mission-control-loop" open>
+          <details className="agent-office-loop mission-control-loop">
             <summary>Mission Control v2: Demand-to-Route Composer</summary>
             <MissionControlComposer
               mode={activeScope}
@@ -832,12 +881,12 @@ export function AgentOfficeShell({ children }: { children: ReactNode }) {
             />
           </details>
 
-          <details className="agent-office-loop mission-control-loop" open>
+          <details className="agent-office-loop mission-control-loop">
             <summary>Provider Package Drawer</summary>
             <ProviderPackageDrawer />
           </details>
 
-          <details className="agent-office-loop" open>
+          <details className="agent-office-loop">
             <summary>WDC CLI toolbox and Figma sync</summary>
             <WdcCliToolboxPanel />
           </details>
