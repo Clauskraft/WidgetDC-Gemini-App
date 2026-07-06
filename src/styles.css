@@ -2941,6 +2941,8 @@
 @media (max-width: 700px) {
   .app-sidebar {
     width: 4rem !important;
+    min-width: 4rem !important;
+    max-width: 4rem;
     flex: 0 0 4rem;
   }
   .app-sidebar > div:first-child {
