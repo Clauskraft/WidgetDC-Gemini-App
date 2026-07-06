@@ -2875,18 +2875,23 @@
 @media (max-width: 1180px) {
   .agent-office-shell {
     flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    min-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
   }
   .agent-office-chat {
+    width: 100%;
     min-width: 0;
     min-height: min(36rem, 100vh);
-    flex: 1 0 auto;
+    flex: 0 0 auto;
   }
   .agent-office-panel-resizer {
     display: none;
   }
   .agent-office-canvas {
+    box-sizing: border-box;
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -2894,12 +2899,20 @@
     border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
     border-left: 0;
   }
-  .agent-office-canvas {
-    display: flex;
-    border-top: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
-  }
   .agent-office-chat {
     border-right: 0;
+  }
+  .agent-office-canvas > *,
+  .agent-office-loop,
+  .agent-office-debt-panel,
+  .agent-office-project-tree,
+  .capability-library,
+  .compose-recipe-panel,
+  .world-class-assessment {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
@@ -2955,5 +2968,19 @@
     justify-content: center;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+  }
+  .agent-office-canvas {
+    padding: 0.75rem;
+  }
+  .agent-office-panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .agent-office-ref-row,
+  .agent-office-competence-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .world-class-assessment {
+    padding: 0.75rem;
   }
 }
