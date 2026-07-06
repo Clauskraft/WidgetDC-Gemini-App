@@ -13,9 +13,24 @@ import {
 import { WdcLogo } from "./WdcLogo";
 
 const missionSignals = [
-  { label: "Runtime readback", value: "3/3", tone: "text-emerald-200", note: "Scoped to /capabilities" },
-  { label: "EventSpine", value: "valid", tone: "text-sky-200", note: "Chains replayed" },
-  { label: "Claim ceiling", value: "L1/L3 candidate", tone: "text-amber-200", note: "No promotion" },
+  {
+    label: "Runtime proof",
+    value: "pending",
+    tone: "text-emerald-200",
+    note: "Needs deployed SHA + 3 passes",
+  },
+  {
+    label: "EventSpine",
+    value: "pending",
+    tone: "text-sky-200",
+    note: "Attach scoped replay after deploy",
+  },
+  {
+    label: "Claim ceiling",
+    value: "L1 candidate",
+    tone: "text-amber-200",
+    note: "No promotion without runtime evidence",
+  },
   { label: "Provider mode", value: "toolbox", tone: "text-stone-100", note: "Capability-first" },
 ];
 
@@ -77,7 +92,7 @@ export function CapabilityResolverPanel() {
               Capability Mission Control
             </span>
             <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
-              Runtime-readback scoped
+              Runtime proof pending
             </span>
           </div>
 
@@ -91,7 +106,7 @@ export function CapabilityResolverPanel() {
             <p className="max-w-4xl text-base leading-7 text-stone-300">
               Universal Capability Orchestration turns an open demand into a visible route: required
               capabilities, provider toolbox, BOM / Lego dependencies, execution surface and proof.
-              Gemini App remains the cockpit for clarity and review, not an orchestrator authority.
+              Gemini App remains the cockpit for clarity and review, not the execution authority.
             </p>
           </div>
 
@@ -113,8 +128,13 @@ export function CapabilityResolverPanel() {
 
         <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           {missionSignals.map((signal) => (
-            <div className="rounded-2xl border border-stone-800 bg-stone-950/70 p-4" key={signal.label}>
-              <div className="text-xs uppercase tracking-[0.18em] text-stone-500">{signal.label}</div>
+            <div
+              className="rounded-2xl border border-stone-800 bg-stone-950/70 p-4"
+              key={signal.label}
+            >
+              <div className="text-xs uppercase tracking-[0.18em] text-stone-500">
+                {signal.label}
+              </div>
               <div className={`mt-2 text-2xl font-semibold ${signal.tone}`}>{signal.value}</div>
               <div className="mt-2 text-xs leading-5 text-stone-400">{signal.note}</div>
             </div>
@@ -131,7 +151,8 @@ export function CapabilityResolverPanel() {
                   Route rail
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-stone-300">
-                  Demand is resolved before provider selection. This is the anti-provider-first spine.
+                  Demand is resolved before provider selection. This is the anti-provider-first
+                  spine.
                 </p>
               </div>
               <span className="rounded-full border border-amber-300/30 px-3 py-1 text-xs uppercase tracking-[0.16em] text-amber-100">
@@ -158,7 +179,10 @@ export function CapabilityResolverPanel() {
             </h3>
             <div className="mt-4 grid gap-3">
               {bomDrawer.map((item) => (
-                <article className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4" key={item.title}>
+                <article
+                  className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4"
+                  key={item.title}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <h4 className="font-semibold text-stone-100">{item.title}</h4>
                     <span className="rounded-full bg-stone-800 px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-stone-300">
@@ -177,7 +201,10 @@ export function CapabilityResolverPanel() {
             </h3>
             <ol className="mt-4 grid gap-2">
               {nextSafeActions.map((action, index) => (
-                <li className="flex gap-3 rounded-2xl bg-black/30 p-3 text-sm leading-6 text-stone-200" key={action}>
+                <li
+                  className="flex gap-3 rounded-2xl bg-black/30 p-3 text-sm leading-6 text-stone-200"
+                  key={action}
+                >
                   <span className="text-emerald-200">{index + 1}.</span>
                   <span>{action}</span>
                 </li>
@@ -194,7 +221,10 @@ export function CapabilityResolverPanel() {
               </h3>
               <ol className="mt-4 grid gap-2 sm:grid-cols-2">
                 {prototypeBuilderRoutingSteps.map((step, index) => (
-                  <li className="rounded-2xl border border-stone-800 bg-stone-900/60 p-3" key={step}>
+                  <li
+                    className="rounded-2xl border border-stone-800 bg-stone-900/60 p-3"
+                    key={step}
+                  >
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                       {String(index + 1).padStart(2, "0")}
                     </div>
@@ -234,7 +264,8 @@ export function CapabilityResolverPanel() {
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-300">
                   v0, Lovable, Vercel, Claude Design, Figma/Stitch and companion providers are
                   selectable only after capability resolution. WDC CLI remains the authoritative
-                  governance/readback lane; builder output enters as candidate or diagnostic evidence.
+                  governance/readback lane; builder output enters as candidate or diagnostic
+                  evidence.
                 </p>
               </div>
               <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-3 text-xs text-amber-50">
@@ -257,7 +288,9 @@ export function CapabilityResolverPanel() {
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
                         {provider.lane.replace(/_/g, " ")}
                       </div>
-                      <h4 className="mt-1 text-lg font-semibold text-stone-100">{provider.label}</h4>
+                      <h4 className="mt-1 text-lg font-semibold text-stone-100">
+                        {provider.label}
+                      </h4>
                     </div>
                     <div className="rounded-xl border border-stone-700 bg-stone-900 px-3 py-2 text-right">
                       <div className="text-lg font-semibold text-amber-200">
@@ -328,7 +361,10 @@ export function CapabilityResolverPanel() {
           </h3>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {proofLedger.map((item) => (
-              <article className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4" key={item.stage}>
+              <article
+                className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4"
+                key={item.stage}
+              >
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="font-semibold capitalize text-stone-100">{item.stage}</h4>
                   <span className="rounded-full border border-stone-700 px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-stone-300">
@@ -347,14 +383,22 @@ export function CapabilityResolverPanel() {
           </h3>
           <div className="mt-4 grid gap-3">
             {exampleDemands.slice(-2).map((demand) => (
-              <article className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4" key={demand.demand}>
+              <article
+                className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4"
+                key={demand.demand}
+              >
                 <h4 className="font-semibold text-stone-100">{demand.demand}</h4>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {providersForDemand(demand).slice(0, 5).map((provider) => (
-                    <span className="rounded-full bg-stone-800 px-2 py-1 text-xs text-stone-300" key={provider.id}>
-                      {provider.label}: {scoreProviderById(provider.id)}
-                    </span>
-                  ))}
+                  {providersForDemand(demand)
+                    .slice(0, 5)
+                    .map((provider) => (
+                      <span
+                        className="rounded-full bg-stone-800 px-2 py-1 text-xs text-stone-300"
+                        key={provider.id}
+                      >
+                        {provider.label}: {scoreProviderById(provider.id)}
+                      </span>
+                    ))}
                 </div>
               </article>
             ))}
@@ -373,15 +417,16 @@ export function CapabilityResolverPanel() {
       </section>
 
       <div className="border-t border-stone-800/80 bg-black/30 px-5 py-4 text-xs leading-5 text-stone-500 xl:px-7">
-        <span className="font-semibold text-stone-300">Claim language:</span> this surface may say the
-        deployed capability cockpit flow is governed-browser-readback verified when the deployed SHA,
-        browser artifact and EventSpine replay are attached. It may not say world-class complete,
-        adoption proven, all capabilities governed, or claim ready.
+        <span className="font-semibold text-stone-300">Claim language:</span> this surface may say
+        the capability cockpit flow is candidate/L1 proof-tested when local build, route and ratchet
+        evidence are attached. It must avoid completion-grade, adoption-proof, global-governance and
+        claim-readiness language until the required deployed SHA, browser artifact and EventSpine
+        replay gates exist.
       </div>
 
       <aside className="sr-only">
-        Demand ingress surfaces: {demandIngressMatrix.map((entry) => entry.label).join(", ")}. Providers
-        available: {candidateProviders.map((provider) => provider.label).join(", ")}.
+        Demand ingress surfaces: {demandIngressMatrix.map((entry) => entry.label).join(", ")}.
+        Providers available: {candidateProviders.map((provider) => provider.label).join(", ")}.
       </aside>
     </section>
   );

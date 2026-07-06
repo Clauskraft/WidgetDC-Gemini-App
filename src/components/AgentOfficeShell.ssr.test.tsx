@@ -25,6 +25,12 @@ describe("AgentOfficeShell", () => {
     expect(html).toContain("no Railway mutation");
     expect(html).toContain("Vercel paused");
     expect(html).toContain("WDC CLI Chat workspace");
+    expect(html).toContain("Chat-first operating cockpit");
+    expect(html).toContain("Type the demand. WDC resolves the route behind the chat.");
+    expect(html).toContain("capability:frontend.chat_first_control_surface.v1");
+    expect(html).toContain("Claim ceiling");
+    expect(html).toContain("Next safe action");
+    expect(html).toContain("Design source, WDC toolbox and boundary signals");
     expect(html).toContain("Resizable workspace");
     expect(html).toContain("Resize right workspace panel");
     expect(html).toContain("Mission Control v2: Demand-to-Route Composer");
