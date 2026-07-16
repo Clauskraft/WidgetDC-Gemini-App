@@ -32,6 +32,12 @@ vi.mock("@/lib/widgetdc.server", () => ({
   emitChatBOMItem: vi.fn(async () => undefined),
 }));
 
+// P2 receipts (LIN-2226) are fire-and-forget telemetry — mocked here so the
+// strict fetch-call-count assertions keep testing ROUTING only.
+vi.mock("@/lib/interaction-receipts.server", () => ({
+  dispatchChatReceiptFailSoft: vi.fn(),
+}));
+
 vi.mock("@/lib/providers.server", () => ({
   callDirectProvider: vi.fn(),
   streamDirectProvider: vi.fn(),
