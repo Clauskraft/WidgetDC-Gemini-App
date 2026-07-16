@@ -1974,22 +1974,27 @@ export async function fetchRuntimeSnapshot(
   return null;
 }
 
-/** Fetch the Neo4j graph size via canonical `graph.stats`, then quiet legacy fallback. */
+/**
+ * Fetch the Neo4j graph size via canonical `graph.stats`. Best-effort: returns
+ * null on miss so the observability widget degrades gracefully.
+ *
+ * The retired `data_graph_stats` alias is NOT registered on the backend, so the
+ * old legacy fallback could only ever burn a full timeout window on a dead tool
+ * — observed live as `mcp_tool_request_failed data_graph_stats AbortError`
+ * at durationMs≈15002 in the Railway deploy logs, on top of the primary
+ * graph.stats attempt (worst case ~30s of hanging per cache-miss). Dropped.
+ *
+ * Timeout trimmed 15s→12s: the backend getGraphStats caps each internal query
+ * at ~5s (apoc.meta.stats then count-store fallback) behind a 30s success-cache,
+ * so ~12s comfortably covers a cold-cache worst case without hanging longer.
+ */
 export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphSnapshot | null> {
   const canonical = await callMcpTool<unknown>(
     "graph.stats",
     {},
-    { correlationId, timeoutMs: 15000 },
+    { correlationId, timeoutMs: 12000 },
   );
-  const canonicalSnapshot = extractGraphSnapshot(canonical);
-  if (canonicalSnapshot) return canonicalSnapshot;
-
-  const legacy = await callMcpToolIfCatalogued<unknown>(
-    "data_graph_stats",
-    {},
-    { correlationId, timeoutMs: 15000 },
-  );
-  return extractGraphSnapshot(legacy);
+  return extractGraphSnapshot(canonical);
 }
 
 // ── BOMItem chat-turn emit ───────────────────────────────────────────────────
