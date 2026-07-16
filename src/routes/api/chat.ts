@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { z } from "zod";
 import { dispatchChatReceiptFailSoft } from "@/lib/interaction-receipts.server";
-import { isPlatformConfigured } from "@/lib/widgetdc.server";
+import {
+  fetchIntentDetection,
+  fetchRagGrounding,
+  isPlatformConfigured,
+} from "@/lib/widgetdc.server";
 
 // ── WDC Chat ONLY — same behavior as `wdc chat` CLI ─────────────────────
 const WDC_BACKEND =
@@ -175,6 +179,45 @@ export const Route = createFileRoute("/api/chat")({
             writer.write({ type: "start-step" });
             writer.write({ type: "text-start", id: textId });
 
+            // GF-PR2: parallel enrichment. Intent-routing and RAG-grounding
+            // fire CONCURRENTLY with the backend stream and write their parts
+            // the moment they resolve (usually mid-stream) — the first token
+            // is never blocked, and a failed helper emits nothing. The shapes
+            // map 1:1 onto the data-reasoning / data-sources parts the client
+            // already consumes (ChatWindow AUR-5 / AUR-14).
+            let streamClosed = false;
+            const enrich = process.env.WDC_CHAT_ENRICH !== "0";
+            const enrichmentWrites: Promise<void>[] = [];
+            if (enrich) {
+              enrichmentWrites.push(
+                fetchIntentDetection(intent, correlationId)
+                  .then((detection) => {
+                    const top = detection?.candidates?.[0];
+                    if (!top || streamClosed) return;
+                    writer.write({
+                      type: "data-reasoning",
+                      id: "reasoning",
+                      data: {
+                        intentTool: top.tool,
+                        intentScore: top.score,
+                        intentCandidates: detection.candidates.slice(0, 5).map((c) => c.tool),
+                      },
+                    });
+                  })
+                  .catch(() => {}),
+                fetchRagGrounding(intent, correlationId)
+                  .then((grounding) => {
+                    if (!grounding?.sources?.length || streamClosed) return;
+                    writer.write({
+                      type: "data-sources",
+                      id: "sources",
+                      data: { sources: grounding.sources },
+                    });
+                  })
+                  .catch(() => {}),
+              );
+            }
+
             const resp = await fetch(`${WDC_BACKEND}/api/wdc-chat/stream`, {
               method: "POST",
               headers: {
@@ -224,6 +267,17 @@ export const Route = createFileRoute("/api/chat")({
               sessionId: body.id,
               outcome: resp.ok ? "success" : "failure",
             });
+
+            // Give in-flight enrichment a short grace window after the last
+            // token (usually 0 — helpers resolved during streaming), then seal
+            // the stream so late resolvers can never write after end.
+            if (enrichmentWrites.length > 0) {
+              await Promise.race([
+                Promise.allSettled(enrichmentWrites),
+                new Promise((resolve) => setTimeout(resolve, 2000)),
+              ]);
+            }
+            streamClosed = true;
 
             writer.write({ type: "text-end", id: textId });
             writer.write({ type: "end-step" });
