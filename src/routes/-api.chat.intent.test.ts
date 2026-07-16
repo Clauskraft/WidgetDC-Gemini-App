@@ -132,6 +132,25 @@ describe("/api/chat WDC CLI chat stream routing", () => {
     });
   });
 
+  it("emits AI SDK v6 wire-protocol parts — text-delta/finish, never legacy text/end", async () => {
+    // The ai@6 client validator REJECTS {type:"text"}, {type:"end-step"} and
+    // {type:"end"} (AI_TypeValidationError), which silently killed answer
+    // rendering in the browser while raw-SSE curl checks and request-payload
+    // e2e assertions stayed green. This is the regression lock.
+    const response = await invokeChat({
+      id: "thread-protocol",
+      messages: [{ id: "u1", role: "user", parts: [{ type: "text", text: "protokol-check" }] }],
+    });
+    const text = await response.text();
+
+    expect(text).toContain('"type":"text-delta"');
+    expect(text).toContain('"type":"finish-step"');
+    expect(text).toContain('"type":"finish"');
+    expect(text).not.toMatch(/"type":"text"[,}]/);
+    expect(text).not.toContain('"type":"end-step"');
+    expect(text).not.toMatch(/"type":"end"[,}]/);
+  });
+
   it("accepts compact SSE data lines from the WDC backend stream", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -151,8 +170,8 @@ describe("/api/chat WDC CLI chat stream routing", () => {
 
     expect(response.status).toBe(200);
     const text = await response.text();
-    expect(text).toContain('"text":"WDC_"');
-    expect(text).toContain('"text":"CHAT_OK"');
+    expect(text).toContain('"delta":"WDC_"');
+    expect(text).toContain('"delta":"CHAT_OK"');
   });
 
   it("returns an explicit no-provider POST SSE probe without backend/provider calls", async () => {
