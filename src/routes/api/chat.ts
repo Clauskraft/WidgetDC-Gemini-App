@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { z } from "zod";
+import { dispatchChatReceiptFailSoft } from "@/lib/interaction-receipts.server";
 import { isPlatformConfigured } from "@/lib/widgetdc.server";
 
 // ── WDC Chat ONLY — same behavior as `wdc chat` CLI ─────────────────────
@@ -215,6 +216,14 @@ export const Route = createFileRoute("/api/chat")({
             } else {
               writer.write({ type: "text", text: `[WDC Chat error: HTTP ${resp.status}]` });
             }
+
+            // P2 adoption-flywheel receipt (LIN-2226): one observability-only
+            // tool_launch per chat turn. Fire-and-forget fail-soft — can never
+            // delay or fail the stream.
+            dispatchChatReceiptFailSoft({
+              sessionId: body.id,
+              outcome: resp.ok ? "success" : "failure",
+            });
 
             writer.write({ type: "text-end", id: textId });
             writer.write({ type: "end-step" });
