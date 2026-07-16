@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildChatReceipt,
+  buildUiReceipt,
   dispatchChatReceiptFailSoft,
   sendInteractionReceipt,
 } from "@/lib/interaction-receipts.server";
@@ -41,6 +42,39 @@ describe("P2 interaction receipts (LIN-2226, gemini-frontend surface)", () => {
     // Backend contract requires the deterministic ui-a5- correlation prefix.
     expect(receipt.correlation_id).toBe(`ui-a5-gemini-sess-42-${receipt.event_token}-tool_launch`);
     expect(() => new Date(receipt.observed_at).toISOString()).not.toThrow();
+  });
+
+  it("buildUiReceipt generalises the contract to feedback-eligible interactions (GF-PR4)", () => {
+    const receipt = buildUiReceipt({
+      interaction: "fold_out",
+      templateId: "gemini-frontend:/api/receipts",
+      entityId: "canvas/thread-7",
+      intentHint: "intelligence stack",
+      producingTool: "kg_rag.query",
+      sessionId: "sess-7",
+      outcome: "success",
+    });
+
+    expect(receipt).toMatchObject({
+      surface: "gemini-frontend",
+      template_id: "gemini-frontend:/api/receipts",
+      interaction: "fold_out",
+      entity_id: "canvas/thread-7",
+      intent_hint: "intelligence stack",
+      producing_tool: "kg_rag.query",
+      outcome: "success",
+      context_id: "gemini-sess-7",
+    });
+    expect(receipt.correlation_id).toBe(`ui-a5-gemini-sess-7-${receipt.event_token}-fold_out`);
+  });
+
+  it("buildChatReceipt output is unchanged by the GF-PR4 generalisation", () => {
+    const receipt = buildChatReceipt({ sessionId: "sess-42", outcome: "success" });
+    expect(receipt.template_id).toBe("gemini-frontend:/api/chat");
+    expect(receipt.interaction).toBe("tool_launch");
+    expect(receipt.intent_hint).toBeNull();
+    expect(receipt.producing_tool).toBeNull();
+    expect(receipt.entity_id).toBe("wdc-chat/stream");
   });
 
   it("anonymous sessions still produce a valid context id", () => {

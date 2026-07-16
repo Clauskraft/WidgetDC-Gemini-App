@@ -32,6 +32,7 @@ import { Route as DebugLogsRouteImport } from './routes/debug.logs'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiStorylineRouteImport } from './routes/api/storyline'
 import { Route as ApiReleaseRouteImport } from './routes/api/release'
+import { Route as ApiReceiptsRouteImport } from './routes/api/receipts'
 import { Route as ApiPatternsRouteImport } from './routes/api/patterns'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMondayReviewRouteImport } from './routes/api/monday-review'
@@ -169,6 +170,11 @@ const ApiStorylineRoute = ApiStorylineRouteImport.update({
 const ApiReleaseRoute = ApiReleaseRouteImport.update({
   id: '/api/release',
   path: '/api/release',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReceiptsRoute = ApiReceiptsRouteImport.update({
+  id: '/api/receipts',
+  path: '/api/receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPatternsRoute = ApiPatternsRouteImport.update({
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/receipts': typeof ApiReceiptsRoute
   '/api/release': typeof ApiReleaseRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -363,6 +370,7 @@ export interface FileRoutesByTo {
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/receipts': typeof ApiReceiptsRoute
   '/api/release': typeof ApiReleaseRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -412,6 +420,7 @@ export interface FileRoutesById {
   '/api/monday-review': typeof ApiMondayReviewRoute
   '/api/news': typeof ApiNewsRouteWithChildren
   '/api/patterns': typeof ApiPatternsRoute
+  '/api/receipts': typeof ApiReceiptsRoute
   '/api/release': typeof ApiReleaseRoute
   '/api/storyline': typeof ApiStorylineRoute
   '/c/$threadId': typeof CThreadIdRoute
@@ -462,6 +471,7 @@ export interface FileRouteTypes {
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
+    | '/api/receipts'
     | '/api/release'
     | '/api/storyline'
     | '/c/$threadId'
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
+    | '/api/receipts'
     | '/api/release'
     | '/api/storyline'
     | '/c/$threadId'
@@ -557,6 +568,7 @@ export interface FileRouteTypes {
     | '/api/monday-review'
     | '/api/news'
     | '/api/patterns'
+    | '/api/receipts'
     | '/api/release'
     | '/api/storyline'
     | '/c/$threadId'
@@ -606,6 +618,7 @@ export interface RootRouteChildren {
   ApiMondayReviewRoute: typeof ApiMondayReviewRoute
   ApiNewsRoute: typeof ApiNewsRouteWithChildren
   ApiPatternsRoute: typeof ApiPatternsRoute
+  ApiReceiptsRoute: typeof ApiReceiptsRoute
   ApiReleaseRoute: typeof ApiReleaseRoute
   ApiStorylineRoute: typeof ApiStorylineRoute
   CThreadIdRoute: typeof CThreadIdRoute
@@ -784,6 +797,13 @@ declare module '@tanstack/react-router' {
       path: '/api/release'
       fullPath: '/api/release'
       preLoaderRoute: typeof ApiReleaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/receipts': {
+      id: '/api/receipts'
+      path: '/api/receipts'
+      fullPath: '/api/receipts'
+      preLoaderRoute: typeof ApiReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/patterns': {
@@ -1015,6 +1035,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMondayReviewRoute: ApiMondayReviewRoute,
   ApiNewsRoute: ApiNewsRouteWithChildren,
   ApiPatternsRoute: ApiPatternsRoute,
+  ApiReceiptsRoute: ApiReceiptsRoute,
   ApiReleaseRoute: ApiReleaseRoute,
   ApiStorylineRoute: ApiStorylineRoute,
   CThreadIdRoute: CThreadIdRoute,

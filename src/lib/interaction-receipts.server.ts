@@ -46,10 +46,10 @@ function serviceBearer(): string | undefined {
 export interface UiInteractionReceipt {
   surface: "gemini-frontend";
   template_id: string;
-  interaction: "tool_launch";
+  interaction: "tool_launch" | "card_drilldown" | "fold_out";
   entity_id: string;
-  intent_hint: null;
-  producing_tool: null;
+  intent_hint: string | null;
+  producing_tool: string | null;
   outcome: "success" | "failure";
   event_token: number;
   context_id: string;
@@ -57,34 +57,58 @@ export interface UiInteractionReceipt {
   observed_at: string;
 }
 
-export interface ChatReceiptArgs {
+export interface UiReceiptArgs {
+  interaction: UiInteractionReceipt["interaction"];
+  templateId: string;
+  entityId: string;
+  intentHint: string | null;
+  producingTool: string | null;
   sessionId: string | undefined;
   outcome: "success" | "failure";
 }
 
 /**
- * Build a contract-conformant receipt for one chat turn. `event_token` is a
- * millisecond timestamp: monotonic per session in practice, and the backend's
- * correlation-id dedup makes accidental duplicates harmless. The `ui-a5-`
- * correlation prefix is mandated by the backend contract
- * (uiInteractionContract.ts) as the deterministic idempotency/replay handle.
+ * Build a contract-conformant receipt for any interaction (GF-PR4).
+ * `event_token` is a millisecond timestamp: monotonic per session in
+ * practice, and the backend's correlation-id dedup makes accidental
+ * duplicates harmless. The `ui-a5-` correlation prefix is mandated by the
+ * backend contract (uiInteractionContract.ts) as the deterministic
+ * idempotency/replay handle.
  */
-export function buildChatReceipt(args: ChatReceiptArgs): UiInteractionReceipt {
+export function buildUiReceipt(args: UiReceiptArgs): UiInteractionReceipt {
   const contextId = `gemini-${args.sessionId?.trim() || "anon"}`;
   const eventToken = Date.now();
   return {
     surface: "gemini-frontend",
-    template_id: "gemini-frontend:/api/chat",
-    interaction: "tool_launch",
-    entity_id: "wdc-chat/stream",
-    intent_hint: null,
-    producing_tool: null,
+    template_id: args.templateId,
+    interaction: args.interaction,
+    entity_id: args.entityId,
+    intent_hint: args.intentHint,
+    producing_tool: args.producingTool,
     outcome: args.outcome,
     event_token: eventToken,
     context_id: contextId,
-    correlation_id: `ui-a5-${contextId}-${eventToken}-tool_launch`,
+    correlation_id: `ui-a5-${contextId}-${eventToken}-${args.interaction}`,
     observed_at: new Date().toISOString(),
   };
+}
+
+export interface ChatReceiptArgs {
+  sessionId: string | undefined;
+  outcome: "success" | "failure";
+}
+
+/** One chat turn = one tool_launch (observability-only by the P2 contract). */
+export function buildChatReceipt(args: ChatReceiptArgs): UiInteractionReceipt {
+  return buildUiReceipt({
+    interaction: "tool_launch",
+    templateId: "gemini-frontend:/api/chat",
+    entityId: "wdc-chat/stream",
+    intentHint: null,
+    producingTool: null,
+    sessionId: args.sessionId,
+    outcome: args.outcome,
+  });
 }
 
 /** POST the receipt through the governed MCP route. Never throws. */
