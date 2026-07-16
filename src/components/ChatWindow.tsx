@@ -24,7 +24,8 @@ import {
   FileSearch,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
-import { CanvasPanel } from "./CanvasPanel";
+import { useCanvas } from "@/lib/canvas-context";
+import { shouldAutoOpenCanvas } from "@/lib/canvasTrigger";
 import { cn } from "@/lib/utils";
 import { validateGemResponse, type ValidationResult } from "@/lib/gemResponseValidator";
 import { useModelPreference } from "@/lib/modelPreference";
@@ -174,8 +175,8 @@ export function ChatWindow({
   onFirstMessage?: () => void;
 }) {
   const { upsertThread } = useThreads();
+  const canvas = useCanvas();
   const [input, setInput] = useState(initialInput ?? "");
-  const [canvasOpen, setCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [ingestedSources, setIngestedSources] = useState<IngestedSource[]>([]);
@@ -358,8 +359,44 @@ export function ChatWindow({
     )?.find((p) => p && p.type === "data-sources");
     return ((part?.data as { sources?: unknown[] } | undefined)?.sources ?? []).length;
   }, [latestAssistant]);
+  // GF-PR3: the chat feeds the route-agnostic canvas (P2 — the answer's
+  // shadow). Messages are published to the provider; auto-open fires ONCE on
+  // the active→completed transition when the latest answer carries structure,
+  // on md+ viewports, unless the user closed the canvas earlier in this thread.
+  const latestAssistantText = latestAssistant ? getText(latestAssistant) : "";
+  const canvasWorthy = useMemo(
+    () => Boolean(latestAssistantText) && shouldAutoOpenCanvas(latestAssistantText),
+    [latestAssistantText],
+  );
+  // A structured answer keeps the strip up after completion to advertise
+  // "canvas ready", even when the run carried no enrichment parts.
   const showIntelligenceStrip =
-    showInlineRunState || stripReasoning !== null || stripSourceCount > 0;
+    showInlineRunState || stripReasoning !== null || stripSourceCount > 0 || canvasWorthy;
+  useEffect(() => {
+    canvas.publishMessages(threadId, messages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- publishMessages is stable
+  }, [threadId, messages]);
+  // Auto-open keys on NEW assistant message ids relative to a mount baseline,
+  // not on observing an "active" render: an atomically-delivered stream can
+  // settle inside one React commit, so idle->completed may be the only visible
+  // transition. Baseline = latest assistant at mount, which also means a
+  // reload of a persisted thread never auto-opens (the canvas is the shadow
+  // of NEW answers, not of history).
+  const autoOpenBaselineRef = useRef<string | null | undefined>(undefined);
+  const lastAutoOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoOpenBaselineRef.current === undefined) {
+      autoOpenBaselineRef.current = latestAssistant?.id ?? null;
+      return;
+    }
+    if (chatRunState !== "completed" || !canvasWorthy || canvas.userClosedThisThread) return;
+    const id = latestAssistant?.id;
+    if (!id || id === autoOpenBaselineRef.current || id === lastAutoOpenedRef.current) return;
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
+    lastAutoOpenedRef.current = id;
+    canvas.openCanvas(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on run state + latest answer
+  }, [chatRunState, latestAssistant?.id, canvasWorthy]);
 
   useEffect(() => {
     if (status !== "ready" || messages.length > 0) setOptimisticSending(false);
@@ -802,10 +839,10 @@ export function ChatWindow({
               Council
             </button>
             <button
-              onClick={() => setCanvasOpen((v) => !v)}
+              onClick={() => (canvas.open ? canvas.closeCanvas(true) : canvas.openCanvas())}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                canvasOpen ? "bg-accent text-foreground border-border" : "text-muted-foreground",
+                canvas.open ? "bg-accent text-foreground border-border" : "text-muted-foreground",
               )}
             >
               <PanelRightOpen className="h-3.5 w-3.5" />
@@ -901,7 +938,15 @@ export function ChatWindow({
                   presentation={chatRunPresentation}
                   reasoning={stripReasoning}
                   sourceCount={stripSourceCount}
-                  canvasReady={false}
+                  canvasReady={canvasWorthy}
+                  action={
+                    canvasWorthy && !canvas.open
+                      ? {
+                          label: "Open canvas",
+                          onClick: () => canvas.openCanvas(latestAssistant?.id),
+                        }
+                      : null
+                  }
                 />
               )}
             </div>
@@ -1036,8 +1081,6 @@ export function ChatWindow({
           </div>
         </div>
       </div>
-
-      {canvasOpen && <CanvasPanel messages={messages} onClose={() => setCanvasOpen(false)} />}
 
       {audioOverviewOpen && ingestedSources.length > 0 && (
         <div className="absolute bottom-24 right-4 z-40 w-[380px] max-w-[calc(100vw-2rem)]">

@@ -13,8 +13,10 @@ import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
 import { AppSidebar } from "../components/AppSidebar";
 import { TopBar } from "../components/AppShell/TopBar";
+import { CanvasSlot } from "../components/Canvas/CanvasDrawer";
 import { CommandPalette } from "../components/CommandPalette";
 import { ActiveEngagementProvider } from "../lib/engagement-context";
+import { CanvasProvider } from "../lib/canvas-context";
 
 function NotFoundComponent() {
   return (
@@ -135,16 +137,19 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ActiveEngagementProvider>
-        <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-          <AppSidebar />
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <TopBar />
-            <main className="flex flex-1 overflow-hidden">
-              <Outlet />
-            </main>
+        <CanvasProvider>
+          <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+            <AppSidebar />
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <TopBar />
+              <main className="flex flex-1 overflow-hidden">
+                <Outlet />
+              </main>
+            </div>
+            <CanvasSlot />
+            <CommandPalette />
           </div>
-          <CommandPalette />
-        </div>
+        </CanvasProvider>
       </ActiveEngagementProvider>
     </QueryClientProvider>
   );
