@@ -247,17 +247,21 @@ export const Route = createFileRoute("/api/chat")({
                 for (const l of lines) {
                   const ev = parseSseDataLine(l);
                   const text = tokenText(ev);
-                  if (text) writer.write({ type: "text", text });
+                  if (text) writer.write({ type: "text-delta", id: textId, delta: text });
                 }
               }
               buf += dec.decode();
               for (const l of buf.split(/\r?\n/)) {
                 const ev = parseSseDataLine(l);
                 const text = tokenText(ev);
-                if (text) writer.write({ type: "text", text });
+                if (text) writer.write({ type: "text-delta", id: textId, delta: text });
               }
             } else {
-              writer.write({ type: "text", text: `[WDC Chat error: HTTP ${resp.status}]` });
+              writer.write({
+                type: "text-delta",
+                id: textId,
+                delta: `[WDC Chat error: HTTP ${resp.status}]`,
+              });
             }
 
             // P2 adoption-flywheel receipt (LIN-2226): one observability-only
@@ -280,8 +284,8 @@ export const Route = createFileRoute("/api/chat")({
             streamClosed = true;
 
             writer.write({ type: "text-end", id: textId });
-            writer.write({ type: "end-step" });
-            writer.write({ type: "end", finishReason: "stop" });
+            writer.write({ type: "finish-step" });
+            writer.write({ type: "finish" });
           },
           generateId: () => crypto.randomUUID(),
           onError: (e) => console.error("[WDC Chat] Stream error:", e),

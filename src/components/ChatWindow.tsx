@@ -365,23 +365,26 @@ export function ChatWindow({
     if (status !== "ready" || messages.length > 0) setOptimisticSending(false);
   }, [messages.length, status]);
 
-  // Persist messages + fire onFirstMessage exactly once when the first
-  // user message appears, so the parent route can navigate event-based
-  // instead of polling localStorage.
+  // Persist messages continuously; fire onFirstMessage exactly once — but
+  // ONLY after the first run has finished streaming. The parent's
+  // history.replaceState triggers a router remount in this TanStack version
+  // (the old "updates in place, does NOT unmount us" assumption was wrong),
+  // which aborted the in-flight useChat stream: the user saw their prompt but
+  // the answer silently vanished. Deferring the URL update to run-completion
+  // means the remount replays the already-persisted messages losslessly.
   const firedFirstRef = useRef(false);
   useEffect(() => {
     if (messages.length === 0) return;
     const firstUser = messages.find((m) => m.role === "user");
     const title = firstUser ? getText(firstUser).slice(0, 60) || "Ny samtale" : "Ny samtale";
     upsertThread(threadId, { title, messages });
-    if (firstUser && !firedFirstRef.current) {
+    const streamSettled = status !== "streaming" && status !== "submitted";
+    const hasAssistant = messages.some((m) => m.role === "assistant");
+    if (firstUser && hasAssistant && streamSettled && !firedFirstRef.current) {
       firedFirstRef.current = true;
-      // onFirstMessage now updates the URL in place (history.replaceState) and
-      // does NOT unmount us, so we must NOT show the creating-thread overlay —
-      // it would cover the streaming reply. The stream keeps rendering here.
       onFirstMessage?.();
     }
-  }, [messages, threadId, upsertThread, onFirstMessage]);
+  }, [messages, threadId, upsertThread, onFirstMessage, status]);
 
   // Safety net: if navigation hasn't unmounted us within ~4s, clear the
   // overlay so the user isn't stuck on a loading state.
