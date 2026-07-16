@@ -9,6 +9,7 @@
  */
 import { Command, PanelRight } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
+import { useCanvas } from "@/lib/canvas-context";
 import { useActiveEngagement } from "@/lib/engagement-context";
 import { pageTitleFor } from "@/lib/navigation";
 
@@ -67,6 +68,10 @@ export function TopBarView({
 export function TopBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { activeEngagement } = useActiveEngagement();
+  const canvas = useCanvas();
+  // GF-PR3: the toggle is live once the thread has anything canvas-worthy
+  // (or the canvas is already open, so it can always be closed from here).
+  const canvasEnabled = canvas.open || canvas.messages.length > 0;
   const openPalette = () => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }));
@@ -75,6 +80,8 @@ export function TopBar() {
     <TopBarView
       title={pageTitleFor(pathname)}
       scopeLabel={activeEngagement ? activeEngagement.name : null}
+      canvasEnabled={canvasEnabled}
+      onToggleCanvas={() => (canvas.open ? canvas.closeCanvas(true) : canvas.openCanvas())}
       onOpenPalette={openPalette}
     />
   );
