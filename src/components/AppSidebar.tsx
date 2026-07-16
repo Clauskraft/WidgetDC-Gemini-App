@@ -6,74 +6,15 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import {
-  AppWindow,
-  BookOpen,
-  Boxes,
-  BrainCircuit,
-  ChevronRight,
-  FileText,
-  GitBranch,
-  MessageSquarePlus,
-  Network,
-  PanelLeft,
-  Radar,
-  Settings as SettingsIcon,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { ChevronRight, MessageSquarePlus, Sparkles, Trash2 } from "lucide-react";
 import { useThreads, newId } from "@/hooks/useThreads";
+import { FOOTER_NAV, LIBRARY_NAV, PRIMARY_NAV } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "wdc-agent-office-sidebar-width";
 const SIDEBAR_MIN_WIDTH = 228;
 const SIDEBAR_MAX_WIDTH = 420;
 const SIDEBAR_DEFAULT_WIDTH = 296;
-
-const libraryLinks = [
-  {
-    to: "/audit-factory",
-    label: "Audit Factory",
-    description: "Evidence review queues",
-    state: "audit",
-    icon: AppWindow,
-  },
-  {
-    to: "/capabilities",
-    label: "Capabilities",
-    description: "Provider toolbox and scoring",
-    state: "toolbox",
-    icon: GitBranch,
-  },
-  {
-    to: "/graph",
-    label: "Graph",
-    description: "Readback map, not write authority",
-    state: "readback",
-    icon: Network,
-  },
-  {
-    to: "/engagements",
-    label: "Missions",
-    description: "Client context and active work",
-    state: "work",
-    icon: Boxes,
-  },
-  {
-    to: "/deliverable",
-    label: "Evidence",
-    description: "Artifacts, proof and handoff",
-    state: "output",
-    icon: FileText,
-  },
-  {
-    to: "/patterns",
-    label: "Playbooks",
-    description: "Reusable WDC patterns",
-    state: "reuse",
-    icon: BookOpen,
-  },
-] as const;
 
 function clampSidebarWidth(value: number) {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
@@ -127,11 +68,6 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
     }
   };
 
-  const showCanvas = () => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new CustomEvent("agent-office:show-canvas"));
-  };
-
   return (
     <aside
       className={cn(
@@ -166,22 +102,21 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
       </div>
 
       <nav className="space-y-1 px-2">
-        <Link to="/" className={navLinkBase} activeProps={{ className: navLinkActive }}>
-          <BrainCircuit className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Chat</span>}
-        </Link>
-        <a href="#agent-office-canvas" className={navLinkBase} onClick={showCanvas}>
-          <AppWindow className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Canvas</span>}
-        </a>
-        <Link
-          to="/observability"
-          className={navLinkBase}
-          activeProps={{ className: navLinkActive }}
-        >
-          <Radar className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Work</span>}
-        </Link>
+        {PRIMARY_NAV.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={navLinkBase}
+              activeProps={{ className: navLinkActive }}
+              title={`${item.label}: ${item.description}`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
       </nav>
 
       {!collapsed && (
@@ -190,7 +125,7 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
             Library
           </div>
           <div className="space-y-1">
-            {libraryLinks.map((item) => {
+            {LIBRARY_NAV.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
@@ -205,7 +140,6 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
                     <span>{item.label}</span>
                     <small>{item.description}</small>
                   </span>
-                  <span className="app-sidebar-link-state">{item.state}</span>
                   <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-40" />
                 </Link>
               );
@@ -258,16 +192,21 @@ export function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
       )}
 
       <div className="border-t border-sidebar-border px-2 py-2">
-        <Link to="/settings" className={navLinkBase} activeProps={{ className: navLinkActive }}>
-          <SettingsIcon className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Settings</span>}
-        </Link>
-        {!collapsed && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] text-muted-foreground">
-            <PanelLeft className="h-3.5 w-3.5" />
-            Scope M
-          </div>
-        )}
+        {FOOTER_NAV.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={navLinkBase}
+              activeProps={{ className: navLinkActive }}
+              title={`${item.label}: ${item.description}`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
       </div>
 
       {!collapsed && (

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Activity, RefreshCw, AlertTriangle, Database, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, Database } from "lucide-react";
+import { PageShell } from "@/components/AppShell/PageShell";
 
 export const Route = createFileRoute("/observability")({
   head: () => ({
@@ -78,32 +79,14 @@ function ObservabilityRoute() {
         : "Agenter";
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <Activity className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Observability</h1>
-            <p className="text-sm text-muted-foreground">
-              Live fleet-sundhed og graf-størrelse, direkte fra platformens runtime-telemetri.
-            </p>
-          </div>
-          <button
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent disabled:opacity-50"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Opdatér
-          </button>
-        </header>
-
+    <PageShell
+      title="Observability"
+      subtitle="Live fleet-sundhed og graf-størrelse, direkte fra platformens runtime-telemetri."
+      icon={<Activity className="h-4 w-4 text-white" />}
+      onRefresh={() => void load()}
+      refreshing={loading}
+    >
+      <div>
         {error && (
           <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
@@ -184,7 +167,7 @@ function ObservabilityRoute() {
           <p className="text-sm text-muted-foreground">Ingen observability-data tilgængelig.</p>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

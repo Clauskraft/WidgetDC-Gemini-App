@@ -16,6 +16,7 @@ import {
   Search,
 } from "lucide-react";
 import { MessageContent } from "@/components/MessageContent";
+import { PageShell } from "@/components/AppShell/PageShell";
 
 type EngagementOption = { id: string; name: string; client?: string };
 
@@ -249,21 +250,12 @@ function DeliverableRoute() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Deliverable Studio</h1>
-            <p className="text-sm text-muted-foreground">
-              Et brief ind — en citationsbaseret consulting-deliverable ud, drevet af platformens
-              knowledge graph og Lego Factory-pipeline.
-            </p>
-          </div>
-        </header>
-
+    <PageShell
+      title="Deliverable Studio"
+      subtitle="Et brief ind — en citationsbaseret consulting-deliverable ud, drevet af platformens knowledge graph og Lego Factory-pipeline."
+      icon={<FileText className="h-4 w-4 text-white" />}
+    >
+      <div className="mx-auto w-full max-w-3xl">
         <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
           <div ref={engRef} className="relative">
             <label className="mb-1.5 block text-sm font-medium">Engagement (valgfrit)</label>
@@ -548,6 +540,6 @@ function DeliverableRoute() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

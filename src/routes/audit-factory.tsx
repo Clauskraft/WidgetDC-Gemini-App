@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageShell } from "@/components/AppShell/PageShell";
 import { AuditFactoryCockpit } from "@/components/AuditFactoryCockpit";
 
 export const Route = createFileRoute("/audit-factory")({
@@ -16,5 +17,13 @@ export const Route = createFileRoute("/audit-factory")({
 });
 
 function AuditFactoryRoute() {
-  return <AuditFactoryCockpit />;
+  return (
+    <PageShell
+      title="WDC Audit Factory Cockpit"
+      subtitle="Candidate/L1 capability-first cockpit readback — WDC CLI and Agent Office remain the authority."
+      previewNotice="Preview — deterministic demo data, not live platform state"
+    >
+      <AuditFactoryCockpit />
+    </PageShell>
+  );
 }

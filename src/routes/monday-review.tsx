@@ -10,7 +10,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Calendar,
-  RefreshCw,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -25,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { EmptyState } from "@/components/EmptyState";
+import { PageShell } from "@/components/AppShell/PageShell";
 import type { MondayReviewResponse, EngagementSummary, ActionItem } from "./api/monday-review";
 
 export const Route = createFileRoute("/monday-review")({
@@ -117,75 +117,51 @@ function MondayReviewRoute() {
   }, [load]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-border px-6 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-          <Calendar className="h-4 w-4 text-white" />
+    <PageShell
+      title="Monday Morning Review"
+      subtitle={data?.week_label ?? "Ugentlig briefing — aktive engagements"}
+      icon={<Calendar className="h-4 w-4 text-white" />}
+      onRefresh={() => void load()}
+      refreshing={loading}
+      actions={
+        <div className="flex rounded-lg border border-input overflow-hidden text-xs">
+          {(["briefing", "kpi"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={cn(
+                "px-3 py-1.5 font-medium transition",
+                view === v
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent",
+              )}
+            >
+              {v === "briefing" ? "Briefing" : "KPI-oversigt"}
+            </button>
+          ))}
         </div>
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold tracking-tight">Monday Morning Review</h1>
-          <p className="text-xs text-muted-foreground">
-            {data?.week_label ?? "Ugentlig briefing — aktive engagements"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Tab switcher */}
-          <div className="flex rounded-lg border border-input overflow-hidden text-xs">
-            {(["briefing", "kpi"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "px-3 py-1.5 font-medium transition",
-                  view === v
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
-                )}
-              >
-                {v === "briefing" ? "Briefing" : "KPI-oversigt"}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-accent disabled:opacity-50"
-          >
-            {loading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
-            Opdatér
-          </button>
-        </div>
-      </div>
-
+      }
+    >
       {/* Error */}
       {error && (
-        <div className="mx-6 mt-4 shrink-0 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {/* Loading placeholder */}
       {loading && !data && (
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       )}
 
       {/* Content */}
-      {data && (
-        <div className="flex-1 overflow-y-auto">
-          {view === "briefing" ? <BriefingView data={data} /> : <KpiView data={data} />}
-        </div>
-      )}
+      {data && (view === "briefing" ? <BriefingView data={data} /> : <KpiView data={data} />)}
 
       {/* Empty state */}
       {!loading && !data && !error && (
-        <div className="flex flex-1 items-center justify-center p-8">
+        <div className="flex items-center justify-center p-8">
           <EmptyState
             icon={<Calendar className="h-7 w-7" />}
             title="Ingen review-data tilgængeligt"
@@ -201,7 +177,7 @@ function MondayReviewRoute() {
           />
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -211,7 +187,7 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
   const otherActions = data.action_items.filter((a) => a.priority !== "high");
 
   return (
-    <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Left col — action inbox */}
       <div className="lg:col-span-2 space-y-6">
         {/* B2: Live KPI spotlight — 3 primære KPI-tiles */}
@@ -438,7 +414,7 @@ function BriefingView({ data }: { data: MondayReviewResponse }) {
 // ─── 3B: KPI + engagement-grid ─────────────────────────────────────────────
 function KpiView({ data }: { data: MondayReviewResponse }) {
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* B2: Live KPI tiles — prominent 3-tile row */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <LiveKpiTile

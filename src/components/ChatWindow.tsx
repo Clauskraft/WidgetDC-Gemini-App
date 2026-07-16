@@ -40,7 +40,6 @@ import {
   type ChatRunState,
   type ChatRunStatePresentation,
 } from "@/lib/chatRunState";
-import type { WorkModeChatContext } from "@/lib/workModes";
 
 const SUGGESTIONS = [
   {
@@ -165,14 +164,12 @@ export function ChatWindow({
   initialMessages,
   initialInput,
   gem,
-  workMode,
   onFirstMessage,
 }: {
   threadId: string;
   initialMessages: UIMessage[];
   initialInput?: string;
   gem?: GemContext;
-  workMode?: WorkModeChatContext;
   onFirstMessage?: () => void;
 }) {
   const { upsertThread } = useThreads();
@@ -614,15 +611,10 @@ export function ChatWindow({
   };
 
   const empty = messages.length === 0;
-  const emptyStarters = gem?.starters ?? workMode?.starters ?? SUGGESTIONS;
-  const emptyGreeting = gem
-    ? gem.name
-    : (workMode?.chatGreeting ?? "Hej. Hvad arbejder vi på i dag?");
-  const emptyTagline =
-    gem?.tagline ?? workMode?.chatTagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen.";
-  const composerPlaceholder = workMode
-    ? `Skriv til WDC · ${workMode.id}`
-    : "Skriv din besked til Aurora...";
+  const emptyStarters = gem?.starters ?? SUGGESTIONS;
+  const emptyGreeting = gem ? gem.name : "Hej. Hvad arbejder vi på i dag?";
+  const emptyTagline = gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen.";
+  const composerPlaceholder = "Skriv din besked til Aurora...";
 
   return (
     <div className="relative flex h-screen flex-1">

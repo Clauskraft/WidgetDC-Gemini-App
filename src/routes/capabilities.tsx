@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageShell } from "@/components/AppShell/PageShell";
 import { CapabilityResolverPanel } from "@/components/CapabilityResolverPanel";
 
 export const Route = createFileRoute("/capabilities")({
@@ -17,32 +18,17 @@ export const Route = createFileRoute("/capabilities")({
 
 function CapabilitiesRoute() {
   return (
-    <div className="min-h-full flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.12),_transparent_34%),linear-gradient(135deg,_#0c0a09_0%,_#1c1917_52%,_#0f172a_100%)] p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="rounded-[2rem] border border-stone-700/60 bg-stone-950/80 p-6 text-stone-100 shadow-2xl shadow-black/30 backdrop-blur">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
-                Gemini App cockpit surface
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                Capability-first resolver cockpit
-              </h1>
-              <p className="mt-4 text-sm leading-7 text-stone-300 sm:text-base">
-                Demand resolves into capabilities before tools or routes are selected. WDC CLI, WDC
-                CLI Chat, Orbit, Lovable, and Gemini are visible demand/provider surfaces with
-                explicit proof boundaries.
-              </p>
-            </div>
-            <div className="grid gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-50">
-              <div className="font-semibold">Authority boundary</div>
-              <div>Gemini App is cockpit/UX only.</div>
-              <div>
-                WDC CLI, Agent Office, Orbit, BOM, and materializers own governed execution.
-              </div>
-            </div>
-          </div>
-        </header>
+    <PageShell
+      title="Capability-first resolver cockpit"
+      subtitle="Demand resolves into capabilities before tools or routes are selected. WDC CLI, WDC CLI Chat, Orbit, Lovable, and Gemini are visible demand/provider surfaces with explicit proof boundaries."
+      previewNotice="Preview — deterministic demo data, not live platform state"
+    >
+      <div className="flex flex-col gap-5">
+        <div className="grid gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm">
+          <div className="font-semibold">Authority boundary</div>
+          <div>Gemini App is cockpit/UX only.</div>
+          <div>WDC CLI, Agent Office, Orbit, BOM, and materializers own governed execution.</div>
+        </div>
 
         <div className="grid gap-3 md:grid-cols-4">
           {[
@@ -108,6 +94,6 @@ function CapabilitiesRoute() {
           </div>
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }

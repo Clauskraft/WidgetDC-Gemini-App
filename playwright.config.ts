@@ -34,7 +34,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium-desktop",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        // Sandboxed runners pre-install a pinned chromium and block downloads
+        // (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1). Point at it explicitly instead
+        // of requiring the exact headless-shell build this playwright version
+        // would otherwise download. Local/CI without the env var is unchanged.
+        ...(process.env.PW_CHROMIUM_EXECUTABLE
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_EXECUTABLE } }
+          : {}),
+      },
     },
   ],
   webServer: process.env.PW_NO_SERVER
