@@ -39,9 +39,7 @@ describe("P2 interaction receipts (LIN-2226, gemini-frontend surface)", () => {
     expect(receipt.event_token).toBeGreaterThan(0);
     expect(Number.isInteger(receipt.event_token)).toBe(true);
     // Backend contract requires the deterministic ui-a5- correlation prefix.
-    expect(receipt.correlation_id).toBe(
-      `ui-a5-gemini-sess-42-${receipt.event_token}-tool_launch`,
-    );
+    expect(receipt.correlation_id).toBe(`ui-a5-gemini-sess-42-${receipt.event_token}-tool_launch`);
     expect(() => new Date(receipt.observed_at).toISOString()).not.toThrow();
   });
 

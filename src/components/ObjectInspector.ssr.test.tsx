@@ -1,23 +1,35 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ObjectInspector } from "@/components/ObjectInspector";
-import { createCanvasWorkspaceDocument } from "@/lib/canvasWorkspace";
-import { WORK_MODES } from "@/lib/workModes";
 
+// GF-PR1 decoupled ObjectInspector from the deleted synthetic canvas document;
+// the generic `item` contract is the only API (GF-PR3 re-homes the component
+// inside the unified answer-driven canvas drawer).
 describe("ObjectInspector", () => {
   it("renders selected object details and proof boundary", () => {
-    const document = createCanvasWorkspaceDocument(WORK_MODES[0]);
-    const object = document.objects[0];
-    const html = renderToString(<ObjectInspector object={object} document={document} />);
+    const html = renderToString(
+      <ObjectInspector
+        item={{
+          title: "AssemblyBlock 1042",
+          type: "graph_node",
+          summary: "Typed building block from the knowledge graph.",
+          proofBoundary: "Read-back projection — not runtime proof.",
+          meta: [
+            { label: "canvas", value: "answer-driven" },
+            { label: "persistence", value: "local-thread" },
+          ],
+        }}
+      />,
+    );
 
     expect(html).toContain("Object inspector");
-    expect(html).toContain(object.title);
-    expect(html).toContain(object.type);
-    expect(html).toContain(object.proofBoundary);
-    expect(html).toContain(document.persistence.kind);
+    expect(html).toContain("AssemblyBlock 1042");
+    expect(html).toContain("graph_node");
+    expect(html).toContain("Read-back projection — not runtime proof.");
+    expect(html).toContain("local-thread");
   });
 
-  it("renders generic capability cockpit objects with metadata and next safe action", () => {
+  it("renders generic objects with metadata and next safe action", () => {
     const html = renderToString(
       <ObjectInspector
         item={{

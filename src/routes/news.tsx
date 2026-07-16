@@ -11,6 +11,7 @@ import {
   BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageShell } from "@/components/AppShell/PageShell";
 import type { NewsItem, NewsResponse } from "@/routes/api/news";
 
 export const Route = createFileRoute("/news")({
@@ -207,33 +208,16 @@ function NewsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-8 py-10">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <Newspaper className="h-5 w-5 text-primary" />
-              Intelligence Feed
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Kurateret af dine mest brugte graph-noder · {items.length} emner
-              {data?.last_refreshed && (
-                <span className="ml-2 text-muted-foreground/50">
-                  · opdateret {relTime(data.last_refreshed)}
-                </span>
-              )}
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[13px] font-medium hover:bg-accent disabled:opacity-50"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-            {refreshing ? "Henter…" : "Opdatér"}
-          </button>
-        </header>
-
+    <PageShell
+      title="Intelligence Feed"
+      subtitle={`Kurateret af dine mest brugte graph-noder · ${items.length} emner${
+        data?.last_refreshed ? ` · opdateret ${relTime(data.last_refreshed)}` : ""
+      }`}
+      icon={<Newspaper className="h-4 w-4 text-white" />}
+      onRefresh={() => void handleRefresh()}
+      refreshing={refreshing || loading}
+    >
+      <div>
         {/* Error banner */}
         {error && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -322,6 +306,6 @@ function NewsPage() {
           </>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

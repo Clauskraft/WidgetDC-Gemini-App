@@ -18,6 +18,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { useThreads } from "@/hooks/useThreads";
+import { PageShell } from "@/components/AppShell/PageShell";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -79,18 +80,12 @@ function SettingsRoute() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <SettingsIcon className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Indstillinger</h1>
-            <p className="text-sm text-muted-foreground">Tilpas dit Aurora workspace.</p>
-          </div>
-        </header>
-
+    <PageShell
+      title="Settings"
+      subtitle="Tilpas dit Aurora workspace."
+      icon={<SettingsIcon className="h-4 w-4 text-white" />}
+    >
+      <div className="mx-auto w-full max-w-3xl">
         <Section title="Udseende" icon={<Sparkles className="h-4 w-4" />}>
           <Row
             label="Reducér animationer"
@@ -153,7 +148,7 @@ function SettingsRoute() {
           </Row>
         </Section>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

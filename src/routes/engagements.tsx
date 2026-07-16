@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/AppShell/PageShell";
 import { MessageContent } from "@/components/MessageContent";
 import type { EngagementRow, EngagementsResponse, CreateEngagementBody } from "./api/engagements";
 import { useActiveEngagement } from "@/lib/engagement-context";
@@ -215,217 +215,216 @@ function EngagementsRoute() {
   }, []);
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Left panel */}
-      <div
-        className={cn(
-          "flex flex-col overflow-hidden transition-all",
-          selected || showCreate ? "w-1/2" : "flex-1",
-        )}
-      >
-        {/* Header */}
-        <PageHeader
-          icon={<Briefcase className="h-4 w-4 text-white" />}
-          title="Engagements"
-          subtitle={engagements.length > 0 ? "engagements" : "WidgeTDC knowledge graph"}
-          count={engagements.length > 0 ? `${engagements.length}${hasMore ? "+" : ""}` : undefined}
-          onRefresh={() => void fetchEngagements(q, domain, 0, true)}
-          refreshing={loading}
-          action={
-            <button
-              onClick={() => {
-                setShowCreate(true);
-                setSelected(null);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Nyt engagement
-            </button>
-          }
-        />
-
-        {/* Search bar */}
-        <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <PageShell
+      title="Engagements"
+      subtitle={engagements.length > 0 ? "engagements" : "WidgeTDC knowledge graph"}
+      icon={<Briefcase className="h-4 w-4 text-white" />}
+      count={engagements.length > 0 ? `${engagements.length}${hasMore ? "+" : ""}` : undefined}
+      onRefresh={() => void fetchEngagements(q, domain, 0, true)}
+      refreshing={loading}
+      actions={
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            setSelected(null);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Nyt engagement
+        </button>
+      }
+    >
+      <div className="flex w-full">
+        {/* Left panel */}
+        <div
+          className={cn(
+            "flex flex-col transition-all",
+            selected || showCreate ? "w-1/2" : "flex-1",
+          )}
+        >
+          {/* Search bar */}
+          <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Søg engagements…"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  triggerSearch(e.target.value, domain);
+                }}
+                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
             <input
               type="text"
-              placeholder="Søg engagements…"
-              value={q}
+              placeholder="Domain…"
+              value={domain}
               onChange={(e) => {
-                setQ(e.target.value);
-                triggerSearch(e.target.value, domain);
+                setDomain(e.target.value);
+                triggerSearch(q, e.target.value);
               }}
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-36 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-          <input
-            type="text"
-            placeholder="Domain…"
-            value={domain}
-            onChange={(e) => {
-              setDomain(e.target.value);
-              triggerSearch(q, e.target.value);
-            }}
-            className="w-36 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+
+          {/* Error */}
+          {error && (
+            <div className="mx-4 mt-3 shrink-0 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Grid */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {engagements.length === 0 && !loading && !error && (
+              <EmptyState
+                icon={<Briefcase className="h-7 w-7" />}
+                title="Ingen engagements fundet"
+                description="Opret dit første engagement for at komme i gang med pattern-kobling og deliverable-generering."
+                action={
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Nyt engagement
+                  </button>
+                }
+              />
+            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {engagements.map((eng) => (
+                <EngagementCard
+                  key={eng.id}
+                  engagement={eng}
+                  active={selected?.id === eng.id}
+                  onClick={() => {
+                    setShowCreate(false);
+                    setSelected((prev) => (prev?.id === eng.id ? null : eng));
+                  }}
+                />
+              ))}
+            </div>
+
+            {hasMore && !loading && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => void fetchEngagements(q, domain, skip, false)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-input px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
+                >
+                  Indlæs flere
+                </button>
+              </div>
+            )}
+            {loading && (
+              <div className="mt-6 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-4 mt-3 shrink-0 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
+        {/* Right panel: detail */}
+        {selected && !showCreate && (
+          <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="truncate text-base font-semibold">{selected.name}</h2>
+              <button
+                onClick={() => setSelected(null)}
+                className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent"
+                aria-label="Luk"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+              {/* Meta pills */}
+              <div className="flex flex-wrap gap-2">
+                {selected.domain && (
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                    {selected.domain}
+                  </span>
+                )}
+                {selected.status && (
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-xs font-medium",
+                      selected.status === "active"
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {selected.status}
+                  </span>
+                )}
+                {selected.client && (
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                    {selected.client}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <BookOpen className="h-3 w-3" />
+                  {selected.pattern_count} patterns
+                </span>
+              </div>
+
+              {/* Description */}
+              {selected.description ? (
+                <div>
+                  <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Beskrivelse
+                  </h3>
+                  <p className="text-sm leading-relaxed text-foreground">{selected.description}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Ingen beskrivelse tilgængelig.</p>
+              )}
+
+              {/* Created */}
+              {selected.created_at && (
+                <p className="text-xs text-muted-foreground">
+                  Oprettet: {new Date(selected.created_at).toLocaleDateString("da-DK")}
+                </p>
+              )}
+
+              {/* Engagement confidence indicator */}
+              <EngagementConfidence engagement={selected} />
+
+              {/* Pattern kobling section */}
+              <PatternLinkPanel
+                engagementId={selected.id}
+                onLinked={() => onPatternLinked(selected.id)}
+              />
+
+              {/* Deliverable draft + WorkArtifact provenance */}
+              <DeliverablePanel engagementId={selected.id} />
+            </div>
           </div>
         )}
 
-        {/* Grid */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {engagements.length === 0 && !loading && !error && (
-            <EmptyState
-              icon={<Briefcase className="h-7 w-7" />}
-              title="Ingen engagements fundet"
-              description="Opret dit første engagement for at komme i gang med pattern-kobling og deliverable-generering."
-              action={
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Nyt engagement
-                </button>
-              }
-            />
-          )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {engagements.map((eng) => (
-              <EngagementCard
-                key={eng.id}
-                engagement={eng}
-                active={selected?.id === eng.id}
-                onClick={() => {
-                  setShowCreate(false);
-                  setSelected((prev) => (prev?.id === eng.id ? null : eng));
-                }}
-              />
-            ))}
-          </div>
-
-          {hasMore && !loading && (
-            <div className="mt-6 flex justify-center">
+        {/* Right panel: create form */}
+        {showCreate && (
+          <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="text-base font-semibold">Nyt engagement</h2>
               <button
-                onClick={() => void fetchEngagements(q, domain, skip, false)}
-                className="inline-flex items-center gap-2 rounded-lg border border-input px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
+                onClick={() => setShowCreate(false)}
+                className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent"
+                aria-label="Luk"
               >
-                Indlæs flere
+                <X className="h-4 w-4" />
               </button>
             </div>
-          )}
-          {loading && (
-            <div className="mt-6 flex justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <CreateForm onCreated={onCreated} onCancel={() => setShowCreate(false)} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Right panel: detail */}
-      {selected && !showCreate && (
-        <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="truncate text-base font-semibold">{selected.name}</h2>
-            <button
-              onClick={() => setSelected(null)}
-              className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent"
-              aria-label="Luk"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-            {/* Meta pills */}
-            <div className="flex flex-wrap gap-2">
-              {selected.domain && (
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
-                  {selected.domain}
-                </span>
-              )}
-              {selected.status && (
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-medium",
-                    selected.status === "active"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {selected.status}
-                </span>
-              )}
-              {selected.client && (
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                  {selected.client}
-                </span>
-              )}
-              <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <BookOpen className="h-3 w-3" />
-                {selected.pattern_count} patterns
-              </span>
-            </div>
-
-            {/* Description */}
-            {selected.description ? (
-              <div>
-                <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Beskrivelse
-                </h3>
-                <p className="text-sm leading-relaxed text-foreground">{selected.description}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Ingen beskrivelse tilgængelig.</p>
-            )}
-
-            {/* Created */}
-            {selected.created_at && (
-              <p className="text-xs text-muted-foreground">
-                Oprettet: {new Date(selected.created_at).toLocaleDateString("da-DK")}
-              </p>
-            )}
-
-            {/* Engagement confidence indicator */}
-            <EngagementConfidence engagement={selected} />
-
-            {/* Pattern kobling section */}
-            <PatternLinkPanel
-              engagementId={selected.id}
-              onLinked={() => onPatternLinked(selected.id)}
-            />
-
-            {/* Deliverable draft + WorkArtifact provenance */}
-            <DeliverablePanel engagementId={selected.id} />
-          </div>
-        </div>
-      )}
-
-      {/* Right panel: create form */}
-      {showCreate && (
-        <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-base font-semibold">Nyt engagement</h2>
-            <button
-              onClick={() => setShowCreate(false)}
-              className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent"
-              aria-label="Luk"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5">
-            <CreateForm onCreated={onCreated} onCancel={() => setShowCreate(false)} />
-          </div>
-        </div>
-      )}
-    </div>
+    </PageShell>
   );
 }
 

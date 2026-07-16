@@ -1,5 +1,4 @@
 import { Crosshair, Network, Settings2 } from "lucide-react";
-import type { CanvasWorkspaceDocument, CanvasWorkspaceObject } from "@/lib/canvasWorkspace";
 
 export type InspectableObject = {
   title: string;
@@ -12,36 +11,12 @@ export type InspectableObject = {
   meta?: Array<{ label: string; value: string }>;
 };
 
-export type ObjectInspectorProps =
-  | {
-      object: CanvasWorkspaceObject;
-      document: CanvasWorkspaceDocument;
-      item?: never;
-    }
-  | {
-      item: InspectableObject;
-      object?: never;
-      document?: never;
-    };
-
-function fromCanvasObject(
-  object: CanvasWorkspaceObject,
-  document: CanvasWorkspaceDocument,
-): InspectableObject {
-  return {
-    title: object.title,
-    type: object.type,
-    summary: object.summary,
-    proofBoundary: object.proofBoundary,
-    meta: [
-      { label: "canvas", value: document.canvasMode },
-      { label: "persistence", value: document.persistence.kind },
-    ],
-  };
-}
+// Generic "SELECTED OBJECT" card (GF-PR1 decoupled it from the deleted
+// synthetic canvas document; GF-PR3 re-homes it in the unified canvas drawer).
+export type ObjectInspectorProps = { item: InspectableObject };
 
 export function ObjectInspector(props: ObjectInspectorProps) {
-  const inspected = "item" in props ? props.item : fromCanvasObject(props.object, props.document);
+  const inspected = props.item;
   const sections = inspected.sections ?? [];
   const meta = inspected.meta ?? [];
 

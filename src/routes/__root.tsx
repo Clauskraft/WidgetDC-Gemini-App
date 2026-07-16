@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
 import { AppSidebar } from "../components/AppSidebar";
+import { TopBar } from "../components/AppShell/TopBar";
 import { CommandPalette } from "../components/CommandPalette";
 import { ActiveEngagementProvider } from "../lib/engagement-context";
 
@@ -129,12 +130,15 @@ function RootComponent() {
   }, []);
 
   const { queryClient } = Route.useRouteContext();
+  // The ONE AppShell (GF-PR1): sidebar | (top bar + main) — identical frame on
+  // every page. A canvas slot joins as the last flex child in GF-PR3.
   return (
     <QueryClientProvider client={queryClient}>
       <ActiveEngagementProvider>
         <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
           <AppSidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <TopBar />
             <main className="flex flex-1 overflow-hidden">
               <Outlet />
             </main>

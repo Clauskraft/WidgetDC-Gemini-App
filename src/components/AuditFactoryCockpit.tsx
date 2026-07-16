@@ -432,8 +432,8 @@ function PanelCard({ panel }: { panel: CockpitPanel }) {
 
 export function AuditFactoryCockpit() {
   return (
-    <div className="min-h-full flex-1 overflow-y-auto bg-[#f7f4ed] text-stone-950">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div>
+      <div className="flex flex-col gap-6">
         <header className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm shadow-stone-200/80">
           <div className="grid gap-0 lg:grid-cols-[1fr_0.72fr]">
             <div className="p-6 sm:p-8">

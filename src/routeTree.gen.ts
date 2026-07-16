@@ -20,7 +20,6 @@ import { Route as GraphRouteImport } from './routes/graph'
 import { Route as GemsRouteImport } from './routes/gems'
 import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as DeliverableRouteImport } from './routes/deliverable'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConsultingRouteImport } from './routes/consulting'
 import { Route as CapabilitiesRouteImport } from './routes/capabilities'
 import { Route as AuditFactoryRouteImport } from './routes/audit-factory'
@@ -110,11 +109,6 @@ const EngagementsRoute = EngagementsRouteImport.update({
 const DeliverableRoute = DeliverableRouteImport.update({
   id: '/deliverable',
   path: '/deliverable',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsultingRoute = ConsultingRouteImport.update({
@@ -302,7 +296,6 @@ export interface FileRoutesByFullPath {
   '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
-  '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
@@ -351,7 +344,6 @@ export interface FileRoutesByTo {
   '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
-  '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
   '/graph': typeof GraphRoute
@@ -400,7 +392,6 @@ export interface FileRoutesById {
   '/audit-factory': typeof AuditFactoryRoute
   '/capabilities': typeof CapabilitiesRoute
   '/consulting': typeof ConsultingRoute
-  '/dashboard': typeof DashboardRoute
   '/deliverable': typeof DeliverableRoute
   '/engagements': typeof EngagementsRoute
   '/gems': typeof GemsRouteWithChildren
@@ -451,7 +442,6 @@ export interface FileRouteTypes {
     | '/audit-factory'
     | '/capabilities'
     | '/consulting'
-    | '/dashboard'
     | '/deliverable'
     | '/engagements'
     | '/gems'
@@ -500,7 +490,6 @@ export interface FileRouteTypes {
     | '/audit-factory'
     | '/capabilities'
     | '/consulting'
-    | '/dashboard'
     | '/deliverable'
     | '/engagements'
     | '/graph'
@@ -548,7 +537,6 @@ export interface FileRouteTypes {
     | '/audit-factory'
     | '/capabilities'
     | '/consulting'
-    | '/dashboard'
     | '/deliverable'
     | '/engagements'
     | '/gems'
@@ -598,7 +586,6 @@ export interface RootRouteChildren {
   AuditFactoryRoute: typeof AuditFactoryRoute
   CapabilitiesRoute: typeof CapabilitiesRoute
   ConsultingRoute: typeof ConsultingRoute
-  DashboardRoute: typeof DashboardRoute
   DeliverableRoute: typeof DeliverableRoute
   EngagementsRoute: typeof EngagementsRoute
   GemsRoute: typeof GemsRouteWithChildren
@@ -713,13 +700,6 @@ declare module '@tanstack/react-router' {
       path: '/deliverable'
       fullPath: '/deliverable'
       preLoaderRoute: typeof DeliverableRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/consulting': {
@@ -1015,7 +995,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuditFactoryRoute: AuditFactoryRoute,
   CapabilitiesRoute: CapabilitiesRoute,
   ConsultingRoute: ConsultingRoute,
-  DashboardRoute: DashboardRoute,
   DeliverableRoute: DeliverableRoute,
   EngagementsRoute: EngagementsRoute,
   GemsRoute: GemsRouteWithChildren,

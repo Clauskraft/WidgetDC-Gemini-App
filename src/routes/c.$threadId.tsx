@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { AgentOfficeShell } from "@/components/AgentOfficeShell";
 import { ChatWindow } from "@/components/ChatWindow";
 import { readThreadMessages } from "@/lib/threadStorage";
 
@@ -30,13 +29,11 @@ function ThreadRoute() {
   // Key=threadId (KUN) tvinger remount ved tråd-SKIFT, men ikke ved hydrering,
   // så et streamende svar i den nye tråd overlever.
   return (
-    <AgentOfficeShell>
-      <ChatWindow
-        key={threadId}
-        threadId={threadId}
-        initialMessages={initial}
-        initialInput={prompt}
-      />
-    </AgentOfficeShell>
+    <ChatWindow
+      key={threadId}
+      threadId={threadId}
+      initialMessages={initial}
+      initialInput={prompt}
+    />
   );
 }

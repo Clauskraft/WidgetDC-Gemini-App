@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef } from "react";
-import { AgentOfficeShell } from "@/components/AgentOfficeShell";
 import { ChatWindow } from "@/components/ChatWindow";
 import { newId } from "@/hooks/useThreads";
 
@@ -37,9 +36,6 @@ function IndexRoute() {
     }
   }, [id]);
 
-  return (
-    <AgentOfficeShell>
-      <ChatWindow threadId={id} initialMessages={[]} onFirstMessage={handleFirstMessage} />
-    </AgentOfficeShell>
-  );
+  // P0 "én dør ind": the chat IS the page — full-bleed, no wrapper shell.
+  return <ChatWindow threadId={id} initialMessages={[]} onFirstMessage={handleFirstMessage} />;
 }

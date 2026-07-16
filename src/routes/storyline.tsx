@@ -13,6 +13,7 @@ import {
   Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageShell } from "@/components/AppShell/PageShell";
 import { SlideCard } from "@/components/SlideCard";
 import { ThemePicker, THEMES } from "@/components/ThemePicker";
 import { MeceResultPanel } from "@/components/MeceResultPanel";
@@ -185,21 +186,12 @@ function StorylineRoute() {
   }, [checkMece]);
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-aurora shadow-glow">
-            <Presentation className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Storyline Builder</h1>
-            <p className="text-sm text-muted-foreground">
-              McKinsey Pyramid Principle — outline-first med governing-thought headlines og
-              MECE-check.
-            </p>
-          </div>
-        </header>
-
+    <PageShell
+      title="Storyline Builder"
+      subtitle="McKinsey Pyramid Principle — outline-first med governing-thought headlines og MECE-check."
+      icon={<Presentation className="h-4 w-4 text-white" />}
+    >
+      <div className="mx-auto w-full max-w-3xl">
         {/* Step indicators */}
         <div className="mb-8 flex items-center gap-2 text-xs">
           {STEPS.map(({ n, label }) => (
@@ -522,6 +514,6 @@ function StorylineRoute() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

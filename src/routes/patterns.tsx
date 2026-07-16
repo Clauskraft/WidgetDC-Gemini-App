@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/AppShell/PageShell";
 import type { PatternRow, PatternsResponse } from "./api/patterns";
 
 type EngagementHit = { id: string; name: string; client?: string };
@@ -94,182 +94,176 @@ function PatternsRoute() {
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Left panel: search + grid */}
-      <div
-        className={cn(
-          "flex flex-col overflow-hidden transition-all",
-          selected ? "w-1/2" : "flex-1",
-        )}
-      >
-        {/* Header */}
-        <PageHeader
-          icon={<BookOpen className="h-4 w-4 text-white" />}
-          title="Pattern Library"
-          subtitle={patterns.length > 0 ? "patterns" : "WidgeTDC knowledge graph"}
-          count={patterns.length > 0 ? `${patterns.length}${hasMore ? "+" : ""}` : undefined}
-          onRefresh={() => void fetchPatterns(q, domain, 0, true)}
-          refreshing={loading}
-        />
-
-        {/* Search bar */}
-        <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <PageShell
+      title="Pattern Library"
+      subtitle={patterns.length > 0 ? "patterns" : "WidgeTDC knowledge graph"}
+      icon={<BookOpen className="h-4 w-4 text-white" />}
+      count={patterns.length > 0 ? `${patterns.length}${hasMore ? "+" : ""}` : undefined}
+      onRefresh={() => void fetchPatterns(q, domain, 0, true)}
+      refreshing={loading}
+    >
+      <div className="flex w-full">
+        {/* Left panel: search + grid */}
+        <div className={cn("flex flex-col transition-all", selected ? "w-1/2" : "flex-1")}>
+          {/* Search bar */}
+          <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Søg patterns…"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  triggerSearch(e.target.value, domain);
+                }}
+                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
             <input
               type="text"
-              placeholder="Søg patterns…"
-              value={q}
+              placeholder="Domain…"
+              value={domain}
               onChange={(e) => {
-                setQ(e.target.value);
-                triggerSearch(e.target.value, domain);
+                setDomain(e.target.value);
+                triggerSearch(q, e.target.value);
               }}
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-36 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-          <input
-            type="text"
-            placeholder="Domain…"
-            value={domain}
-            onChange={(e) => {
-              setDomain(e.target.value);
-              triggerSearch(q, e.target.value);
-            }}
-            className="w-36 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+
+          {/* Error */}
+          {error && (
+            <div className="mx-4 mt-3 shrink-0 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Grid */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {patterns.length === 0 && !loading && !error && (
+              <EmptyState
+                icon={<BookOpen className="h-7 w-7" />}
+                title="Ingen patterns fundet"
+                description="Prøv en anden søgning, eller reset filtre for at se alle 2.800+ patterns."
+              />
+            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {patterns.map((p) => (
+                <PatternCard
+                  key={p.id}
+                  pattern={p}
+                  active={selected?.id === p.id}
+                  onClick={() => setSelected((prev) => (prev?.id === p.id ? null : p))}
+                />
+              ))}
+            </div>
+
+            {/* Load more */}
+            {hasMore && !loading && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => void fetchPatterns(q, domain, skip, false)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-input px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
+                >
+                  Indlæs flere
+                </button>
+              </div>
+            )}
+            {loading && (
+              <div className="mt-6 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-4 mt-3 shrink-0 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
+        {/* Right panel: detail */}
+        {selected && (
+          <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="truncate text-base font-semibold">{selected.name}</h2>
+              <div className="ml-2 flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => {
+                    const threadId = `thread-${Date.now()}`;
+                    void navigate({
+                      to: "/c/$threadId",
+                      params: { threadId },
+                      search: { prompt: `Brug pattern: ${selected.name}` },
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20"
+                  title="Pre-udfyld chat med dette pattern"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Brug i chat
+                </button>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+                  aria-label="Luk"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+              {/* Meta pills */}
+              <div className="flex flex-wrap gap-2">
+                {selected.domain && (
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                    {selected.domain}
+                  </span>
+                )}
+                {selected.canonical_ref && (
+                  <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
+                    {selected.canonical_ref}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <Code2 className="h-3 w-3" />
+                  {selected.resonates_count} kode-impl.
+                </span>
+              </div>
+
+              {/* Description */}
+              {selected.description ? (
+                <div>
+                  <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Beskrivelse
+                  </h3>
+                  <p className="text-sm leading-relaxed text-foreground">{selected.description}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Ingen beskrivelse tilgængelig.</p>
+              )}
+
+              {/* RESONATES_WITH explanation */}
+              {selected.resonates_count > 0 && (
+                <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm">
+                  <p className="font-medium">Kode-resonans</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Dette pattern resonerer semantisk med{" "}
+                    <strong>{selected.resonates_count}</strong> kode-implementeringer i graph'en
+                    (via <span className="font-mono text-xs">RESONATES_WITH</span>-kanten).
+                  </p>
+                </div>
+              )}
+
+              {!selected.canonical_ref && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+                  GAP-1: Ingen <span className="font-mono">canonical_ref</span> — backfill planlagt
+                  post-EP-2 drain.
+                </div>
+              )}
+
+              <LinkToEngagement pattern={selected} />
+            </div>
           </div>
         )}
-
-        {/* Grid */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {patterns.length === 0 && !loading && !error && (
-            <EmptyState
-              icon={<BookOpen className="h-7 w-7" />}
-              title="Ingen patterns fundet"
-              description="Prøv en anden søgning, eller reset filtre for at se alle 2.800+ patterns."
-            />
-          )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {patterns.map((p) => (
-              <PatternCard
-                key={p.id}
-                pattern={p}
-                active={selected?.id === p.id}
-                onClick={() => setSelected((prev) => (prev?.id === p.id ? null : p))}
-              />
-            ))}
-          </div>
-
-          {/* Load more */}
-          {hasMore && !loading && (
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={() => void fetchPatterns(q, domain, skip, false)}
-                className="inline-flex items-center gap-2 rounded-lg border border-input px-4 py-2 text-sm text-muted-foreground transition hover:bg-accent"
-              >
-                Indlæs flere
-              </button>
-            </div>
-          )}
-          {loading && (
-            <div className="mt-6 flex justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* Right panel: detail */}
-      {selected && (
-        <div className="flex w-1/2 flex-col overflow-hidden border-l border-border bg-card">
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="truncate text-base font-semibold">{selected.name}</h2>
-            <div className="ml-2 flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => {
-                  const threadId = `thread-${Date.now()}`;
-                  void navigate({
-                    to: "/c/$threadId",
-                    params: { threadId },
-                    search: { prompt: `Brug pattern: ${selected.name}` },
-                  });
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20"
-                title="Pre-udfyld chat med dette pattern"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Brug i chat
-              </button>
-              <button
-                onClick={() => setSelected(null)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-accent"
-                aria-label="Luk"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-            {/* Meta pills */}
-            <div className="flex flex-wrap gap-2">
-              {selected.domain && (
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
-                  {selected.domain}
-                </span>
-              )}
-              {selected.canonical_ref && (
-                <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
-                  {selected.canonical_ref}
-                </span>
-              )}
-              <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <Code2 className="h-3 w-3" />
-                {selected.resonates_count} kode-impl.
-              </span>
-            </div>
-
-            {/* Description */}
-            {selected.description ? (
-              <div>
-                <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Beskrivelse
-                </h3>
-                <p className="text-sm leading-relaxed text-foreground">{selected.description}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Ingen beskrivelse tilgængelig.</p>
-            )}
-
-            {/* RESONATES_WITH explanation */}
-            {selected.resonates_count > 0 && (
-              <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm">
-                <p className="font-medium">Kode-resonans</p>
-                <p className="mt-1 text-muted-foreground">
-                  Dette pattern resonerer semantisk med <strong>{selected.resonates_count}</strong>{" "}
-                  kode-implementeringer i graph'en (via{" "}
-                  <span className="font-mono text-xs">RESONATES_WITH</span>-kanten).
-                </p>
-              </div>
-            )}
-
-            {!selected.canonical_ref && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-                GAP-1: Ingen <span className="font-mono">canonical_ref</span> — backfill planlagt
-                post-EP-2 drain.
-              </div>
-            )}
-
-            <LinkToEngagement pattern={selected} />
-          </div>
-        </div>
-      )}
-    </div>
+    </PageShell>
   );
 }
 
