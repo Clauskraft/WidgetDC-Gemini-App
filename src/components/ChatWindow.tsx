@@ -33,6 +33,7 @@ import { useActiveEngagement } from "@/lib/engagement-context";
 import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSourcesPanel";
 import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
 import { DeepResearchPanel } from "@/components/DeepResearchPanel";
+import { IntelligenceStrip, type StripReasoning } from "@/components/IntelligenceStrip";
 import {
   chatRunStatePresentation,
   deriveChatRunState,
@@ -339,6 +340,26 @@ export function ChatWindow({
     isActiveChatRunState(chatRunState) ||
     chatRunState === "errored" ||
     chatRunState === "cancelled";
+
+  // GF-PR2: the IntelligenceStrip is the ONE run-status surface. It reads the
+  // latest assistant message's enrichment parts (data-reasoning/data-sources,
+  // emitted by /api/chat since GF-PR2) and stays visible after completion so
+  // the routing evidence for the last answer remains one glance away.
+  const latestAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const stripReasoning = useMemo(() => {
+    const part = (
+      latestAssistant?.parts as Array<{ type?: string; data?: unknown }> | undefined
+    )?.find((p) => p && p.type === "data-reasoning");
+    return (part?.data ?? null) as StripReasoning | null;
+  }, [latestAssistant]);
+  const stripSourceCount = useMemo(() => {
+    const part = (
+      latestAssistant?.parts as Array<{ type?: string; data?: unknown }> | undefined
+    )?.find((p) => p && p.type === "data-sources");
+    return ((part?.data as { sources?: unknown[] } | undefined)?.sources ?? []).length;
+  }, [latestAssistant]);
+  const showIntelligenceStrip =
+    showInlineRunState || stripReasoning !== null || stripSourceCount > 0;
 
   useEffect(() => {
     if (status !== "ready" || messages.length > 0) setOptimisticSending(false);
@@ -871,8 +892,14 @@ export function ChatWindow({
                   />
                 );
               })}
-              {showInlineRunState && (
-                <ChatRunIndicator state={chatRunState} presentation={chatRunPresentation} />
+              {showIntelligenceStrip && (
+                <IntelligenceStrip
+                  state={chatRunState}
+                  presentation={chatRunPresentation}
+                  reasoning={stripReasoning}
+                  sourceCount={stripSourceCount}
+                  canvasReady={false}
+                />
               )}
             </div>
           )}
@@ -1085,12 +1112,6 @@ function Message({
     filename?: string;
   }>;
 
-  // AUR-5: pick up the data-reasoning part emitted by the server (RLM reflect).
-  const reasoningPart = (message.parts as Array<{ type?: string; data?: unknown }>).find(
-    (p) => p && p.type === "data-reasoning",
-  );
-  const reasoningMeta = (reasoningPart?.data ?? null) as ReasoningMeta | null;
-
   // AUR-14: pick up the data-sources part (NEXUS/SRAG grounding) so the [n]
   // citations the server injected are actually visible to the user.
   const sourcesPart = (message.parts as Array<{ type?: string; data?: unknown }>).find(
@@ -1159,7 +1180,8 @@ function Message({
             onCitationClick={setActiveCitation}
           />
         )}
-        {reasoningMeta && <ReasoningPanel meta={reasoningMeta} />}
+        {/* GF-PR2: routing/intent detail now lives in the IntelligenceStrip
+            (one calm surface, P1); per-message ReasoningPanel retired. */}
         {healSummary && <HealDiffPanel summary={healSummary} />}
         {validation && <ValidationBadge result={validation} />}
         <button
@@ -1272,92 +1294,6 @@ function SourcesPanel({
           );
         })}
       </ol>
-    </details>
-  );
-}
-
-// AUR-5: client-side mirror of the server's ChatReasoningMeta shape.
-type ReasoningMeta = {
-  confidence?: number;
-  reasoning?: string;
-  reasoningChain?: string[];
-  provider?: string;
-  model?: string;
-  domain?: string;
-  latencyMs?: number;
-  qualityScore?: number;
-  reflectionAttempted?: boolean;
-  reflectionKept?: boolean;
-  intentTool?: string;
-  intentScore?: number;
-  intentCandidates?: string[];
-};
-
-function ReasoningPanel({ meta }: { meta: ReasoningMeta }) {
-  const [open, setOpen] = useState(false);
-  const chain = meta.reasoningChain ?? [];
-  const conf = typeof meta.confidence === "number" ? Math.round(meta.confidence * 100) : null;
-  const quality =
-    typeof meta.qualityScore === "number" ? Math.round(meta.qualityScore * 100) : null;
-  const provider = meta.provider ?? null;
-  const model = meta.model ?? null;
-  const domain = meta.domain ?? null;
-  const latency = typeof meta.latencyMs === "number" ? Math.round(meta.latencyMs) : null;
-  const intent = meta.intentTool ?? null;
-  const intentScore =
-    typeof meta.intentScore === "number" ? Number(meta.intentScore.toFixed(2)) : null;
-
-  return (
-    <details
-      open={open}
-      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      className="mt-3 rounded-2xl border border-figure-border bg-figure-surface/40 px-4 py-3 text-xs"
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-3 text-foreground">
-        <Brain className="h-3.5 w-3.5 text-primary" />
-        <span className="font-medium">Reasoning</span>
-        {conf != null && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-            {conf}% sikker
-          </span>
-        )}
-        {quality != null && (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-            kvalitet {quality}
-          </span>
-        )}
-        {meta.reflectionKept && (
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
-            refleksion anvendt
-          </span>
-        )}
-        {intent && (
-          <span className="max-w-[14rem] truncate rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-            intent {intent}
-            {intentScore != null ? ` · ${intentScore}` : ""}
-          </span>
-        )}
-        {provider && (
-          <span className="ml-auto truncate text-[10px] text-muted-foreground">
-            {provider}
-            {model && model !== provider ? ` · ${model}` : ""}
-            {domain ? ` · ${domain}` : ""}
-            {latency != null ? ` · ${latency}ms` : ""}
-          </span>
-        )}
-      </summary>
-      {chain.length > 0 && (
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted-foreground">
-          {chain.map((step, i) => (
-            <li key={i} className="leading-snug">
-              {step}
-            </li>
-          ))}
-        </ol>
-      )}
-      {meta.reasoning && chain.length === 0 && (
-        <p className="mt-3 whitespace-pre-wrap text-muted-foreground">{meta.reasoning}</p>
-      )}
     </details>
   );
 }
