@@ -1984,15 +1984,20 @@ export async function fetchRuntimeSnapshot(
  * at durationMs≈15002 in the Railway deploy logs, on top of the primary
  * graph.stats attempt (worst case ~30s of hanging per cache-miss). Dropped.
  *
- * Timeout trimmed 15s→12s: the backend getGraphStats caps each internal query
- * at ~5s (apoc.meta.stats then count-store fallback) behind a 30s success-cache,
- * so ~12s comfortably covers a cold-cache worst case without hanging longer.
+ * Timeout kept at 15s (NOT trimmed): backend getGraphStats on the ~3.4M-node
+ * AuraDB graph lands consistently in the ~12–15s band on a cold cache. A 12s cut
+ * (tried in #121) starved the backend's 30s success-cache from ever warming — no
+ * call ever completed, so the graph-size widget went permanently null (verified
+ * live post-deploy: /api/patterns healthy, graph:null on every summary call).
+ * 15s lets a cold call complete and warm the cache; the dead-fallback removal
+ * (the actual fix for the AbortError log noise) stays. Durable speedup is the
+ * backend graph.stats/apoc.meta.stats work (Codex / Health-Pulse root cause).
  */
 export async function fetchGraphSnapshot(correlationId?: string): Promise<GraphSnapshot | null> {
   const canonical = await callMcpTool<unknown>(
     "graph.stats",
     {},
-    { correlationId, timeoutMs: 12000 },
+    { correlationId, timeoutMs: 15000 },
   );
   return extractGraphSnapshot(canonical);
 }
