@@ -34,6 +34,7 @@ export function IntelligenceStrip({
   canvasReady,
   action,
   defaultExpanded = false,
+  onExpand,
 }: {
   state: ChatRunState;
   presentation: ChatRunStatePresentation;
@@ -42,6 +43,8 @@ export function IntelligenceStrip({
   canvasReady: boolean;
   action?: { label: string; onClick: () => void } | null;
   defaultExpanded?: boolean;
+  /** Fires on each user-initiated collapse→expand (GF-PR4 receipt hook). */
+  onExpand?: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const active = isActiveChatRunState(state);
@@ -56,7 +59,11 @@ export function IntelligenceStrip({
       <div className="flex h-8 items-center gap-2 px-3">
         <button
           type="button"
-          onClick={() => hasDetail && setExpanded((v) => !v)}
+          onClick={() => {
+            if (!hasDetail) return;
+            if (!expanded) onExpand?.();
+            setExpanded(!expanded);
+          }}
           aria-expanded={expanded}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2 text-left",

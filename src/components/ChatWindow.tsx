@@ -35,6 +35,7 @@ import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSour
 import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
 import { DeepResearchPanel } from "@/components/DeepResearchPanel";
 import { IntelligenceStrip, type StripReasoning } from "@/components/IntelligenceStrip";
+import { emitUiReceipt } from "@/lib/uiReceipts";
 import {
   chatRunStatePresentation,
   deriveChatRunState,
@@ -939,11 +940,35 @@ export function ChatWindow({
                   reasoning={stripReasoning}
                   sourceCount={stripSourceCount}
                   canvasReady={canvasWorthy}
+                  onExpand={() => {
+                    // GF-PR4: a user pulling the routing detail open is real
+                    // feedback that the routed tool's evidence was worth a look.
+                    if (stripReasoning?.intentTool) {
+                      emitUiReceipt({
+                        interaction: "fold_out",
+                        entity_id: `strip/${threadId}`,
+                        producing_tool: stripReasoning.intentTool,
+                        session_id: threadId,
+                      });
+                    }
+                  }}
                   action={
                     canvasWorthy && !canvas.open
                       ? {
                           label: "Open canvas",
-                          onClick: () => canvas.openCanvas(latestAssistant?.id),
+                          onClick: () => {
+                            // User-initiated fold-out (auto-open deliberately
+                            // does NOT emit — crediting it would be pre-payment).
+                            if (stripReasoning?.intentTool) {
+                              emitUiReceipt({
+                                interaction: "fold_out",
+                                entity_id: `canvas/${threadId}`,
+                                producing_tool: stripReasoning.intentTool,
+                                session_id: threadId,
+                              });
+                            }
+                            canvas.openCanvas(latestAssistant?.id);
+                          },
                         }
                       : null
                   }

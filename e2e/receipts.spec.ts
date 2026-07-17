@@ -1,0 +1,81 @@
+import { expect, test } from "@playwright/test";
+
+/**
+ * GF-PR4: UI receipts feed the adoption flywheel. User-initiated interactions
+ * (strip expand, explicit canvas open) POST whitelisted payloads to
+ * /api/receipts; system-initiated auto-open must NOT emit (R24 honesty).
+ *
+ * Fixtures speak the ai@6 UI-message-stream protocol (finish-step/finish).
+ */
+
+const sse = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
+
+// Prose answer WITH enrichment (routing tool) but NO structured blocks: the
+// canvas stays closed, the strip shows routing detail to expand.
+const ENRICHED_PROSE_STREAM = [
+  sse({ type: "start", messageId: "m1" }),
+  sse({ type: "start-step" }),
+  sse({ type: "text-start", id: "t1" }),
+  sse({ type: "text-delta", id: "t1", delta: "WidgeTDC ruter dit demand gennem platformen." }),
+  sse({
+    type: "data-reasoning",
+    id: "reasoning",
+    data: {
+      intentTool: "kg_rag.query",
+      intentScore: 0.82,
+      intentCandidates: ["kg_rag.query", "srag.query"],
+    },
+  }),
+  sse({ type: "text-end", id: "t1" }),
+  sse({ type: "finish-step" }),
+  sse({ type: "finish" }),
+].join("");
+
+test("strip expand emits a whitelisted fold_out receipt", async ({ page }) => {
+  const receipts: unknown[] = [];
+  await page.route("**/api/chat", (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+      body: ENRICHED_PROSE_STREAM,
+    }),
+  );
+  await page.route("**/api/receipts", (route) => {
+    receipts.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 202,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ accepted: true }),
+    });
+  });
+
+  await page.goto("/");
+  await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
+  await page.locator("textarea").first().fill("Forklar intelligence stack");
+  await page.keyboard.press("Enter");
+
+  const strip = page.getByTestId("intelligence-strip");
+  await expect(strip).toContainText("routing to kg_rag.query", { timeout: 20000 });
+
+  // No receipts before the user pulls anything open.
+  expect(receipts).toHaveLength(0);
+
+  await strip.locator("button").first().click();
+  await expect(strip).toContainText("Routing");
+
+  await expect.poll(() => receipts.length, { timeout: 5000 }).toBe(1);
+  expect(receipts[0]).toMatchObject({
+    interaction: "fold_out",
+    producing_tool: "kg_rag.query",
+  });
+  expect(String((receipts[0] as { entity_id: string }).entity_id)).toMatch(/^strip\//);
+
+  // Collapse + re-expand inside the debounce window does not double-emit.
+  await strip.locator("button").first().click();
+  await strip.locator("button").first().click();
+  await page.waitForTimeout(300);
+  expect(receipts).toHaveLength(1);
+});
