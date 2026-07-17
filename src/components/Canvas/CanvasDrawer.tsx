@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageContent } from "@/components/MessageContent";
 import { useCanvas } from "@/lib/canvas-context";
 import { shouldAutoOpenCanvas } from "@/lib/canvasTrigger";
+import { emitUiReceipt } from "@/lib/uiReceipts";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "aurora.canvas.width";
@@ -252,7 +253,20 @@ export function CanvasDrawerView({
         style={{ minWidth: expandedWidth - 1 }}
       >
         {focused ? (
-          <MessageContent text={getText(focused)} layout="canvas" />
+          <MessageContent
+            text={getText(focused)}
+            layout="canvas"
+            onNodeActivate={(nodeId) =>
+              // GF-PR5: a user drilling into a graph node is real feedback that
+              // the graph evidence was worth inspecting (card_drilldown pairs
+              // with graph.read_cypher per the runtime-verified whitelist).
+              emitUiReceipt({
+                interaction: "card_drilldown",
+                entity_id: `graph-node/${nodeId}`,
+                producing_tool: "graph.read_cypher",
+              })
+            }
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
             <div>
