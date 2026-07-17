@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BUILD_SHA, BUILT_AT } from "@/lib/build-info";
+import { resolveBuildIdentity } from "@/lib/buildSha";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,17 +44,22 @@ export const Route = createFileRoute("/api/release")({
         const branch = firstEnv(["VERCEL_GIT_COMMIT_REF", "GIT_BRANCH", "BRANCH"]);
         const environment = firstEnv(["VERCEL_ENV", "RAILWAY_ENVIRONMENT", "NODE_ENV"]);
         const url = firstEnv(["VERCEL_URL", "RAILWAY_PUBLIC_DOMAIN"]);
-        const commitSha = commit?.value ?? "unknown";
+        // Trust the baked build SHA (served artifact) over the deploy-env SHA.
+        const id = resolveBuildIdentity(BUILD_SHA, commit?.value ?? null);
 
         return json({
           ok: true,
           status: "ok",
           service: "widgetdc-aurora",
-          commit_sha: commitSha,
-          short_commit_sha: commitSha === "unknown" ? "unknown" : commitSha.slice(0, 12),
-          deployed_sha: commitSha,
-          git_sha: commitSha,
-          sha_source: commit?.source ?? "missing",
+          commit_sha: id.commit_sha,
+          short_commit_sha: id.short_commit_sha,
+          deployed_sha: id.commit_sha,
+          git_sha: id.commit_sha,
+          build_sha: id.build_sha,
+          env_sha: id.env_sha,
+          build_matches_env: id.build_matches_env,
+          built_at: BUILT_AT,
+          sha_source: id.build_sha !== "unknown" ? "build.baked" : (commit?.source ?? "missing"),
           branch: branch?.value ?? "unknown",
           branch_source: branch?.source ?? "missing",
           environment: environment?.value ?? "unknown",
