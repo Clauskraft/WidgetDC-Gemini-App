@@ -255,9 +255,12 @@ function TextBlock({ content }: { content: string }) {
 export function MessageContent({
   text,
   layout = "stack",
+  onNodeActivate,
 }: {
   text: string;
   layout?: "stack" | "canvas";
+  /** Forwarded to graph blocks — enables the inspector's Drill action (GF-PR5). */
+  onNodeActivate?: (nodeId: string, label?: string) => void;
 }) {
   const blocks = useMemo(() => parseBlocks(text), [text]);
   const isCanvas = layout === "canvas";
@@ -303,9 +306,9 @@ export function MessageContent({
           case "figure":
             return wrap(<FigureBlock content={b.content} />);
           case "graph":
-            return wrap(<GraphBlock spec={b.spec} />);
+            return wrap(<GraphBlock spec={b.spec} onNodeActivate={onNodeActivate} />);
           case "knowledge-graph":
-            return wrap(<KnowledgeGraphBlock spec={b.spec} />);
+            return wrap(<KnowledgeGraphBlock spec={b.spec} onNodeActivate={onNodeActivate} />);
           case "graph-error":
             return wrap(<GraphErrorBlock kind={b.kind} errors={b.errors} raw={b.raw} />);
           case "text":
