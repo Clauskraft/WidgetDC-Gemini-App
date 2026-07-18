@@ -2,10 +2,9 @@
  * GF-PR2 · P1/P5: the ONE calm status line for the golden flow.
  *
  * Collapsed (always visible during/after a run, 32px): run-state dot+label,
- * then segments that appear only as REAL data arrives — "routing to <tool> ·
- * <score>" from the server's data-reasoning part, "<n> sources" from
- * data-sources, "canvas ready" when the answer carries structure. Click
- * expands to routing candidates and run detail. At most ONE contextual
+ * then calm user-facing segments that appear only as REAL data arrives.
+ * Internal routing names and scores stay behind the Evidence disclosure. Click
+ * expands to evidence and run detail. At most ONE contextual
  * action lives on the right edge (P5). Never a wall of panels (P1).
  */
 import { ChevronDown } from "lucide-react";
@@ -49,7 +48,10 @@ export function IntelligenceStrip({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const active = isActiveChatRunState(state);
   const candidates = reasoning?.intentCandidates ?? [];
-  const hasDetail = candidates.length > 0 || Boolean(presentation.detail);
+  const routeCandidates =
+    candidates.length > 0 ? candidates : reasoning?.intentTool ? [reasoning.intentTool] : [];
+  const hasEvidence = routeCandidates.length > 0;
+  const hasDetail = hasEvidence || Boolean(presentation.detail);
 
   return (
     <div
@@ -77,15 +79,9 @@ export function IntelligenceStrip({
             )}
           />
           <span className="shrink-0 font-medium text-foreground/80">{presentation.label}</span>
-          {reasoning?.intentTool ? (
-            <span className="truncate">
-              · routing to{" "}
-              <span className="font-medium text-foreground/80">{reasoning.intentTool}</span>
-              {typeof reasoning.intentScore === "number" ? ` · ${reasoning.intentScore}` : null}
-            </span>
-          ) : null}
-          {sourceCount > 0 ? <span className="shrink-0">· {sourceCount} sources</span> : null}
-          {canvasReady ? <span className="shrink-0 text-foreground/70">· canvas ready</span> : null}
+          {sourceCount > 0 ? <span className="shrink-0">· {sourceCount} kilder</span> : null}
+          {canvasReady ? <span className="shrink-0 text-foreground/70">· canvas klar</span> : null}
+          {hasEvidence ? <span className="shrink-0 text-foreground/70">· Evidens</span> : null}
           {hasDetail ? (
             <ChevronDown
               className={cn("ml-1 h-3 w-3 shrink-0 transition-transform", expanded && "rotate-180")}
@@ -106,26 +102,28 @@ export function IntelligenceStrip({
 
       {expanded ? (
         <div className="space-y-3 border-t border-border px-3 py-2.5">
-          {candidates.length > 0 ? (
+          {routeCandidates.length > 0 ? (
             <div>
               <div className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground/70">
-                Routing
+                Rute
               </div>
               <ol className="space-y-0.5">
-                {candidates.map((tool, i) => (
+                {routeCandidates.map((tool, i) => (
                   <li key={tool} className={cn(i === 0 && "font-medium text-foreground/80")}>
                     {i + 1}. {tool}
-                    {i === 0 && typeof reasoning?.intentScore === "number"
-                      ? ` — ${reasoning.intentScore}`
-                      : null}
                   </li>
                 ))}
               </ol>
+              {typeof reasoning?.intentScore === "number" ? (
+                <p className="mt-1 text-[11px] text-muted-foreground/70">
+                  Intern score: {reasoning.intentScore}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <div>
             <div className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground/70">
-              Run
+              Kørsel
             </div>
             <p>{presentation.detail}</p>
           </div>

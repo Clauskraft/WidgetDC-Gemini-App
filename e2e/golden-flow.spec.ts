@@ -73,13 +73,15 @@ test("demand → answer → one intelligence strip with live routing, expandable
   // Exactly ONE status surface, fed by real parts.
   const strip = page.getByTestId("intelligence-strip");
   await expect(strip).toHaveCount(1);
-  await expect(strip).toContainText("routing to kg_rag.query");
-  await expect(strip).toContainText("0.82");
-  await expect(strip).toContainText("2 sources");
+  await expect(strip).toContainText("Evidens");
+  await expect(strip).toContainText("2 kilder");
+  await expect(strip).not.toContainText("kg_rag.query");
+  await expect(strip).not.toContainText("0.82");
 
-  // Expands to routing candidates.
+  // Expands to routing candidates and internal score only after user intent.
   await strip.locator("button").first().click();
-  await expect(strip).toContainText("Routing");
+  await expect(strip).toContainText("Rute");
+  await expect(strip).toContainText("Intern score: 0.82");
   await expect(strip).toContainText("srag.query");
   await expect(strip).toContainText("graph.read_cypher");
 
@@ -136,7 +138,7 @@ test("GF-PR3: a structured answer folds the canvas out with rendered SVG — no 
   await expect(drawer.getByText("render with Mermaid.js")).toHaveCount(0);
 
   // The strip advertises the structure and the TopBar toggle is live.
-  await expect(page.getByTestId("intelligence-strip")).toContainText("canvas ready");
+  await expect(page.getByTestId("intelligence-strip")).toContainText("canvas klar");
   await expect(page.getByTestId("canvas-toggle")).toBeEnabled();
 
   // Explicit close is respected — the canvas does not force itself back.
