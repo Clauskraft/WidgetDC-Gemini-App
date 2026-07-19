@@ -8,33 +8,20 @@ export type Thread = {
   messages: UIMessage[];
 };
 
-const UNTITLED_THREAD_TITLES = new Set(["", "ny samtale"]);
-
-function recentThreadKey(thread: Thread): string {
-  const normalizedTitle = thread.title.trim().toLocaleLowerCase("da").replace(/\s+/g, " ");
-  return UNTITLED_THREAD_TITLES.has(normalizedTitle)
-    ? `draft:${thread.id}`
-    : `title:${normalizedTitle}`;
-}
-
 /**
- * Display-only projection for the sidebar. It never writes storage or removes
- * messages. For repeated titles the newest thread wins, except that the active
- * thread stays visible while the operator is working in it.
+ * Display-only projection for the sidebar. Thread identity is the durable id,
+ * never the user-editable title: repeated prompts may legitimately produce
+ * distinct conversations. Exact duplicate ids are collapsed newest-first.
  */
-export function dedupeRecentThreads(threads: Thread[], activeThreadId?: string): Thread[] {
+export function dedupeRecentThreads(threads: Thread[], _activeThreadId?: string): Thread[] {
   const sorted = [...threads].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
   const selected = new Map<string, Thread>();
 
   for (const thread of sorted) {
-    const key = recentThreadKey(thread);
-    const current = selected.get(key);
-    if (!current || thread.id === activeThreadId) selected.set(key, thread);
+    if (!selected.has(thread.id)) selected.set(thread.id, thread);
   }
 
-  return [...selected.values()].sort(
-    (a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id),
-  );
+  return [...selected.values()];
 }
 
 const KEY = "widgetdc.threads.v1";

@@ -44,10 +44,27 @@ describe("IntelligenceStrip", () => {
     expect(html).not.toContain("0.82");
     expect(html).toMatch(/4<!-- --> kilder|4 kilder/);
     expect(html).toContain("canvas klar");
-    expect(html).toContain("Evidens");
+    expect(html).toContain("Rute");
+    expect(html).not.toContain("Evidens");
   });
 
-  it("expanded evidence exposes routing candidates and run detail", () => {
+  it("does not present route-only metadata as evidence", () => {
+    const html = renderToString(
+      <IntelligenceStrip
+        state="completed"
+        presentation={chatRunStatePresentation("completed")}
+        reasoning={{ intentCandidates: ["kg_rag.query"] }}
+        sourceCount={0}
+        canvasReady={false}
+      />,
+    );
+
+    expect(html).toContain("Rute");
+    expect(html).not.toContain("Evidens");
+    expect(html).not.toContain("kilder");
+  });
+
+  it("expanded route detail exposes routing candidates and run detail", () => {
     const html = renderToString(
       <IntelligenceStrip
         state="completed"

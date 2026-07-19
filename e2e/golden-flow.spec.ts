@@ -27,7 +27,12 @@ const STREAM_FIXTURE = [
       intentCandidates: ["kg_rag.query", "srag.query", "graph.read_cypher"],
     },
   }),
-  sse({ type: "text-delta", id: "t1", delta: "Svaret er groundet i grafen [1]." }),
+  sse({
+    type: "text-delta",
+    id: "t1",
+    delta:
+      "Svaret er groundet i grafen [1].\n\nCanvas notes:\n- Routing er synlig\n- Kilder er bundet\n- Detaljer kan foldes ud",
+  }),
   sse({
     type: "data-sources",
     id: "sources",
@@ -66,14 +71,15 @@ test("demand → answer → one intelligence strip with live routing, expandable
   await page.keyboard.press("Enter");
 
   // The answer streams.
-  await expect(page.getByText("ruter dit demand gennem platformen")).toBeVisible({
+  await expect(page.getByText("ruter dit demand gennem platformen").first()).toBeVisible({
     timeout: 20000,
   });
 
   // Exactly ONE status surface, fed by real parts.
   const strip = page.getByTestId("intelligence-strip");
   await expect(strip).toHaveCount(1);
-  await expect(strip).toContainText("Evidens");
+  await expect(strip).toContainText("Rute");
+  await expect(strip).not.toContainText("Evidens");
   await expect(strip).toContainText("2 kilder");
   await expect(strip).not.toContainText("kg_rag.query");
   await expect(strip).not.toContainText("0.82");

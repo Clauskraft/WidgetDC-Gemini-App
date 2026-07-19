@@ -9,23 +9,23 @@ const thread = (id: string, title: string, updatedAt: number): Thread => ({
 });
 
 describe("dedupeRecentThreads", () => {
-  it("keeps the newest thread for duplicate normalized titles", () => {
+  it("preserves distinct thread ids even when normalized titles match", () => {
     const result = dedupeRecentThreads([
       thread("old", "Hvad er status", 10),
       thread("new", "  hvad   er STATUS ", 20),
       thread("other", "Arkitektur", 15),
     ]);
 
-    expect(result.map((item) => item.id)).toEqual(["new", "other"]);
+    expect(result.map((item) => item.id)).toEqual(["new", "other", "old"]);
   });
 
-  it("keeps the active duplicate even when it is older", () => {
+  it("keeps both the active and newer thread when their titles match", () => {
     const result = dedupeRecentThreads(
       [thread("new", "Hvad er status", 20), thread("active", "Hvad er status", 10)],
       "active",
     );
 
-    expect(result.map((item) => item.id)).toEqual(["active"]);
+    expect(result.map((item) => item.id)).toEqual(["new", "active"]);
   });
 
   it("never collapses untitled draft threads", () => {
@@ -35,5 +35,14 @@ describe("dedupeRecentThreads", () => {
     ]);
 
     expect(result.map((item) => item.id)).toEqual(["draft-a", "draft-b"]);
+  });
+
+  it("collapses only duplicate durable ids", () => {
+    const result = dedupeRecentThreads([
+      thread("same", "Ny titel", 20),
+      thread("same", "Gammel titel", 10),
+    ]);
+
+    expect(result).toEqual([thread("same", "Ny titel", 20)]);
   });
 });

@@ -143,6 +143,13 @@ function buildHealPrompt(result: ValidationResult, attempt: number): string {
 
 type Attachment = { file: File; dataUrl: string };
 
+const INTERNAL_SELF_HEAL_MESSAGE = "self_heal";
+
+function isInternalSelfHealMessage(message: UIMessage): boolean {
+  const metadata = message.metadata as { widgetdc_internal?: string } | undefined;
+  return metadata?.widgetdc_internal === INTERNAL_SELF_HEAL_MESSAGE;
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -187,6 +194,7 @@ export function ChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const healAttemptsRef = useRef<Map<string, number>>(new Map());
   const healChainRef = useRef(0);
+  const selfHealBaselineRef = useRef<string | null | undefined>(undefined);
   const engDropdownRef = useRef<HTMLDivElement>(null);
   // Chain-scoped trace of every failed attempt, reset when the chain closes
   // (success or max retries). Used to render the diff on the final message.
@@ -311,10 +319,21 @@ export function ChatWindow({
     transport,
     onError: (e) => {
       console.error("Chat error:", e);
+      if (healChainRef.current > 0) {
+        // AI SDK reports HTTP failures through onError without necessarily
+        // rejecting sendMessage(). Close the repair chain here as well as in
+        // the promise catch so first-message persistence/navigation can run.
+        healChainRef.current = MAX_HEAL_RETRIES;
+        setHealingMessageId(null);
+      }
       setChatError(e);
       setOptimisticSending(false);
     },
   });
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => !isInternalSelfHealMessage(message)),
+    [messages],
+  );
 
   const [sessionSearch, setSessionSearch] = useState("");
   const isLoading = status === "submitted" || status === "streaming";
@@ -373,9 +392,9 @@ export function ChatWindow({
   const showIntelligenceStrip =
     showInlineRunState || stripReasoning !== null || stripSourceCount > 0 || canvasWorthy;
   useEffect(() => {
-    canvas.publishMessages(threadId, messages);
+    canvas.publishMessages(threadId, visibleMessages);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- publishMessages is stable
-  }, [threadId, messages]);
+  }, [threadId, visibleMessages]);
   // Auto-open keys on NEW assistant message ids relative to a mount baseline,
   // not on observing an "active" render: an atomically-delivered stream can
   // settle inside one React commit, so idle->completed may be the only visible
@@ -411,17 +430,26 @@ export function ChatWindow({
   // means the remount replays the already-persisted messages losslessly.
   const firedFirstRef = useRef(false);
   useEffect(() => {
-    if (messages.length === 0) return;
-    const firstUser = messages.find((m) => m.role === "user");
+    if (visibleMessages.length === 0) return;
+    const firstUser = visibleMessages.find((m) => m.role === "user");
     const title = firstUser ? getText(firstUser).slice(0, 60) || "Ny samtale" : "Ny samtale";
-    upsertThread(threadId, { title, messages });
+    upsertThread(threadId, { title, messages: visibleMessages });
     const streamSettled = status !== "streaming" && status !== "submitted";
-    const hasAssistant = messages.some((m) => m.role === "assistant");
-    if (firstUser && hasAssistant && streamSettled && !firedFirstRef.current) {
+    const hasAssistant = visibleMessages.some((m) => m.role === "assistant");
+    const lastAssistant = [...visibleMessages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    const lastAssistantText = lastAssistant ? getText(lastAssistant) : "";
+    const selfHealPending =
+      streamSettled &&
+      Boolean(lastAssistantText.trim()) &&
+      !validateGemResponse(lastAssistantText, gem?.id ?? "default").ok &&
+      healChainRef.current < MAX_HEAL_RETRIES;
+    if (firstUser && hasAssistant && streamSettled && !selfHealPending && !firedFirstRef.current) {
       firedFirstRef.current = true;
       onFirstMessage?.();
     }
-  }, [messages, threadId, upsertThread, onFirstMessage, status]);
+  }, [visibleMessages, threadId, upsertThread, onFirstMessage, status, gem?.id, healingMessageId]);
 
   // Safety net: if navigation hasn't unmounted us within ~4s, clear the
   // overlay so the user isn't stuck on a loading state.
@@ -444,14 +472,22 @@ export function ChatWindow({
   // Self-heal: when an assistant message finishes streaming and fails
   // canvas-validation, ask the gem to repair its own output up to MAX_HEAL_RETRIES.
   useEffect(() => {
-    if (!gem) return;
     if (status !== "ready") return;
+    if (selfHealBaselineRef.current === undefined) {
+      const mountedAssistant = [...messages]
+        .reverse()
+        .find((message) => message.role === "assistant");
+      selfHealBaselineRef.current = mountedAssistant?.id ?? null;
+      if (mountedAssistant) return;
+    }
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant") return;
+    if (last.id === selfHealBaselineRef.current) return;
     const text = getText(last);
     if (!text.trim()) return;
     if (healAttemptsRef.current.has(last.id)) return; // already evaluated
-    const result = validateGemResponse(text, gem.id);
+    const validationProfileId = gem?.id ?? "default";
+    const result = validateGemResponse(text, validationProfileId);
     if (result.ok) {
       // Chain closed successfully — if there were prior failed attempts,
       // emit a diff summary on this final, validated message.
@@ -509,9 +545,19 @@ export function ChatWindow({
     healAttemptsRef.current.set(last.id, healChainRef.current);
     setHealingMessageId(last.id);
     void sendMessage(
-      { text: buildHealPrompt(result, healChainRef.current) },
+      {
+        text: buildHealPrompt(result, healChainRef.current),
+        metadata: { widgetdc_internal: INTERNAL_SELF_HEAL_MESSAGE },
+      },
       { body: buildRequestBody() },
-    );
+    ).catch((error: unknown) => {
+      // A failed repair transport must not strand the durable first response
+      // behind a route transition that can never finish.
+      healChainRef.current = MAX_HEAL_RETRIES;
+      setHealingMessageId(null);
+      setChatError(error);
+      setOptimisticSending(false);
+    });
   }, [status, messages, gem, sendMessage, buildRequestBody]);
 
   const submit = async (text?: string) => {
@@ -671,7 +717,7 @@ export function ChatWindow({
     setIngestedSources((prev) => prev.filter((s) => s.id !== id && s.filename !== id));
   };
 
-  const empty = messages.length === 0;
+  const empty = visibleMessages.length === 0;
   const emptyStarters = gem?.starters ?? SUGGESTIONS;
   const emptyGreeting = gem ? gem.name : "Hej. Hvad arbejder vi på i dag?";
   const emptyTagline = gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen.";
@@ -908,9 +954,9 @@ export function ChatWindow({
             </div>
           ) : (
             <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
-              {messages.map((m, i) => {
+              {visibleMessages.map((m, i) => {
                 const isLastAssistant =
-                  m.role === "assistant" && i === messages.length - 1 && isLoading;
+                  m.role === "assistant" && i === visibleMessages.length - 1 && isLoading;
                 return (
                   <Message
                     key={m.id}
@@ -1242,7 +1288,9 @@ function Message({
         {/* GF-PR2: routing/intent detail now lives in the IntelligenceStrip
             (one calm surface, P1); per-message ReasoningPanel retired. */}
         {healSummary && <HealDiffPanel summary={healSummary} />}
-        {validation && <ResponseValidationNotice result={validation} />}
+        {validation && (
+          <ResponseValidationNotice result={validation} canvasReady={shouldAutoOpenCanvas(text)} />
+        )}
         <button
           onClick={() => {
             navigator.clipboard.writeText(text);

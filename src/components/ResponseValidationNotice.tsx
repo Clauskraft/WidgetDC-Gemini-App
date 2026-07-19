@@ -2,7 +2,13 @@ import { ShieldAlert, ShieldCheck } from "lucide-react";
 import type { ValidationResult } from "@/lib/gemResponseValidator";
 import { cn } from "@/lib/utils";
 
-export function ResponseValidationNotice({ result }: { result: ValidationResult }) {
+export function ResponseValidationNotice({
+  result,
+  canvasReady,
+}: {
+  result: ValidationResult;
+  canvasReady: boolean;
+}) {
   const errors = result.issues.filter((issue) => issue.severity === "error");
   const warnings = result.issues.filter((issue) => issue.severity === "warn");
 
@@ -10,7 +16,7 @@ export function ResponseValidationNotice({ result }: { result: ValidationResult 
     return (
       <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
         <ShieldCheck className="h-3 w-3" />
-        Canvas klar
+        {canvasReady ? "Canvas klar" : "Svar valideret"}
       </div>
     );
   }

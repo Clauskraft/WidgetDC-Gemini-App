@@ -58,7 +58,8 @@ test("strip expand emits a whitelisted fold_out receipt", async ({ page }) => {
   await page.keyboard.press("Enter");
 
   const strip = page.getByTestId("intelligence-strip");
-  await expect(strip).toContainText("Evidens", { timeout: 20000 });
+  await expect(strip).toContainText("Rute", { timeout: 20000 });
+  await expect(strip).not.toContainText("Evidens");
   await expect(strip).not.toContainText("kg_rag.query");
 
   // No receipts before the user pulls anything open.

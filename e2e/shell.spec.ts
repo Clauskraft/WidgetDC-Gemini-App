@@ -40,7 +40,13 @@ test("sidebar keeps secondary tools calm and does not expose account identity", 
 
 for (const entry of ALL_ENTRIES) {
   test(`nav "${entry.label}" lands on ${entry.to} inside the one shell`, async ({ page }) => {
-    await page.goto(entry.to);
+    await page.goto("/");
+    const sidebar = page.locator("aside.app-sidebar");
+    if (LIBRARY_NAV.some((candidate) => candidate.to === entry.to)) {
+      await sidebar.getByText("Bibliotek", { exact: true }).click();
+    }
+    const escapedLabel = entry.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await sidebar.getByRole("link", { name: new RegExp(`^${escapedLabel}`) }).click();
     await expect(page).toHaveURL(new RegExp(`${entry.to.replace(/\//g, "\\/")}\\/?$`));
     // The three landmarks of the single AppShell:
     await expect(page.locator("aside.app-sidebar")).toBeVisible();

@@ -3,7 +3,7 @@
  *
  * Collapsed (always visible during/after a run, 32px): run-state dot+label,
  * then calm user-facing segments that appear only as REAL data arrives.
- * Internal routing names and scores stay behind the Evidence disclosure. Click
+ * Internal routing names and scores stay behind the route disclosure. Click
  * expands to evidence and run detail. At most ONE contextual
  * action lives on the right edge (P5). Never a wall of panels (P1).
  */
@@ -50,8 +50,8 @@ export function IntelligenceStrip({
   const candidates = reasoning?.intentCandidates ?? [];
   const routeCandidates =
     candidates.length > 0 ? candidates : reasoning?.intentTool ? [reasoning.intentTool] : [];
-  const hasEvidence = routeCandidates.length > 0;
-  const hasDetail = hasEvidence || Boolean(presentation.detail);
+  const hasRouteDetail = routeCandidates.length > 0;
+  const hasDetail = hasRouteDetail || Boolean(presentation.detail);
 
   return (
     <div
@@ -81,7 +81,7 @@ export function IntelligenceStrip({
           <span className="shrink-0 font-medium text-foreground/80">{presentation.label}</span>
           {sourceCount > 0 ? <span className="shrink-0">· {sourceCount} kilder</span> : null}
           {canvasReady ? <span className="shrink-0 text-foreground/70">· canvas klar</span> : null}
-          {hasEvidence ? <span className="shrink-0 text-foreground/70">· Evidens</span> : null}
+          {hasRouteDetail ? <span className="shrink-0 text-foreground/70">· Rute</span> : null}
           {hasDetail ? (
             <ChevronDown
               className={cn("ml-1 h-3 w-3 shrink-0 transition-transform", expanded && "rotate-180")}
