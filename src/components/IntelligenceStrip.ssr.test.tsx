@@ -25,7 +25,7 @@ describe("IntelligenceStrip", () => {
     expect(html).not.toContain("sources");
   });
 
-  it("segments appear as data arrives: routing · sources · canvas ready", () => {
+  it("keeps routing internals out of the calm summary", () => {
     const html = renderToString(
       <IntelligenceStrip
         state="completed"
@@ -39,14 +39,32 @@ describe("IntelligenceStrip", () => {
         canvasReady={true}
       />,
     );
-    expect(html).toContain("routing to");
-    expect(html).toContain("kg_rag.query");
-    expect(html).toContain("0.82");
-    expect(html).toMatch(/4<!-- --> sources|4 sources/);
-    expect(html).toContain("canvas ready");
+    expect(html).not.toContain("routing to");
+    expect(html).not.toContain("kg_rag.query");
+    expect(html).not.toContain("0.82");
+    expect(html).toMatch(/4<!-- --> kilder|4 kilder/);
+    expect(html).toContain("canvas klar");
+    expect(html).toContain("Rute");
+    expect(html).not.toContain("Evidens");
   });
 
-  it("expanded view exposes routing candidates and run detail as disclosures", () => {
+  it("does not present route-only metadata as evidence", () => {
+    const html = renderToString(
+      <IntelligenceStrip
+        state="completed"
+        presentation={chatRunStatePresentation("completed")}
+        reasoning={{ intentCandidates: ["kg_rag.query"] }}
+        sourceCount={0}
+        canvasReady={false}
+      />,
+    );
+
+    expect(html).toContain("Rute");
+    expect(html).not.toContain("Evidens");
+    expect(html).not.toContain("kilder");
+  });
+
+  it("expanded route detail exposes routing candidates and run detail", () => {
     const html = renderToString(
       <IntelligenceStrip
         state="completed"
@@ -61,9 +79,10 @@ describe("IntelligenceStrip", () => {
         defaultExpanded
       />,
     );
-    expect(html).toContain("Routing");
+    expect(html).toContain("Rute");
     expect(html).toContain("srag.query");
     expect(html).toContain("graph.read_cypher");
+    expect(html).toContain("Intern score");
     expect(html).toContain(chatRunStatePresentation("completed").detail);
   });
 

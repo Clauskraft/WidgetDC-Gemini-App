@@ -12,8 +12,6 @@ import {
   Paperclip,
   X,
   FileText,
-  ShieldAlert,
-  ShieldCheck,
   Wrench,
   Brain,
   Users,
@@ -35,6 +33,7 @@ import { IngestSourcesPanel, type IngestedSource } from "@/components/IngestSour
 import { AudioOverviewPanel } from "@/components/AudioOverviewPanel";
 import { DeepResearchPanel } from "@/components/DeepResearchPanel";
 import { IntelligenceStrip, type StripReasoning } from "@/components/IntelligenceStrip";
+import { ResponseValidationNotice } from "@/components/ResponseValidationNotice";
 import { emitUiReceipt } from "@/lib/uiReceipts";
 import {
   chatRunStatePresentation,
@@ -144,6 +143,13 @@ function buildHealPrompt(result: ValidationResult, attempt: number): string {
 
 type Attachment = { file: File; dataUrl: string };
 
+const INTERNAL_SELF_HEAL_MESSAGE = "self_heal";
+
+function isInternalSelfHealMessage(message: UIMessage): boolean {
+  const metadata = message.metadata as { widgetdc_internal?: string } | undefined;
+  return metadata?.widgetdc_internal === INTERNAL_SELF_HEAL_MESSAGE;
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -188,6 +194,7 @@ export function ChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const healAttemptsRef = useRef<Map<string, number>>(new Map());
   const healChainRef = useRef(0);
+  const selfHealBaselineRef = useRef<string | null | undefined>(undefined);
   const engDropdownRef = useRef<HTMLDivElement>(null);
   // Chain-scoped trace of every failed attempt, reset when the chain closes
   // (success or max retries). Used to render the diff on the final message.
@@ -312,10 +319,21 @@ export function ChatWindow({
     transport,
     onError: (e) => {
       console.error("Chat error:", e);
+      if (healChainRef.current > 0) {
+        // AI SDK reports HTTP failures through onError without necessarily
+        // rejecting sendMessage(). Close the repair chain here as well as in
+        // the promise catch so first-message persistence/navigation can run.
+        healChainRef.current = MAX_HEAL_RETRIES;
+        setHealingMessageId(null);
+      }
       setChatError(e);
       setOptimisticSending(false);
     },
   });
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => !isInternalSelfHealMessage(message)),
+    [messages],
+  );
 
   const [sessionSearch, setSessionSearch] = useState("");
   const isLoading = status === "submitted" || status === "streaming";
@@ -374,9 +392,9 @@ export function ChatWindow({
   const showIntelligenceStrip =
     showInlineRunState || stripReasoning !== null || stripSourceCount > 0 || canvasWorthy;
   useEffect(() => {
-    canvas.publishMessages(threadId, messages);
+    canvas.publishMessages(threadId, visibleMessages);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- publishMessages is stable
-  }, [threadId, messages]);
+  }, [threadId, visibleMessages]);
   // Auto-open keys on NEW assistant message ids relative to a mount baseline,
   // not on observing an "active" render: an atomically-delivered stream can
   // settle inside one React commit, so idle->completed may be the only visible
@@ -412,17 +430,26 @@ export function ChatWindow({
   // means the remount replays the already-persisted messages losslessly.
   const firedFirstRef = useRef(false);
   useEffect(() => {
-    if (messages.length === 0) return;
-    const firstUser = messages.find((m) => m.role === "user");
+    if (visibleMessages.length === 0) return;
+    const firstUser = visibleMessages.find((m) => m.role === "user");
     const title = firstUser ? getText(firstUser).slice(0, 60) || "Ny samtale" : "Ny samtale";
-    upsertThread(threadId, { title, messages });
+    upsertThread(threadId, { title, messages: visibleMessages });
     const streamSettled = status !== "streaming" && status !== "submitted";
-    const hasAssistant = messages.some((m) => m.role === "assistant");
-    if (firstUser && hasAssistant && streamSettled && !firedFirstRef.current) {
+    const hasAssistant = visibleMessages.some((m) => m.role === "assistant");
+    const lastAssistant = [...visibleMessages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    const lastAssistantText = lastAssistant ? getText(lastAssistant) : "";
+    const selfHealPending =
+      streamSettled &&
+      Boolean(lastAssistantText.trim()) &&
+      !validateGemResponse(lastAssistantText, gem?.id ?? "default").ok &&
+      healChainRef.current < MAX_HEAL_RETRIES;
+    if (firstUser && hasAssistant && streamSettled && !selfHealPending && !firedFirstRef.current) {
       firedFirstRef.current = true;
       onFirstMessage?.();
     }
-  }, [messages, threadId, upsertThread, onFirstMessage, status]);
+  }, [visibleMessages, threadId, upsertThread, onFirstMessage, status, gem?.id, healingMessageId]);
 
   // Safety net: if navigation hasn't unmounted us within ~4s, clear the
   // overlay so the user isn't stuck on a loading state.
@@ -445,14 +472,22 @@ export function ChatWindow({
   // Self-heal: when an assistant message finishes streaming and fails
   // canvas-validation, ask the gem to repair its own output up to MAX_HEAL_RETRIES.
   useEffect(() => {
-    if (!gem) return;
     if (status !== "ready") return;
+    if (selfHealBaselineRef.current === undefined) {
+      const mountedAssistant = [...messages]
+        .reverse()
+        .find((message) => message.role === "assistant");
+      selfHealBaselineRef.current = mountedAssistant?.id ?? null;
+      if (mountedAssistant) return;
+    }
     const last = messages[messages.length - 1];
     if (!last || last.role !== "assistant") return;
+    if (last.id === selfHealBaselineRef.current) return;
     const text = getText(last);
     if (!text.trim()) return;
     if (healAttemptsRef.current.has(last.id)) return; // already evaluated
-    const result = validateGemResponse(text, gem.id);
+    const validationProfileId = gem?.id ?? "default";
+    const result = validateGemResponse(text, validationProfileId);
     if (result.ok) {
       // Chain closed successfully — if there were prior failed attempts,
       // emit a diff summary on this final, validated message.
@@ -510,9 +545,19 @@ export function ChatWindow({
     healAttemptsRef.current.set(last.id, healChainRef.current);
     setHealingMessageId(last.id);
     void sendMessage(
-      { text: buildHealPrompt(result, healChainRef.current) },
+      {
+        text: buildHealPrompt(result, healChainRef.current),
+        metadata: { widgetdc_internal: INTERNAL_SELF_HEAL_MESSAGE },
+      },
       { body: buildRequestBody() },
-    );
+    ).catch((error: unknown) => {
+      // A failed repair transport must not strand the durable first response
+      // behind a route transition that can never finish.
+      healChainRef.current = MAX_HEAL_RETRIES;
+      setHealingMessageId(null);
+      setChatError(error);
+      setOptimisticSending(false);
+    });
   }, [status, messages, gem, sendMessage, buildRequestBody]);
 
   const submit = async (text?: string) => {
@@ -672,7 +717,7 @@ export function ChatWindow({
     setIngestedSources((prev) => prev.filter((s) => s.id !== id && s.filename !== id));
   };
 
-  const empty = messages.length === 0;
+  const empty = visibleMessages.length === 0;
   const emptyStarters = gem?.starters ?? SUGGESTIONS;
   const emptyGreeting = gem ? gem.name : "Hej. Hvad arbejder vi på i dag?";
   const emptyTagline = gem?.tagline ?? "WidgeTDC Aurora — drevet af WidgeTDC-platformen.";
@@ -796,89 +841,78 @@ export function ChatWindow({
                 )}
               </div>
             )}
-            {/* WDC Chat ONLY — no model picker */}
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-soft"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="truncate max-w-[180px]">WDC Chat</span>
-            </button>
             <ChatRunIndicator state={chatRunState} presentation={chatRunPresentation} compact />
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                toggleDeep();
-              }}
-              aria-pressed={deepMode}
-              title="Reason deeply — RLM reflektion + reasoning chain"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                deepMode ? "bg-primary/10 text-primary border-primary/40" : "text-muted-foreground",
-              )}
-            >
-              <Brain className="h-3.5 w-3.5" />
-              Deep
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                toggleCouncil();
-              }}
-              aria-pressed={councilMode}
-              title="Council — Mixture-of-Agents: flere specialist-agenter + konsensus"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                councilMode
-                  ? "bg-primary/10 text-primary border-primary/40"
-                  : "text-muted-foreground",
-              )}
-            >
-              <Users className="h-3.5 w-3.5" />
-              Council
-            </button>
-            <button
-              onClick={() => (canvas.open ? canvas.closeCanvas(true) : canvas.openCanvas())}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                canvas.open ? "bg-accent text-foreground border-border" : "text-muted-foreground",
-              )}
-            >
-              <PanelRightOpen className="h-3.5 w-3.5" />
-              Canvas
-            </button>
-            {ingestedSources.length > 0 && (
-              <button
-                onClick={() => setAudioOverviewOpen((v) => !v)}
-                aria-pressed={audioOverviewOpen}
-                title="Audio Overview — lyt til en podcast-sammenfatning af dine dokumenter"
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                  audioOverviewOpen
-                    ? "bg-primary/10 text-primary border-primary/40"
-                    : "text-muted-foreground",
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground">
+                <Wrench className="h-3.5 w-3.5" />
+                Værktøjer
+                <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-56 space-y-1 rounded-2xl border border-border bg-card p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={toggleDeep}
+                  aria-pressed={deepMode}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-accent",
+                    deepMode ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <Brain className="h-4 w-4" />
+                  Dyb analyse
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleCouncil}
+                  aria-pressed={councilMode}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-accent",
+                    councilMode ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                  Agentpanel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (canvas.open ? canvas.closeCanvas(true) : canvas.openCanvas())}
+                  aria-pressed={canvas.open}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-accent",
+                    canvas.open ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <PanelRightOpen className="h-4 w-4" />
+                  Canvas
+                </button>
+                {ingestedSources.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAudioOverviewOpen((value) => !value)}
+                    aria-pressed={audioOverviewOpen}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-accent",
+                      audioOverviewOpen ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    <Headphones className="h-4 w-4" />
+                    Lydresume
+                  </button>
                 )}
-              >
-                <Headphones className="h-3.5 w-3.5" />
-                Audio
-              </button>
-            )}
-            <button
-              onClick={() => setDeepResearchOpen((v) => !v)}
-              aria-pressed={deepResearchOpen}
-              title="Deep Research — autonomt multi-step forskningsagent"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-[13px] font-medium transition-all duration-150 hover:bg-accent hover:border-border",
-                deepResearchOpen
-                  ? "bg-primary/10 text-primary border-primary/40"
-                  : "text-muted-foreground",
-              )}
-            >
-              <FileSearch className="h-3.5 w-3.5" />
-              Research
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setDeepResearchOpen((value) => !value)}
+                  aria-pressed={deepResearchOpen}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-accent",
+                    deepResearchOpen ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <FileSearch className="h-4 w-4" />
+                  Research
+                </button>
+              </div>
+            </details>
           </div>
         </header>
 
@@ -920,9 +954,9 @@ export function ChatWindow({
             </div>
           ) : (
             <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
-              {messages.map((m, i) => {
+              {visibleMessages.map((m, i) => {
                 const isLastAssistant =
-                  m.role === "assistant" && i === messages.length - 1 && isLoading;
+                  m.role === "assistant" && i === visibleMessages.length - 1 && isLoading;
                 return (
                   <Message
                     key={m.id}
@@ -1254,7 +1288,9 @@ function Message({
         {/* GF-PR2: routing/intent detail now lives in the IntelligenceStrip
             (one calm surface, P1); per-message ReasoningPanel retired. */}
         {healSummary && <HealDiffPanel summary={healSummary} />}
-        {validation && <ValidationBadge result={validation} />}
+        {validation && (
+          <ResponseValidationNotice result={validation} canvasReady={shouldAutoOpenCanvas(text)} />
+        )}
         <button
           onClick={() => {
             navigator.clipboard.writeText(text);
@@ -1366,55 +1402,6 @@ function SourcesPanel({
         })}
       </ol>
     </details>
-  );
-}
-
-function ValidationBadge({ result }: { result: ValidationResult }) {
-  const [open, setOpen] = useState(false);
-  const errors = result.issues.filter((i) => i.severity === "error");
-  const warns = result.issues.filter((i) => i.severity === "warn");
-
-  if (result.ok && warns.length === 0) {
-    return (
-      <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
-        <ShieldCheck className="h-3 w-3" />
-        Canvas-validering OK
-        <span className="text-emerald-400/70">
-          · {result.artifacts.flowBlocks.length} flow · {result.artifacts.mermaidBlocks.length}{" "}
-          mermaid · {result.artifacts.canvasNotes.length} notes
-        </span>
-      </div>
-    );
-  }
-
-  const tone =
-    errors.length > 0
-      ? "border-destructive/40 bg-destructive/10 text-destructive"
-      : "border-amber-500/40 bg-amber-500/10 text-amber-400";
-
-  return (
-    <div className={cn("mt-2 rounded-md border px-2.5 py-1.5 text-xs", tone)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 font-medium"
-      >
-        <ShieldAlert className="h-3 w-3" />
-        {errors.length > 0
-          ? `Canvas-validering: ${errors.length} fejl${warns.length ? `, ${warns.length} advarsel${warns.length === 1 ? "" : "ler"}` : ""}`
-          : `Canvas-validering: ${warns.length} advarsel${warns.length === 1 ? "" : "ler"}`}
-        <span className="opacity-60">{open ? "▾" : "▸"}</span>
-      </button>
-      {open && (
-        <ul className="mt-1.5 space-y-1 pl-4">
-          {result.issues.map((i, idx) => (
-            <li key={idx} className="list-disc">
-              <span className="font-mono opacity-60">[{i.code}]</span> {i.message}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

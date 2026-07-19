@@ -25,9 +25,28 @@ test("sidebar has zero dead clicks — no hash anchors, no label-only rows, no s
   await expect(sidebar.getByText("Audit Factory")).toHaveCount(0);
 });
 
+test("sidebar keeps secondary tools calm and does not expose account identity", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const sidebar = page.locator("aside.app-sidebar");
+  await expect(sidebar.getByText("Bibliotek")).toBeVisible();
+  await expect(sidebar.getByText("Seneste")).toBeVisible();
+  await expect(sidebar.getByText("clauskraft@gmail.com")).toHaveCount(0);
+  await expect(sidebar.getByRole("link", { name: /Graph/ })).toBeHidden();
+  await sidebar.getByText("Bibliotek").click();
+  await expect(sidebar.getByRole("link", { name: /Graph/ })).toBeVisible();
+});
+
 for (const entry of ALL_ENTRIES) {
   test(`nav "${entry.label}" lands on ${entry.to} inside the one shell`, async ({ page }) => {
-    await page.goto(entry.to);
+    await page.goto("/");
+    const sidebar = page.locator("aside.app-sidebar");
+    if (LIBRARY_NAV.some((candidate) => candidate.to === entry.to)) {
+      await sidebar.getByText("Bibliotek", { exact: true }).click();
+    }
+    const escapedLabel = entry.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await sidebar.getByRole("link", { name: new RegExp(`^${escapedLabel}`) }).click();
     await expect(page).toHaveURL(new RegExp(`${entry.to.replace(/\//g, "\\/")}\\/?$`));
     // The three landmarks of the single AppShell:
     await expect(page.locator("aside.app-sidebar")).toBeVisible();
@@ -55,6 +74,11 @@ test("chat is the front door: one composer, immediately usable", async ({ page }
   const composer = page.locator("textarea");
   await expect(composer.first()).toBeVisible();
   await expect(composer.first()).toBeEnabled();
+  await expect(page.getByText("Værktøjer", { exact: true })).toBeVisible();
+  await expect(page.getByText("WDC Chat", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Dyb analyse", { exact: true })).toBeHidden();
+  await page.getByText("Værktøjer", { exact: true }).click();
+  await expect(page.getByText("Dyb analyse", { exact: true })).toBeVisible();
 });
 
 // One page-load per test — a cold nitro page render costs ~14s in sandboxed

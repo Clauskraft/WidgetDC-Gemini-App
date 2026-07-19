@@ -8,6 +8,22 @@ export type Thread = {
   messages: UIMessage[];
 };
 
+/**
+ * Display-only projection for the sidebar. Thread identity is the durable id,
+ * never the user-editable title: repeated prompts may legitimately produce
+ * distinct conversations. Exact duplicate ids are collapsed newest-first.
+ */
+export function dedupeRecentThreads(threads: Thread[], _activeThreadId?: string): Thread[] {
+  const sorted = [...threads].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
+  const selected = new Map<string, Thread>();
+
+  for (const thread of sorted) {
+    if (!selected.has(thread.id)) selected.set(thread.id, thread);
+  }
+
+  return [...selected.values()];
+}
+
 const KEY = "widgetdc.threads.v1";
 
 function load(): Thread[] {
