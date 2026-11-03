@@ -65,7 +65,7 @@ export function chatRunStatePresentation(
       };
     case "waiting_for_first_token":
       return {
-        label: "Venter paa foerste token",
+        label: "Venter på første svar",
         detail: "WDC har modtaget opgaven og bygger svaret.",
         tone: "active",
       };
@@ -83,7 +83,7 @@ export function chatRunStatePresentation(
       };
     case "completed":
       return {
-        label: "Faerdig",
+        label: "Færdig",
         detail: "Sidste svar er afsluttet.",
         tone: "success",
       };
@@ -96,7 +96,7 @@ export function chatRunStatePresentation(
     case "cancelled":
       return {
         label: "Stoppet",
-        detail: "Koerslen blev stoppet.",
+        detail: "Kørslen blev stoppet.",
         tone: "neutral",
       };
     case "idle":
