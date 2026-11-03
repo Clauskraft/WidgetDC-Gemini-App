@@ -78,14 +78,14 @@ test("failed default repair preserves the first answer and releases navigation",
   await page.keyboard.press("Enter");
 
   await expect.poll(() => requestCount, { timeout: 20000 }).toBe(2);
-  await expect(page.getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
   await expect(page).toHaveURL(/\/c\//, { timeout: 20000 });
   await expect(page.getByText(/dit forrige svar bestod ikke/)).toHaveCount(0);
   const persisted = await page.evaluate(() => localStorage.getItem("widgetdc.threads.v1"));
   expect(persisted).not.toContain("dit forrige svar bestod ikke");
 
   await page.reload();
-  await expect(page.getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
   await page.waitForTimeout(1000);
   expect(requestCount).toBe(2);
 });
@@ -158,7 +158,7 @@ test("row927 plain default reply stays one request and one visible answer", asyn
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/c\//, { timeout: 20000 });
   expect(requests).toBe(1);
-  await expect(page.getByText("Et helt almindeligt kort svar.", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("main").getByText("Et helt almindeligt kort svar.", { exact: true })).toHaveCount(1);
 });
 
 test("row927 Stop fences ready-on-abort and a genuine next turn is still allowed", async ({ page }) => {
@@ -176,14 +176,14 @@ test("row927 Stop fences ready-on-abort and a genuine next turn is still allowed
   await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
   await page.locator("textarea").first().fill("Første spørgsmål");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Delvist svar med defekt flow.", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
   await page.waitForTimeout(500);
   expect(requests).toBe(1);
   await page.locator("textarea").first().fill("Nyt reelt spørgsmål");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Et nyt gyldigt svar.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Et nyt gyldigt svar.", { exact: true })).toBeVisible();
   expect(requests).toBe(2);
 });
 
@@ -203,7 +203,7 @@ test("row927 Stop during an automatic repair prevents a further repair", async (
   await page.locator("textarea").first().fill("Spørgsmål med defekt artefakt");
   await page.keyboard.press("Enter");
   await expect.poll(() => requests).toBe(2);
-  await expect(page.getByText("Delvist svar med defekt flow.", { exact: false })).toHaveCount(2);
+  await expect(page.getByRole("main").getByText("Delvist svar med defekt flow.", { exact: false })).toHaveCount(2);
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible();
   await page.waitForTimeout(500);
