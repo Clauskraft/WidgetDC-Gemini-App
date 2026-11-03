@@ -195,6 +195,7 @@ export function ChatWindow({
   const healAttemptsRef = useRef<Map<string, number>>(new Map());
   const healChainRef = useRef(0);
   const selfHealBaselineRef = useRef<string | null | undefined>(undefined);
+  const cancelledRunRef = useRef(false);
   const engDropdownRef = useRef<HTMLDivElement>(null);
   // Chain-scoped trace of every failed attempt, reset when the chain closes
   // (success or max retries). Used to render the diff on the final message.
@@ -441,6 +442,7 @@ export function ChatWindow({
       .find((message) => message.role === "assistant");
     const lastAssistantText = lastAssistant ? getText(lastAssistant) : "";
     const selfHealPending =
+      !cancelledRunRef.current &&
       streamSettled &&
       Boolean(lastAssistantText.trim()) &&
       !validateGemResponse(lastAssistantText, gem?.id ?? "default").ok &&
@@ -449,7 +451,7 @@ export function ChatWindow({
       firedFirstRef.current = true;
       onFirstMessage?.();
     }
-  }, [visibleMessages, threadId, upsertThread, onFirstMessage, status, gem?.id, healingMessageId]);
+  }, [visibleMessages, threadId, upsertThread, onFirstMessage, status, gem?.id, healingMessageId, wasCancelled]);
 
   // Safety net: if navigation hasn't unmounted us within ~4s, clear the
   // overlay so the user isn't stuck on a loading state.
@@ -472,7 +474,7 @@ export function ChatWindow({
   // Self-heal: when an assistant message finishes streaming and fails
   // canvas-validation, ask the gem to repair its own output up to MAX_HEAL_RETRIES.
   useEffect(() => {
-    if (status !== "ready") return;
+    if (cancelledRunRef.current || status !== "ready") return;
     if (selfHealBaselineRef.current === undefined) {
       const mountedAssistant = [...messages]
         .reverse()
@@ -566,7 +568,8 @@ export function ChatWindow({
     const files = attachments;
     setInput("");
     setAttachments([]);
-    // New user turn → reset self-heal chain.
+    // Only a genuine new user turn may reopen automatic repair after Stop.
+    cancelledRunRef.current = false;
     healChainRef.current = 0;
     healChainTraceRef.current = [];
     setHealingMessageId(null);
@@ -601,6 +604,9 @@ export function ChatWindow({
   };
 
   const stopChat = () => {
+    // Fence synchronously before the SDK abort moves the stream back to ready.
+    cancelledRunRef.current = true;
+    setHealingMessageId(null);
     setWasCancelled(true);
     setOptimisticSending(false);
     stop();
