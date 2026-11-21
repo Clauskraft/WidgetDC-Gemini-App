@@ -4,6 +4,10 @@ async function waitForHydration(page: import("@playwright/test").Page) {
   await page.waitForFunction(() => document.documentElement.dataset.appHydrated === "true");
 }
 
+async function openTools(page: import("@playwright/test").Page) {
+  await page.getByText("Værktøjer", { exact: true }).click();
+}
+
 /**
  * Phase 4 Council (Mixture-of-Agents) mode. Stubs /api/chat so the test runs
  * without platform keys, verifying the Council toggle sends `body.council=true`
@@ -20,12 +24,13 @@ test("council toggle sends body.council and is exclusive with deep", async ({ pa
 
   await page.goto("/");
   await waitForHydration(page);
+  await openTools(page);
 
   // Enabling Deep first, then Council, must leave only Council active.
-  const deep = page.getByRole("button", { name: /^Deep$/ });
+  const deep = page.getByRole("button", { name: "Dyb analyse" });
   await deep.click();
   await expect(deep).toHaveAttribute("aria-pressed", "true");
-  const council = page.getByRole("button", { name: /^Council$/ });
+  const council = page.getByRole("button", { name: "Agentpanel" });
   await council.click();
   await expect(council).toHaveAttribute("aria-pressed", "true");
   await expect(deep).toHaveAttribute("aria-pressed", "false");
@@ -49,11 +54,12 @@ test("with both flags stored, only Council is active on load (Council wins)", as
   });
   await page.goto("/");
   await waitForHydration(page);
-  await expect(page.getByRole("button", { name: /^Council$/ })).toHaveAttribute(
+  await openTools(page);
+  await expect(page.getByRole("button", { name: "Agentpanel" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(page.getByRole("button", { name: /^Deep$/ })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Dyb analyse" })).toHaveAttribute(
     "aria-pressed",
     "false",
   );

@@ -212,3 +212,26 @@ describe("unknown gem", () => {
     expect(r.issues.find((i) => i.code.startsWith("consulting_"))).toBeUndefined();
   });
 });
+
+
+describe("row927 default notes and configured contracts", () => {
+  it("accepts a plain default answer without optional Canvas notes", () => {
+    const result = validateGemResponse("Et kort og almindeligt svar.", "default");
+    expect(result.ok).toBe(true);
+    expect(result.issues.some((issue) => issue.code === "missing_canvas_notes")).toBe(false);
+  });
+
+  it("keeps configured Gem notes mandatory", () => {
+    const result = validateGemResponse("MECE svar uden notes.", "consulting-strategist");
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      code: "missing_canvas_notes",
+      severity: "error",
+    }));
+  });
+
+  it("keeps malformed flow repairable on the default profile", () => {
+    const result = validateGemResponse("```flow\n{ invalid json }\n```", "default");
+    expect(result.ok).toBe(false);
+  });
+});

@@ -602,8 +602,12 @@ export function validateGemResponse(text: string, gemId: string): ValidationResu
     codeBlocks,
   };
 
-  const ruleIssues: ValidationIssue[] = [];
-  for (const rule of COMMON_RULES) ruleIssues.push(...rule(artifacts, text));
+  // Canvas notes are optional for ordinary default answers. Keep every other
+  // common rule and all explicit Gem requirements intact.
+  const commonIssues = COMMON_RULES.flatMap((rule) => rule(artifacts, text));
+  const ruleIssues = commonIssues.filter(
+    (issue) => gemId !== "default" || issue.code !== "missing_canvas_notes",
+  );
   // Fall back to "default" McKinsey-storyline rules when no specific gem matches
   const gemRules = GEM_RULES[gemId] ?? GEM_RULES["default"] ?? [];
   for (const rule of gemRules) ruleIssues.push(...rule(artifacts, text));

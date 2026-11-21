@@ -166,6 +166,15 @@ export const Route = createFileRoute("/api/chat")({
 
         const lastUser = [...body.messages].reverse().find((m) => m.role === "user");
         const intent = messageText(lastUser);
+        // Internal repair instructions guide generation. Grounding stays bound
+        // to the latest genuine question, using the existing semantic marker.
+        const lastGenuineUser = [...body.messages].reverse().find(
+          (message) =>
+            message.role === "user" &&
+            (message.metadata as { widgetdc_internal?: unknown } | null | undefined)
+              ?.widgetdc_internal !== "self_heal",
+        );
+        const enrichmentIntent = messageText(lastGenuineUser);
 
         // WDC Chat ONLY — full intelligence chain.
         if (!isPlatformConfigured() || !WDC_TOKEN || !intent) {
@@ -188,9 +197,9 @@ export const Route = createFileRoute("/api/chat")({
             let streamClosed = false;
             const enrich = process.env.WDC_CHAT_ENRICH !== "0";
             const enrichmentWrites: Promise<void>[] = [];
-            if (enrich) {
+            if (enrich && enrichmentIntent) {
               enrichmentWrites.push(
-                fetchIntentDetection(intent, correlationId)
+                fetchIntentDetection(enrichmentIntent, correlationId)
                   .then((detection) => {
                     const top = detection?.candidates?.[0];
                     if (!top || streamClosed) return;
@@ -205,7 +214,7 @@ export const Route = createFileRoute("/api/chat")({
                     });
                   })
                   .catch(() => {}),
-                fetchRagGrounding(intent, correlationId)
+                fetchRagGrounding(enrichmentIntent, correlationId)
                   .then((grounding) => {
                     if (!grounding?.sources?.length || streamClosed) return;
                     writer.write({

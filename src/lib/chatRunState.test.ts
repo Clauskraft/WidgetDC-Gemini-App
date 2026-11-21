@@ -91,9 +91,18 @@ describe("chatRunState", () => {
   });
 
   it("provides user-facing copy for visible chat status", () => {
+    expect(chatRunStatePresentation("waiting_for_first_token")).toMatchObject({
+      label: "Venter på første svar",
+    });
     expect(chatRunStatePresentation("streaming")).toMatchObject({
       label: "WDC svarer",
       tone: "active",
+    });
+    expect(chatRunStatePresentation("completed")).toMatchObject({
+      label: "Færdig",
+    });
+    expect(chatRunStatePresentation("cancelled")).toMatchObject({
+      detail: "Kørslen blev stoppet.",
     });
     expect(chatRunStatePresentation("errored")).toMatchObject({
       label: "Fejl",
